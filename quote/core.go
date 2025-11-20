@@ -37,17 +37,21 @@ func newCore(opts *Options) (*core, error) {
 	logger.SetLevel(opts.logLevel)
 
 	clientOpts := []client.ClientOption{client.WithLogger(logger)}
+
+	handshake := &protocol.Handshake{
+		Version:  1,
+		Codec:    protocol.CodecProtobuf,
+		Platform: protocol.PlatformOpenapi,
+	}
+
 	if opts.enableOvernight {
 		clientOpts = append(clientOpts, client.WithConnectMetadata(map[string]string{"need_over_night_quote": "true"}))
+		handshake.Version = 2
 	}
 	cl := client.New(clientOpts...)
 
 	err := cl.Dial(context.Background(), opts.quoteURL,
-		&protocol.Handshake{
-			Version:  1,
-			Codec:    protocol.CodecProtobuf,
-			Platform: protocol.PlatformOpenapi,
-		},
+		handshake,
 		client.WithAuthTokenGetter(getOTP),
 		client.AuthTimeout(opts.lbOpts.AuthTimeout),
 		client.DialTimeout(opts.lbOpts.Timeout),
