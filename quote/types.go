@@ -12,23 +12,24 @@ import (
 )
 
 type (
-	TradeStatus            int32
-	TradeSession           int32
-	TradeSessionType       int32
-	EventType              int8
-	SubType                uint8
-	Period                 int32
-	AdjustType             int32
-	CalcIndex              int32
-	WarrantStatus          int32
-	WarrantSortBy          int32
-	WarrantSortOrder       int32
-	WarrantType            int32
-	WarrantExpiryDateType  int32
-	WarrantInOutBoundsType int32
-	WarrantLanguage        int32
-	SecurityListCategory   string
-	WatchlistUpdateMode    string
+	TradeStatus             int32
+	TradeSession            int32
+	TradeSessionType        int32
+	EventType               int8
+	SubType                 uint8
+	Period                  int32
+	AdjustType              int32
+	CalcIndex               int32
+	WarrantStatus           int32
+	WarrantSortBy           int32
+	WarrantSortOrder        int32
+	WarrantType             int32
+	WarrantExpiryDateType   int32
+	WarrantInOutBoundsType  int32
+	WarrantLanguage         int32
+	SecurityListCategory    string
+	WatchlistUpdateMode     string
+	CandlestickTradeSession int32
 )
 
 const (
@@ -65,6 +66,11 @@ const (
 	TradeSessionPreTrade  = TradeSession(quotev1.TradeSession_PRE_TRADE)
 	TradeSessionPostTrade = TradeSession(quotev1.TradeSession_POST_TRADE)
 	TradeSessionOvernight = TradeSession(quotev1.TradeSession_OVERNIGHT_TRADE)
+
+	// CandlestickTradeSessionNormal includes normal trade session
+	CandlestickTradeSessionNormal = CandlestickTradeSession(0)
+	// CandlestickTradeSessionAll includes all trade sessions
+	CandlestickTradeSessionAll = CandlestickTradeSession(100)
 
 	// CalcIndex
 	CalcIndexUnknown               CalcIndex = CalcIndex(quotev1.CalcIndex_CALCINDEX_UNKNOWN)
@@ -674,7 +680,7 @@ type MarketPackageDetail struct {
 type CandlestickRequestOption func(*quotev1.SecurityHistoryCandlestickRequest)
 
 // CandlestickRequestTradeSession sets the trade session of the candlestick request
-func CandlestickRequestTradeSession(session TradeSession) CandlestickRequestOption {
+func CandlestickRequestTradeSession(session CandlestickTradeSession) CandlestickRequestOption {
 	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
 		req.TradeSession = int32(session)
 	}
