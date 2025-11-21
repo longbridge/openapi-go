@@ -22,7 +22,7 @@ func main() {
 	defer tradeContext.Close()
 	ctx := context.Background()
 	// Get AccountBalance infomation
-	ab, err := tradeContext.AccountBalance(ctx)
+	ab, err := tradeContext.AccountBalance(ctx, &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
 	if err != nil {
 		log.Fatal(err)
 	}

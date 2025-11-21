@@ -393,7 +393,7 @@ func (c *core) Candlesticks(ctx context.Context, symbol string, period Period, c
 	return
 }
 
-func (c *core) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32) (sticks []*Candlestick, err error) {
+func (c *core) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32, options ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
 	direction := quotev1.Direction_BACKWARD
 	if isForward {
 		direction = quotev1.Direction_FORWARD
@@ -410,10 +410,15 @@ func (c *core) HistoryCandlesticksByOffset(ctx context.Context, symbol string, p
 			Count:     int32(count),
 		},
 	}
+
+	for _, option := range options {
+		option(req)
+	}
+
 	return c.historyCandlesticks(ctx, req)
 }
 
-func (c *core) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time) (sticks []*Candlestick, err error) {
+func (c *core) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time, options ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
 	req := &quotev1.SecurityHistoryCandlestickRequest{
 		Symbol:     symbol,
 		Period:     quotev1.Period(period),
@@ -424,6 +429,11 @@ func (c *core) HistoryCandlesticksByDate(ctx context.Context, symbol string, per
 			EndDate:   util.FormatDateSimple(endDate),
 		},
 	}
+
+	for _, option := range options {
+		option(req)
+	}
+
 	return c.historyCandlesticks(ctx, req)
 }
 

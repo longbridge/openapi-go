@@ -237,8 +237,8 @@ func (c *QuoteContext) Candlesticks(ctx context.Context, symbol string, period P
 //	qctx, err := quote.NewFromEnv()
 //	dateTime := time.Date(2022, 5, 10, 11, 10, 0, 0, time.UTC)
 //	klines, err := qctx.HistoryCandlesticksByOffset(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, true, &dateTime, 100)
-func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32) (sticks []*Candlestick, err error) {
-	return c.core.HistoryCandlesticksByOffset(ctx, symbol, period, adjustType, isForward, dateTime, count)
+func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	return c.core.HistoryCandlesticksByOffset(ctx, symbol, period, adjustType, isForward, dateTime, count, opts...)
 }
 
 // HistoryCandlesticksByOffset obtains the history candlestick data of security after or before an offset time.
@@ -263,8 +263,8 @@ func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol s
 //	startDate := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
 //	endDate := time.Date(2022, 6, 10, 0, 0, 0, 0, time.UTC)
 //	klines, err := qctx.HistoryCandlesticksByDate(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, &startDate, &endDate)
-func (c *QuoteContext) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time) (sticks []*Candlestick, err error) {
-	return c.core.HistoryCandlesticksByDate(ctx, symbol, period, adjustType, startDate, endDate)
+func (c *QuoteContext) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	return c.core.HistoryCandlesticksByDate(ctx, symbol, period, adjustType, startDate, endDate, opts...)
 }
 
 // OptionChainExpiryDateList obtain the the list of expiration dates of option chain

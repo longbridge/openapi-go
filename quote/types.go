@@ -60,6 +60,12 @@ const (
 	AdjustTypeNo      = AdjustType(quotev1.AdjustType_NO_ADJUST)
 	AdjustTypeForward = AdjustType(quotev1.AdjustType_FORWARD_ADJUST)
 
+	// TradeSession
+	TradeSessionNormal    = TradeSession(quotev1.TradeSession_NORMAL_TRADE)
+	TradeSessionPreTrade  = TradeSession(quotev1.TradeSession_PRE_TRADE)
+	TradeSessionPostTrade = TradeSession(quotev1.TradeSession_POST_TRADE)
+	TradeSessionOvernight = TradeSession(quotev1.TradeSession_OVERNIGHT_TRADE)
+
 	// CalcIndex
 	CalcIndexUnknown               CalcIndex = CalcIndex(quotev1.CalcIndex_CALCINDEX_UNKNOWN)
 	CalcIndexLastDone              CalcIndex = CalcIndex(quotev1.CalcIndex_CALCINDEX_LAST_DONE)
@@ -662,4 +668,14 @@ type MarketPackageDetail struct {
 	MarketCode string
 	Limit      int32
 	Burst      int32
+}
+
+// CandlestickRequestOption is the option for the candlestick request
+type CandlestickRequestOption func(*quotev1.SecurityHistoryCandlestickRequest)
+
+// CandlestickRequestTradeSession sets the trade session of the candlestick request
+func CandlestickRequestTradeSession(session TradeSession) CandlestickRequestOption {
+	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
+		req.TradeSession = int32(session)
+	}
 }
