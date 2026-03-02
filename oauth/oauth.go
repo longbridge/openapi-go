@@ -5,7 +5,11 @@
 //
 // # Example
 //
-//	o := oauth.New("your-client-id")
+//	o := oauth.New("your-client-id").
+//	    OnOpenURL(func(url string) {
+//	        // Open the URL however you like, e.g. print it or launch a browser
+//	        fmt.Println("Please visit:", url)
+//	    })
 //	token, err := o.Authorize(context.Background())
 //	if err != nil {
 //	    log.Fatal(err)
@@ -19,8 +23,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os/exec"
-	"runtime"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -57,6 +59,7 @@ type OAuth struct {
 	clientID     string
 	callbackPort int
 	baseURL      string
+	openURL      func(string)
 }
 
 // New creates a new OAuth client with the given client ID.
@@ -86,6 +89,19 @@ func (o *OAuth) WithCallbackPort(port int) *OAuth {
 	return o
 }
 
+// OnOpenURL sets a callback to handle the authorization URL.
+//
+// The callback receives the authorization URL as a string. Use this to
+// open the URL in a browser, print it, or handle it in any other way
+// appropriate for your application.
+//
+// If not set, the URL is silently discarded (useful for testing or when
+// you retrieve the URL through other means).
+func (o *OAuth) OnOpenURL(f func(string)) *OAuth {
+	o.openURL = f
+	return o
+}
+
 // ClientID returns the OAuth 2.0 client ID.
 func (o *OAuth) ClientID() string {
 	return o.clientID
@@ -95,7 +111,8 @@ func (o *OAuth) ClientID() string {
 //
 // It will:
 //  1. Start a local HTTP server to receive the callback
-//  2. Open the user's browser to the authorization page
+//  2. Invoke the OnOpenURL callback with the authorization URL, so the
+//     caller can open it in a browser or handle it in any other way
 //  3. Wait for the user to authorize and receive the authorization code
 //  4. Exchange the code for an access token
 //
@@ -115,10 +132,10 @@ func (o *OAuth) Authorize(ctx context.Context) (*OAuthToken, error) {
 
 	authURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline)
 
-	fmt.Println("Opening browser for LongPort OpenAPI authorization...")
-	fmt.Println("If the browser doesn't open, please visit:")
-	fmt.Println(authURL)
-	_ = openBrowser(authURL)
+	// Invoke caller-supplied callback with the authorization URL
+	if o.openURL != nil {
+		o.openURL(authURL)
+	}
 
 	type result struct {
 		code  string
@@ -197,20 +214,6 @@ func tokenFromOAuth2(t *oauth2.Token) *OAuthToken {
 		RefreshToken: rt,
 		ExpiresAt:    expiresAt,
 	}
-}
-
-func openBrowser(rawURL string) error {
-	var cmd string
-	var args []string
-	switch runtime.GOOS {
-	case "darwin":
-		cmd, args = "open", []string{rawURL}
-	case "windows":
-		cmd, args = "cmd", []string{"/c", "start", rawURL}
-	default:
-		cmd, args = "xdg-open", []string{rawURL}
-	}
-	return exec.Command(cmd, args...).Start()
 }
 
 const callbackStyle = `<style>html{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;` +
