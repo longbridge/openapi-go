@@ -10,7 +10,89 @@ _With Go module support , simply add the following import_
 import "github.com/longportapp/openapi-go"
 ```
 
-_Setting environment variables(MacOS/Linux)_
+## Authentication
+
+### 1. OAuth 2.0 (Recommended)
+
+OAuth 2.0 is the modern authentication method that uses Bearer tokens without requiring HMAC signatures.
+
+**Step 1: Register OAuth Client**
+
+First, register an OAuth client to get your `client_id`:
+
+```bash
+curl -X POST https://openapi.longportapp.com/v1/oauth2/client/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Application",
+    "redirect_uris": ["http://localhost:60355/callback"],
+    "grant_types": ["authorization_code", "refresh_token"]
+  }'
+```
+
+Response:
+```json
+{
+  "client_id": "your-client-id-here",
+  "name": "My Application",
+  "redirect_uris": ["http://localhost:60355/callback"]
+}
+```
+
+Save the `client_id` for use in your application.
+
+**Step 2: Authorize and Get Token**
+
+```golang
+import (
+    "context"
+    "log"
+
+    "github.com/longportapp/openapi-go/config"
+    "github.com/longportapp/openapi-go/oauth"
+    "github.com/longportapp/openapi-go/quote"
+)
+
+func main() {
+    // Start OAuth authorization flow — opens browser automatically
+    o := oauth.New("your-client-id")
+    token, err := o.Authorize(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Save token securely for future use
+    // (e.g., encrypted file, secure keychain)
+
+    // Create config with OAuth token
+    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
+
+    // Use config to create contexts
+    quoteContext, err := quote.NewFromCfg(cfg)
+    // ...
+}
+```
+
+**Refresh a token when it is about to expire:**
+
+```golang
+o := oauth.New("your-client-id")
+newToken, err := o.Refresh(context.Background(), savedRefreshToken)
+```
+
+**Benefits:**
+- More secure (no shared secret)
+- Simpler integration (no signature calculation)
+- Token-based authentication
+- Better suited for modern applications
+
+**Note:** OAuth tokens should be stored securely in your application (e.g., encrypted file, secure keychain), **not in environment variables** for security reasons.
+
+### 2. Legacy API Key (Environment Variables)
+
+For backward compatibility, you can still use the traditional API key method:
+
+_Setting environment variables (MacOS/Linux)_
 
 ```bash
 export LONGPORT_APP_KEY="App Key get from user center"
@@ -18,7 +100,7 @@ export LONGPORT_APP_SECRET="App Secret get from user center"
 export LONGPORT_ACCESS_TOKEN="Access Token get from user center"
 ```
 
-_Setting environment variables(Windows)_
+_Setting environment variables (Windows)_
 
 ```powershell
 setx LONGPORT_APP_KEY "App Key get from user center"
@@ -187,6 +269,43 @@ c.Client = &http.Client{
 
 ## Quote API (Get basic information of securities)
 
+**Using OAuth 2.0 (Recommended):**
+
+```golang
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/longportapp/openapi-go/config"
+    "github.com/longportapp/openapi-go/oauth"
+    "github.com/longportapp/openapi-go/quote"
+)
+
+func main() {
+    o := oauth.New("your-client-id")
+    token, err := o.Authorize(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
+    quoteContext, err := quote.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer quoteContext.Close()
+    quotes, err := quoteContext.Quote(context.Background(), []string{"700.HK", "AAPL.US", "TSLA.US", "NFLX.US"})
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("quotes: %v", quotes)
+}
+```
+
+**Using legacy API key (environment variables):**
+
 ```golang
 package main
 
@@ -224,6 +343,52 @@ func main() {
 ```
 
 ## Trade API (Submit order)
+
+**Using OAuth 2.0 (Recommended):**
+
+```golang
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/longportapp/openapi-go/config"
+    "github.com/longportapp/openapi-go/oauth"
+    "github.com/longportapp/openapi-go/trade"
+    "github.com/shopspring/decimal"
+)
+
+func main() {
+    o := oauth.New("your-client-id")
+    token, err := o.Authorize(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
+    tradeContext, err := trade.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tradeContext.Close()
+    order := &trade.SubmitOrder{
+        Symbol:            "700.HK",
+        OrderType:         trade.OrderTypeLO,
+        Side:              trade.OrderSideBuy,
+        SubmittedQuantity: 200,
+        TimeInForce:       trade.TimeTypeDay,
+        SubmittedPrice:    decimal.NewFromFloat(12),
+    }
+    orderId, err := tradeContext.SubmitOrder(context.Background(), order)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("orderId: %v\n", orderId)
+}
+```
+
+**Using legacy API key (environment variables):**
 
 ```golang
 package main
