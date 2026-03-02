@@ -2,6 +2,7 @@ package config
 
 import (
 	"path"
+	"strings"
 )
 
 type Options struct {
@@ -33,6 +34,22 @@ func WithConfigKey(appKey string, appSecret string, accessToken string) Option {
 	return func(o *Options) {
 		o.appKey = &appKey
 		o.appSecret = &appSecret
+		o.accessToken = &accessToken
+	}
+}
+
+// WithOAuth configures the client to use OAuth 2.0 authentication.
+//
+// This sets the AppKey to clientID and AccessToken to "Bearer <accessToken>",
+// and clears AppSecret (not required for OAuth 2.0).
+func WithOAuth(clientID, accessToken string) Option {
+	return func(o *Options) {
+		o.appKey = &clientID
+		secret := ""
+		o.appSecret = &secret
+		if !strings.HasPrefix(accessToken, "Bearer ") {
+			accessToken = "Bearer " + accessToken
+		}
 		o.accessToken = &accessToken
 	}
 }

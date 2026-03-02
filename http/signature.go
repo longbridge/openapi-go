@@ -4,6 +4,7 @@ import (
 	"context"
 	nhttp "net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/longportapp/openapi-go/internal/signer"
@@ -17,6 +18,12 @@ const (
 var sign = &signer.Signer{}
 
 func signature(req *nhttp.Request, secret string, body []byte) error {
+	// OAuth 2.0 mode: skip HMAC signature generation when using Bearer token
+	authHeader := req.Header.Get("authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return nil
+	}
+
 	if v := req.Header.Get(headerTimestamp); v == "" {
 		req.Header.Add(headerTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
 	}

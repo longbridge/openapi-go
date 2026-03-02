@@ -1,6 +1,6 @@
 module github.com/longportapp/openapi-go
 
-go 1.20
+go 1.24.0
 
 retract [v0.0.1, v0.7.1]
 
@@ -25,5 +25,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
+	golang.org/x/oauth2 v0.35.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )

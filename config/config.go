@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -76,6 +77,33 @@ func (c *Config) Logger() log.Logger {
 	return c.logger
 }
 
+// FromOAuth creates a Config using OAuth 2.0 authentication.
+//
+// OAuth 2.0 mode uses Bearer token authentication and does not require
+// AppSecret. The access_token will be automatically prefixed with "Bearer "
+// if not already present.
+//
+// # Arguments
+//
+//   - clientID: OAuth 2.0 client ID (used as AppKey)
+//   - accessToken: OAuth 2.0 access token
+func FromOAuth(clientID, accessToken string) *Config {
+	// Ensure Bearer prefix
+	if !strings.HasPrefix(accessToken, "Bearer ") {
+		accessToken = "Bearer " + accessToken
+	}
+	return &Config{
+		AppKey:      clientID,
+		AccessToken: accessToken,
+	}
+}
+
+// IsOAuth2 reports whether this config is using OAuth 2.0 mode.
+// OAuth 2.0 mode is detected when the access token starts with "Bearer ".
+func (c *Config) IsOAuth2() bool {
+	return strings.HasPrefix(c.AccessToken, "Bearer ")
+}
+
 func New(opts ...Option) (configData *Config, err error) {
 	options := newOptions(opts...)
 	conf, exist := configTypeMap[options.tp]
@@ -123,7 +151,8 @@ func (c *Config) check() (err error) {
 		err = errors.New("Don't has appKey. Please set app key on LONGPORT_APP_KEY env")
 		return
 	}
-	if c.AppSecret == "" {
+	// OAuth 2.0 mode does not require AppSecret
+	if !c.IsOAuth2() && c.AppSecret == "" {
 		err = errors.New("Don't has appSecret. Please set app secret on LONGPORT_APP_SECRET env")
 		return
 	}

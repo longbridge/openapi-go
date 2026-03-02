@@ -26,7 +26,7 @@ type core struct {
 
 func newCore(opts *Options) (*core, error) {
 	getOTP := func() (otp string, err error) {
-		otp, err = opts.httpClient.GetOTP(context.Background())
+		otp, err = opts.httpClient.GetOTPV2(context.Background())
 		if err != nil {
 			return "", errors.Wrap(err, "failed to get otp")
 		}
