@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/longportapp/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/internal/util"
 	"github.com/shopspring/decimal"
 )
 

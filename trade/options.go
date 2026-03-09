@@ -1,9 +1,9 @@
 package trade
 
 import (
-	"github.com/longportapp/openapi-go/http"
-	"github.com/longportapp/openapi-go/log"
-	"github.com/longportapp/openapi-go/longbridge"
+	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/log"
+	"github.com/longbridge/openapi-go/longbridge"
 	protocol "github.com/longportapp/openapi-protocol/go"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/longportapp/openapi-go"
+	"github.com/longbridge/openapi-go"
 )
 
 type (

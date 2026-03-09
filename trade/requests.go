@@ -3,7 +3,7 @@ package trade
 import (
 	"time"
 
-	"github.com/longportapp/openapi-go"
+	"github.com/longbridge/openapi-go"
 	"github.com/shopspring/decimal"
 )
 

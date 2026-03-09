@@ -10,13 +10,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/quote"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/oauth"
+	"github.com/longbridge/openapi-go/quote"
 )
 
 func main() {
-	// create quote context from environment variables
-	conf, err := config.New()
+	o := oauth.New("your-client-id").
+		OnOpenURL(func(url string) { fmt.Println("Open this URL to authorize:", url) })
+	if err := o.Build(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+	conf, err := config.New(config.WithOAuthClient(o))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +44,6 @@ func main() {
 		fmt.Println(string(bytes))
 	})
 
-	// Subscribe some symbols
 	err = quoteContext.Subscribe(ctx, []string{"700.HK"}, []quote.SubType{quote.SubTypeDepth}, true)
 	if err != nil {
 		log.Fatal(err)

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/longbridgeapp/assert"
-	"github.com/longportapp/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/internal/util"
 
 	"github.com/shopspring/decimal"
 )

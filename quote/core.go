@@ -10,9 +10,9 @@ import (
 	"github.com/longportapp/openapi-protocol/go/client"
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/log"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/log"
 )
 
 type core struct {

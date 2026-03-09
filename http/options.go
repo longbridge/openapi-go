@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/longportapp/openapi-go"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/oauth"
 )
 
 // DefaultHttpUrl
@@ -22,6 +23,9 @@ type Options struct {
 	Timeout     time.Duration
 	Client      *http.Client
 	Language    openapi.Language
+
+	// OAuthClient when set: token and app key are taken from it (auto-refresh).
+	OAuthClient *oauth.OAuth
 }
 
 // Option for http client
@@ -87,6 +91,13 @@ func WithLanguage(language openapi.Language) Option {
 		if language != "" {
 			opts.Language = language
 		}
+	}
+}
+
+// WithOAuthClient sets the OAuth client for token auto-refresh.
+func WithOAuthClient(o *oauth.OAuth) Option {
+	return func(opts *Options) {
+		opts.OAuthClient = o
 	}
 }
 

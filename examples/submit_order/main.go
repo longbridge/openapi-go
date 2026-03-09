@@ -8,14 +8,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/trade"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/oauth"
+	"github.com/longbridge/openapi-go/trade"
 	"github.com/shopspring/decimal"
 )
 
 func main() {
-	// create trade context from environment variables
-	conf, err := config.New()
+	o := oauth.New("your-client-id").
+		OnOpenURL(func(url string) { fmt.Println("Open this URL to authorize:", url) })
+	if err := o.Build(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+	conf, err := config.New(config.WithOAuthClient(o))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,13 +32,10 @@ func main() {
 	defer tradeContext.Close()
 	ctx := context.Background()
 
-	// subscribe order status
 	tradeContext.OnTrade(func(ev *trade.PushEvent) {
-		// handle order changing event
 		log.Printf("order event: %+v\n", ev)
 	})
 
-	// submit order
 	order := &trade.SubmitOrder{
 		Symbol:            "700.HK",
 		OrderType:         trade.OrderTypeLO,

@@ -7,11 +7,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/http"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/longbridge"
-	"github.com/longportapp/openapi-go/trade/jsontypes"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/longbridge"
+	"github.com/longbridge/openapi-go/trade/jsontypes"
 )
 
 // TradeContext is a client for interacting with Longbridge Trade OpenAPI.
@@ -367,13 +367,7 @@ func NewFormEnv() (*TradeContext, error) {
 
 // NewFromCfg return TradeContext with config.Config.
 func NewFromCfg(cfg *config.Config) (*TradeContext, error) {
-	httpClient, err := http.New(
-		http.WithAccessToken(cfg.AccessToken),
-		http.WithAppKey(cfg.AppKey),
-		http.WithAppSecret(cfg.AppSecret),
-		http.WithURL(cfg.HttpURL),
-		http.WithLanguage(cfg.Language),
-	)
+	httpClient, err := http.NewFromCfg(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "create http client error")
 	}

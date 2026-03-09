@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/log"
-	"github.com/longportapp/openapi-go/trade/jsontypes"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/log"
+	"github.com/longbridge/openapi-go/trade/jsontypes"
 
 	tradev1 "github.com/longportapp/openapi-protobufs/gen/go/trade"
 	protocol "github.com/longportapp/openapi-protocol/go"

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/longportapp/openapi-go/internal/signer"
-	"github.com/longportapp/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/internal/signer"
+	"github.com/longbridge/openapi-go/internal/util"
 )
 
 const (

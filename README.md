@@ -7,7 +7,7 @@
 _With Go module support , simply add the following import_
 
 ```golang
-import "github.com/longportapp/openapi-go"
+import "github.com/longbridge/openapi-go"
 ```
 
 ## Authentication
@@ -41,7 +41,9 @@ Response:
 
 Save the `client_id` for use in your application.
 
-**Step 2: Authorize and Get Token**
+**Step 2: Build OAuth and set on config (same usage as Rust SDK)**
+
+The SDK stores the token in `~/.longbridge-openapi/tokens/<client_id>` and refreshes it automatically. You do not handle tokens yourself.
 
 ```golang
 import (
@@ -49,48 +51,37 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/config"
-    "github.com/longportapp/openapi-go/oauth"
-    "github.com/longportapp/openapi-go/quote"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
+    "github.com/longbridge/openapi-go/quote"
 )
 
 func main() {
-    // Start OAuth authorization flow
     o := oauth.New("your-client-id").
         OnOpenURL(func(url string) {
             fmt.Println("Please visit:", url)
         })
-    token, err := o.Authorize(context.Background())
+    // Load token from disk or run authorization flow; token is persisted and auto-refreshed
+    if err := o.Build(context.Background()); err != nil {
+        log.Fatal(err)
+    }
+
+    // Set OAuth on config (like Rust SDK: Config::from_oauth(oauth))
+    cfg, err := config.New(config.WithOAuthClient(o))
     if err != nil {
         log.Fatal(err)
     }
 
-    // Save token securely for future use
-    // (e.g., encrypted file, secure keychain)
-
-    // Create config with OAuth token
-    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
-
-    // Use config to create contexts
     quoteContext, err := quote.NewFromCfg(cfg)
     // ...
 }
 ```
 
-**Refresh a token when it is about to expire:**
-
-```golang
-o := oauth.New("your-client-id")
-newToken, err := o.Refresh(context.Background(), savedRefreshToken)
-```
-
 **Benefits:**
-- More secure (no shared secret)
-- Simpler integration (no signature calculation)
-- Token-based authentication
-- Better suited for modern applications
-
-**Note:** OAuth tokens should be stored securely in your application (e.g., encrypted file, secure keychain), **not in environment variables** for security reasons.
+- Token is stored in `~/.longbridge-openapi/tokens/<client_id>` and refreshed automatically
+- No need to handle or expose tokens in your code
+- Same usage pattern as the Rust SDK (OAuth set on config)
+- More secure (no shared secret), no HMAC signature
 
 ### 2. Legacy API Key (Environment Variables)
 
@@ -120,9 +111,9 @@ Support init config from env, and support load env from `.env` file
 
 ```golang
 import (
-    "github.com/longportapp/openapi-go/config"
-    "github.com/longportapp/openapi-go/trade"
-    "github.com/longportapp/openapi-go/http"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/trade"
+    "github.com/longbridge/openapi-go/http"
 )
 
 func main() {
@@ -283,9 +274,9 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/config"
-    "github.com/longportapp/openapi-go/oauth"
-    "github.com/longportapp/openapi-go/quote"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
+    "github.com/longbridge/openapi-go/quote"
 )
 
 func main() {
@@ -293,11 +284,13 @@ func main() {
         OnOpenURL(func(url string) {
             fmt.Println("Please visit:", url)
         })
-    token, err := o.Authorize(context.Background())
+    if err := o.Build(context.Background()); err != nil {
+        log.Fatal(err)
+    }
+    cfg, err := config.New(config.WithOAuthClient(o))
     if err != nil {
         log.Fatal(err)
     }
-    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
     quoteContext, err := quote.NewFromCfg(cfg)
     if err != nil {
         log.Fatal(err)
@@ -321,8 +314,8 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/quote"
-    "github.com/longportapp/openapi-go/config"
+    "github.com/longbridge/openapi-go/quote"
+    "github.com/longbridge/openapi-go/config"
 )
 
 func main() {
@@ -361,9 +354,9 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/config"
-    "github.com/longportapp/openapi-go/oauth"
-    "github.com/longportapp/openapi-go/trade"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
+    "github.com/longbridge/openapi-go/trade"
     "github.com/shopspring/decimal"
 )
 
@@ -372,11 +365,13 @@ func main() {
         OnOpenURL(func(url string) {
             fmt.Println("Please visit:", url)
         })
-    token, err := o.Authorize(context.Background())
+    if err := o.Build(context.Background()); err != nil {
+        log.Fatal(err)
+    }
+    cfg, err := config.New(config.WithOAuthClient(o))
     if err != nil {
         log.Fatal(err)
     }
-    cfg := config.FromOAuth(o.ClientID(), token.AccessToken)
     tradeContext, err := trade.NewFromCfg(cfg)
     if err != nil {
         log.Fatal(err)
@@ -408,8 +403,8 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/trade"
-    "github.com/longportapp/openapi-go/config"
+    "github.com/longbridge/openapi-go/trade"
+    "github.com/longbridge/openapi-go/config"
     "github.com/shopspring/decimal"
 )
 

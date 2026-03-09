@@ -3,6 +3,8 @@ package config
 import (
 	"path"
 	"strings"
+
+	"github.com/longbridge/openapi-go/oauth"
 )
 
 type Options struct {
@@ -12,6 +14,7 @@ type Options struct {
 	appKey      *string
 	appSecret   *string
 	accessToken *string
+	oauthClient *oauth.OAuth
 }
 
 type Option func(*Options)
@@ -38,10 +41,8 @@ func WithConfigKey(appKey string, appSecret string, accessToken string) Option {
 	}
 }
 
-// WithOAuth configures the client to use OAuth 2.0 authentication.
-//
-// This sets the AppKey to clientID and AccessToken to "Bearer <accessToken>",
-// and clears AppSecret (not required for OAuth 2.0).
+// WithOAuth configures the client to use OAuth 2.0 with a static token.
+// For auto-refresh, use WithOAuthClient instead.
 func WithOAuth(clientID, accessToken string) Option {
 	return func(o *Options) {
 		o.appKey = &clientID
@@ -51,6 +52,19 @@ func WithOAuth(clientID, accessToken string) Option {
 			accessToken = "Bearer " + accessToken
 		}
 		o.accessToken = &accessToken
+	}
+}
+
+// WithOAuthClient configures the client to use OAuth 2.0 with the given OAuth
+// client. The token is refreshed automatically. Call oauth.Build(ctx) before
+// creating config. Usage (like Rust SDK):
+//
+//	o := oauth.New("client-id").OnOpenURL(func(url string) { ... })
+//	if err := o.Build(ctx); err != nil { ... }
+//	cfg, _ := config.New(config.WithOAuthClient(o))
+func WithOAuthClient(o *oauth.OAuth) Option {
+	return func(opts *Options) {
+		opts.oauthClient = o
 	}
 }
 

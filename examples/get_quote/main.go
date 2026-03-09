@@ -8,13 +8,18 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/quote"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/oauth"
+	"github.com/longbridge/openapi-go/quote"
 )
 
 func main() {
-	// create quote context from environment variables
-	conf, err := config.New()
+	o := oauth.New("your-client-id").
+		OnOpenURL(func(url string) { fmt.Println("Open this URL to authorize:", url) })
+	if err := o.Build(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+	conf, err := config.New(config.WithOAuthClient(o))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,10 +28,8 @@ func main() {
 		log.Fatal(err)
 		return
 	}
-	// close connection
 	defer quoteContext.Close()
 	ctx := context.Background()
-	// Get basic information of securities
 	quotes, err := quoteContext.Quote(ctx, []string{"700.HK", "AAPL.US", "TSLA.US", "NFLX.US"})
 	if err != nil {
 		log.Fatal(err)
@@ -44,8 +47,8 @@ func main() {
 		log.Fatal(err)
 		return
 	}
-
 	fmt.Printf("warrants: %+v\n", warrants[0])
+
 	quitChannel := make(chan os.Signal, 1)
 	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
 	<-quitChannel

@@ -6,9 +6,9 @@ import (
 	quotev1 "github.com/longportapp/openapi-protobufs/gen/go/quote"
 	"github.com/shopspring/decimal"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/quote/jsontypes"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/quote/jsontypes"
 )
 
 type (

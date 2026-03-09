@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
 	"github.com/longbridge/openapi-go/config"
+	lbhttp "github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/oauth"
-	"github.com/longbridge/openapi-go/trade"
 )
 
 func main() {
@@ -20,15 +21,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tradeContext, err := trade.NewFromCfg(conf)
+	client, err := lbhttp.NewFromCfg(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tradeContext.Close()
 	ctx := context.Background()
-	ab, err := tradeContext.AccountBalance(ctx, &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
-	if err != nil {
+	var data json.RawMessage
+	if err := client.Get(ctx, "/v1/trade/execution/today", nil, &data); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", ab[0])
+	fmt.Println(string(data))
 }

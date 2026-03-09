@@ -1,4 +1,4 @@
-module github.com/longportapp/openapi-go
+module github.com/longbridge/openapi-go
 
 go 1.24.0
 

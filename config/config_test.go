@@ -1,11 +1,13 @@
 package config_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/longbridgeapp/assert"
-	"github.com/longportapp/openapi-go/config"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/oauth"
 )
 
 var expectedConfig = &config.Config{
@@ -51,19 +53,19 @@ func Test_FromOAuth(t *testing.T) {
 	assert.Equal(t, "my-client-id", c.AppKey)
 	assert.Equal(t, "Bearer my-access-token", c.AccessToken)
 	assert.Equal(t, "", c.AppSecret)
-	assert.True(t, c.IsOAuth2())
+	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
 }
 
 func Test_FromOAuth_WithBearerPrefix(t *testing.T) {
 	c := config.FromOAuth("my-client-id", "Bearer already-prefixed")
 	assert.Equal(t, "Bearer already-prefixed", c.AccessToken)
-	assert.True(t, c.IsOAuth2())
+	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
 }
 
-func Test_IsOAuth2_LegacyMode(t *testing.T) {
+func Test_LegacyMode_NoBearerToken(t *testing.T) {
 	c, err := config.New(config.WithConfigKey("appKey", "appSecret", "accessToken"))
 	assert.NoError(t, err)
-	assert.False(t, c.IsOAuth2())
+	assert.True(t, c.OAuthClient == nil && !strings.HasPrefix(c.AccessToken, "Bearer "))
 }
 
 func Test_WithOAuth(t *testing.T) {
@@ -72,6 +74,13 @@ func Test_WithOAuth(t *testing.T) {
 	assert.Equal(t, "my-client-id", c.AppKey)
 	assert.Equal(t, "Bearer my-access-token", c.AccessToken)
 	assert.Equal(t, "", c.AppSecret)
-	assert.True(t, c.IsOAuth2())
+	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
+}
+
+func Test_WithOAuthClient(t *testing.T) {
+	o := oauth.New("my-client-id")
+	c, err := config.New(config.WithOAuthClient(o))
+	assert.NoError(t, err)
+	assert.True(t, c.OAuthClient != nil)
 }
 

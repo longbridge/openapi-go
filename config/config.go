@@ -8,8 +8,9 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/log"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/log"
+	"github.com/longbridge/openapi-go/oauth"
 )
 
 type IConfig interface {
@@ -49,6 +50,9 @@ type Config struct {
 
 	LogLevel string `env:"LONGBRIDGE_LOG_LEVEL,LONGPORT_LOG_LEVEL" yaml:"log_level" toml:"log_level"`
 	logger   log.Logger
+
+	// OAuthClient is set when using OAuth 2.0 with auto-refresh (see WithOAuthClient).
+	OAuthClient *oauth.OAuth
 
 	// longbridge protocol config
 	AuthTimeout    time.Duration `env:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT" yaml:"auth_timeout" toml:"auth_timeout"`
@@ -98,12 +102,6 @@ func FromOAuth(clientID, accessToken string) *Config {
 	}
 }
 
-// IsOAuth2 reports whether this config is using OAuth 2.0 mode.
-// OAuth 2.0 mode is detected when the access token starts with "Bearer ".
-func (c *Config) IsOAuth2() bool {
-	return strings.HasPrefix(c.AccessToken, "Bearer ")
-}
-
 func New(opts ...Option) (configData *Config, err error) {
 	options := newOptions(opts...)
 	conf, exist := configTypeMap[options.tp]
@@ -126,6 +124,9 @@ func New(opts ...Option) (configData *Config, err error) {
 	if options.accessToken != nil {
 		configData.AccessToken = *options.accessToken
 	}
+	if options.oauthClient != nil {
+		configData.OAuthClient = options.oauthClient
+	}
 
 	if configData.Region == RegionCN {
 		configData.HttpURL = cnHttpUrl
@@ -143,23 +144,27 @@ func New(opts ...Option) (configData *Config, err error) {
 }
 
 func (c *Config) check() (err error) {
+	if c.OAuthClient != nil {
+		// OAuth 2.0 with client: token and app key are resolved at request time
+		return nil
+	}
 	if c.AccessToken == "" {
-		err = errors.New("Don't has accessToken. Please set access token on LONGPORT_ACCESS_TOKEN env")
+		err = errors.New("missing access token (set LONGPORT_ACCESS_TOKEN or use WithOAuthClient)")
 		return
 	}
 	if c.AppKey == "" {
-		err = errors.New("Don't has appKey. Please set app key on LONGPORT_APP_KEY env")
+		err = errors.New("missing app key (set LONGPORT_APP_KEY or use WithOAuthClient)")
 		return
 	}
-	// OAuth 2.0 mode does not require AppSecret
-	if !c.IsOAuth2() && c.AppSecret == "" {
-		err = errors.New("Don't has appSecret. Please set app secret on LONGPORT_APP_SECRET env")
+	// OAuth 2.0 (Bearer token or OAuthClient) does not require AppSecret
+	if c.OAuthClient == nil && !strings.HasPrefix(c.AccessToken, "Bearer ") && c.AppSecret == "" {
+		err = errors.New("missing app secret (set LONGPORT_APP_SECRET or use OAuth)")
 		return
 	}
 	return
 }
 
-// Deprecated: NewFormEnv to create config with enviromente variables
+// Deprecated: NewFormEnv to create config from environment variables
 func NewFormEnv() (*Config, error) {
 	return New()
 }
