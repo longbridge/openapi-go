@@ -9,7 +9,7 @@ import (
 )
 
 // DefaultHttpUrl
-const DefaultHttpUrl = "https://openapi.longportapp.com"
+const DefaultHttpUrl = "https://openapi.longbridge.com"
 
 // DefaultTimeout
 const DefaultTimeout = 15 * time.Second

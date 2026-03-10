@@ -15,8 +15,8 @@ func (c *TOMLConfig) GetConfig(opts *Options) (*Config, error) {
 		err = errors.Wrapf(err, "TOML GetConfig err")
 		return nil, err
 	}
-	if parseData.Longport == nil {
-		return nil, errors.New("Longport config is not exist in toml file")
+	if parseData.Longbridge == nil {
+		return nil, errors.New("Longbridge config is not exist in toml file")
 	}
-	return parseData.Longport, nil
+	return parseData.Longbridge, nil
 }

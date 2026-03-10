@@ -21,7 +21,7 @@ OAuth 2.0 is the modern authentication method that uses Bearer tokens without re
 First, register an OAuth client to get your `client_id`:
 
 ```bash
-curl -X POST https://openapi.longportapp.com/v1/oauth2/client/register \
+curl -X POST https://openapi.longbridge.com/v1/oauth2/client/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My Application",
@@ -447,12 +447,12 @@ Support load env from `.env` file.
 | name                      | description                                                                                           | default value                       | example | optional       |
 | ------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------- | ------- | -------------- |
 | LONGPORT_REGION           | Set access region, if region equals `cn`, sdk will set httpUrl, quoteUrl, tradeUrl to China endpoints | -                                   | cn      | cn             |
-| LONGPORT_HTTP_URL         | LONGPORT rest api url                                                                                 | <https://openapi.longportapp.com>   |         |                |
+| LONGPORT_HTTP_URL         | LONGPORT rest api url                                                                                 | <https://openapi.longbridge.com>    |         |                |
 | LONGPORT_APP_KEY          | app key                                                                                               |                                     |         |                |
 | LONGPORT_APP_SECRET       | app secret                                                                                            |                                     |         |                |
 | LONGPORT_ACCESS_TOKEN     | access token                                                                                          |                                     |         |                |
-| LONGPORT_TRADE_URL        | LONGPORT protocol url for trade context                                                               | wss://openapi-trade.longportapp.com |         |                |
-| LONGPORT_QUOTE_URL        | LONGPORT protocol url for quote context                                                               | wss://openapi-quote.longportapp.com |         |                |
+| LONGPORT_TRADE_URL        | LONGPORT protocol url for trade context                                                               | wss://openapi-trade.longbridge.com  |         |                |
+| LONGPORT_QUOTE_URL        | LONGPORT protocol url for quote context                                                               | wss://openapi-quote.longbridge.com  |         |                |
 | LONGPORT_LOG_LEVEL        | log level                                                                                             | info                                |         |                |
 | LONGPORT_AUTH_TIMEOUT     | LONGPORT protocol authorize request time out                                                          | 10 second                           | 10s     |                |
 | LONGPORT_TIMEOUT          | LONGPORT protocol dial timeout                                                                        | 5 second                            | 6s      |                |

@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	quotev1 "github.com/longportapp/openapi-protobufs/gen/go/quote"
-	protocol "github.com/longportapp/openapi-protocol/go"
-	"github.com/longportapp/openapi-protocol/go/client"
+	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
+	protocol "github.com/longbridge/openapi-protocol/go"
+	"github.com/longbridge/openapi-protocol/go/client"
 	"github.com/pkg/errors"
 
 	"github.com/longbridge/openapi-go"

@@ -3,7 +3,7 @@ package quote
 import (
 	"time"
 
-	quotev1 "github.com/longportapp/openapi-protobufs/gen/go/quote"
+	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
 	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go"

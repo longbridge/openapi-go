@@ -9,9 +9,9 @@ import (
 	"github.com/longbridge/openapi-go/log"
 	"github.com/longbridge/openapi-go/trade/jsontypes"
 
-	tradev1 "github.com/longportapp/openapi-protobufs/gen/go/trade"
-	protocol "github.com/longportapp/openapi-protocol/go"
-	"github.com/longportapp/openapi-protocol/go/client"
+	tradev1 "github.com/longbridge/openapi-protobufs/gen/go/trade"
+	protocol "github.com/longbridge/openapi-protocol/go"
+	"github.com/longbridge/openapi-protocol/go/client"
 	"github.com/pkg/errors"
 )
 

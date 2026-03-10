@@ -5,11 +5,11 @@ import (
 	"github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/log"
 	"github.com/longbridge/openapi-go/longbridge"
-	protocol "github.com/longportapp/openapi-protocol/go"
+	protocol "github.com/longbridge/openapi-protocol/go"
 )
 
 const (
-	DefaultQuoteUrl = "wss://openapi-quote.longportapp.com/v2"
+	DefaultQuoteUrl = "wss://openapi-quote.longbridge.com/v2"
 )
 
 // Options for quote context

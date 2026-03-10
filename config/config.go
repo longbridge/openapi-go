@@ -65,7 +65,7 @@ type Config struct {
 
 // parseConfig is a config for toml/yaml
 type parseConfig struct {
-	Longport *Config `toml:"longport" yaml:"longport"`
+	Longbridge *Config `toml:"longbridge" yaml:"longbridge"`
 }
 
 func (c *Config) SetLogger(l log.Logger) {
@@ -127,16 +127,16 @@ func (c *Config) check() (err error) {
 		return nil
 	}
 	if c.AccessToken == "" {
-		err = errors.New("missing access token (set LONGPORT_ACCESS_TOKEN or use WithOAuthClient)")
+		err = errors.New("missing access token (set LONGBRIDGE_ACCESS_TOKEN or use WithOAuthClient)")
 		return
 	}
 	if c.AppKey == "" {
-		err = errors.New("missing app key (set LONGPORT_APP_KEY or use WithOAuthClient)")
+		err = errors.New("missing app key (set LONGBRIDGE_APP_KEY or use WithOAuthClient)")
 		return
 	}
 	// WithOAuthClient skips this path; here AppSecret is required
 	if c.AppSecret == "" {
-		err = errors.New("missing app secret (set LONGPORT_APP_SECRET or use WithOAuthClient)")
+		err = errors.New("missing app secret (set LONGBRIDGE_APP_SECRET or use WithOAuthClient)")
 		return
 	}
 	return

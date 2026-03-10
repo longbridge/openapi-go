@@ -22,8 +22,8 @@ func (c *YAMLConfig) GetConfig(opts *Options) (*Config, error) {
 		err = errors.Wrapf(err, "YAML GetConfig err")
 		return nil, err
 	}
-	if parseData.Longport == nil {
-		return nil, errors.New("Longport config is not exist in yaml file")
+	if parseData.Longbridge == nil {
+		return nil, errors.New("Longbridge config is not exist in yaml file")
 	}
-	return parseData.Longport, nil
+	return parseData.Longbridge, nil
 }
