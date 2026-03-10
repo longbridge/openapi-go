@@ -15,7 +15,7 @@ import "github.com/longbridge/openapi-go"
 Longbridge OpenAPI supports two authentication methods:
 
 1. **OAuth 2.0 (Recommended)** — Bearer tokens, no HMAC; token is stored and refreshed automatically. See [Config: Using OAuth 2.0](#using-oauth-20-recommended).
-2. **Legacy API Key** — App key, secret, and access token via environment variables. See [Config: Using legacy API key](#using-legacy-api-key-environment-variables).
+2. **Legacy API Key** — App key, secret, and access token via environment variables. See [Config: Using Legacy API Key](#using-legacy-api-key-environment-variables).
 
 If you use OAuth, register an OAuth client first to get your `client_id`:
 
@@ -77,7 +77,7 @@ func main() {
 
 **Benefits:** No shared secret; no per-request HMAC; token load/refresh/persist is automatic.
 
-### Using legacy API key (environment variables)
+### Using Legacy API Key (Environment Variables)
 
 For backward compatibility you can use the traditional three keys. **Load from env** and **Load from file** (see below) only support Legacy API Key (app key, secret, access token); they do not support OAuth. Set env vars (or a `.env` file), then call `config.New()`.
 
@@ -109,11 +109,11 @@ if err != nil {
 
 All supported env vars are listed in [Environment Variables](#environment-variables).
 
-### Load from file (yaml, toml)
+### Load From File (YAML, TOML)
 
-Load from file (and load from env above) only supports Legacy API Key. For OAuth, use [Using OAuth 2.0](#using-oauth-20-recommended).
+Load from file (and load from env above) only supports Legacy API Key. For OAuth, use [Using OAuth 2.0 (Recommended)](#using-oauth-20-recommended).
 
-#### yaml example
+#### YAML Example
 
 To load configuration from a YAML file, use the following code snippet:
 
@@ -131,7 +131,7 @@ longbridge:
   access_token: xxxxx 
 ```
 
-#### toml example
+#### TOML Example
 
 Similarly, to load configuration from a TOML file, use this code snippet:
 
@@ -148,7 +148,7 @@ app_secret = "xxxxx"
 access_token = "xxxxx"
 ```
 
-### Init Config manually
+### Init Config Manually
 
 Config structure as follow:
 
@@ -187,7 +187,7 @@ c.AccessToken = "xxx"
 
 ```
 
-### set custom logger
+### Set Custom Logger
 
 Our logger interface as follow:
 
@@ -217,7 +217,7 @@ c.SetLogger(l)
 
 ```
 
-### use custom \*(net/http).Client
+### Use Custom \*(net/http).Client
 
 the default http client is initialized simply as follow:
 
@@ -236,7 +236,7 @@ c.Client = &http.Client{
 
 ```
 
-## Quote API (Get basic information of securities)
+## Quote API (Get Basic Information of Securities)
 
 ```golang
 package main
@@ -276,7 +276,7 @@ func main() {
 }
 ```
 
-## Trade API (Submit order)
+## Trade API (Submit Order)
 
 ```golang
 package main
