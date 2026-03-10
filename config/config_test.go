@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -48,33 +47,16 @@ func Test_TomlConfig(t *testing.T) {
 	assert.Equal(t, expectedConfig, c)
 }
 
-func Test_FromOAuth(t *testing.T) {
-	c := config.FromOAuth("my-client-id", "my-access-token")
-	assert.Equal(t, "my-client-id", c.AppKey)
-	assert.Equal(t, "Bearer my-access-token", c.AccessToken)
-	assert.Equal(t, "", c.AppSecret)
-	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
-}
-
-func Test_FromOAuth_WithBearerPrefix(t *testing.T) {
-	c := config.FromOAuth("my-client-id", "Bearer already-prefixed")
-	assert.Equal(t, "Bearer already-prefixed", c.AccessToken)
-	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
-}
-
-func Test_LegacyMode_NoBearerToken(t *testing.T) {
+func Test_LegacyMode_RequiresAppSecret(t *testing.T) {
 	c, err := config.New(config.WithConfigKey("appKey", "appSecret", "accessToken"))
 	assert.NoError(t, err)
-	assert.True(t, c.OAuthClient == nil && !strings.HasPrefix(c.AccessToken, "Bearer "))
+	assert.True(t, c.OAuthClient == nil)
 }
 
-func Test_WithOAuth(t *testing.T) {
-	c, err := config.New(config.WithOAuth("my-client-id", "my-access-token"))
-	assert.NoError(t, err)
-	assert.Equal(t, "my-client-id", c.AppKey)
-	assert.Equal(t, "Bearer my-access-token", c.AccessToken)
-	assert.Equal(t, "", c.AppSecret)
-	assert.True(t, strings.HasPrefix(c.AccessToken, "Bearer "))
+func Test_WithOAuth_RequiresAppSecret(t *testing.T) {
+	// Without OAuthClient, AppSecret is required; WithOAuth does not set AppSecret, so New fails
+	_, err := config.New(config.WithOAuth("my-client-id", "my-access-token"))
+	assert.Error(t, err)
 }
 
 func Test_WithOAuthClient(t *testing.T) {
