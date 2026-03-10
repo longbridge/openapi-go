@@ -3,11 +3,9 @@ module github.com/longbridge/openapi-go/examples
 go 1.24.0
 
 require (
-	github.com/longbridge/openapi-go v0.12.0
+	github.com/longbridge/openapi-go v0.20.0
 	github.com/shopspring/decimal v1.3.1
 )
-
-replace github.com/longbridge/openapi-go => ../
 
 require (
 	github.com/Allenxuxu/ringbuffer v0.0.11 // indirect
