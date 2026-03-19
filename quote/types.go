@@ -627,6 +627,22 @@ type SecurityCalcIndex struct {
 // Security is base info contains symbol and name
 type Security = jsontypes.Security
 
+// FilingItem is a filing document for a security
+type FilingItem struct {
+	// Filing ID
+	Id string
+	// Title
+	Title string
+	// Description
+	Description string
+	// File name
+	FileName string
+	// File URLs
+	FileUrls []string
+	// Published time
+	PublishAt time.Time
+}
+
 // doRatio process some ratio fields
 func doRatio(calcIndex *SecurityCalcIndex) {
 	calcIndex.ChangeRate = util.Percent(calcIndex.ChangeRate)

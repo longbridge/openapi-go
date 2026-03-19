@@ -28,3 +28,16 @@ type Security struct {
 type SecurityList struct {
 	List []*Security
 }
+
+type FilingItem struct {
+	Id          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	FileName    string   `json:"file_name"`
+	FileUrls    []string `json:"file_urls"`
+	PublishAt   int64    `json:"publish_at,string"`
+}
+
+type FilingList struct {
+	Items []*FilingItem `json:"items"`
+}

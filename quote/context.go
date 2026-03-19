@@ -498,6 +498,29 @@ func (c *QuoteContext) WatchedGroups(ctx context.Context) (groupList []*WatchedG
 	return
 }
 
+// Filings returns the filings list for a symbol.
+func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*FilingItem, err error) {
+	var resp jsontypes.FilingList
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	err = c.opts.httpClient.Get(ctx, "/v1/quote/filings", values, &resp)
+	if err != nil {
+		return
+	}
+	items = make([]*FilingItem, 0, len(resp.Items))
+	for _, item := range resp.Items {
+		items = append(items, &FilingItem{
+			Id:          item.Id,
+			Title:       item.Title,
+			Description: item.Description,
+			FileName:    item.FileName,
+			FileUrls:    item.FileUrls,
+			PublishAt:   time.Unix(item.PublishAt, 0).UTC(),
+		})
+	}
+	return
+}
+
 // SecurityList used to list securities. Doc: https://open.longbridge.com/en/docs/quote/security/security_list
 func (c *QuoteContext) SecurityList(ctx context.Context, market openapi.Market, category SecurityListCategory) (list []*Security, err error) {
 	var resp jsontypes.SecurityList
