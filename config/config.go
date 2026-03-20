@@ -27,9 +27,9 @@ type Region string
 var (
 	RegionCN Region = "cn"
 
-	cnHttpUrl  = "https://openapi.longportapp.cn"
-	cnQuoteUrl = "wss://openapi-quote.longportapp.cn"
-	cnTradeUrl = "wss://openapi-trade.longportapp.cn"
+	cnHttpUrl  = "https://openapi.longbridge.cn"
+	cnQuoteUrl = "wss://openapi-quote.longbridge.cn"
+	cnTradeUrl = "wss://openapi-trade.longbridge.cn"
 )
 
 // Config store Longbridge config

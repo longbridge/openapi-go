@@ -1,7 +1,7 @@
 // Package oauth provides OAuth 2.0 authentication support for Longbridge OpenAPI.
 //
 // Use OAuth by setting it on config (like the Rust SDK). The token is stored
-// internally and in ~/.longbridge-openapi/tokens/<client_id>; it is refreshed
+// internally and in ~/.longbridge/openapi/tokens/<client_id>; it is refreshed
 // automatically when expired. Do not use or expose OAuthToken.
 //
 // # Example
@@ -34,7 +34,7 @@ const (
 	oauthBaseURL        = "https://openapi.longbridge.com"
 	defaultCallbackPort = 60355
 	expiresSoonSecs     = 3600
-	tokenDir            = ".longbridge-openapi/tokens"
+	tokenDir            = ".longbridge/openapi/tokens"
 )
 
 // oauthToken is the internal token type (not exported).
@@ -100,7 +100,7 @@ func (o *OAuth) ClientID() string {
 	return o.clientID
 }
 
-// Build loads a token from ~/.longbridge-openapi/tokens/<client_id> or runs the
+// Build loads a token from ~/.longbridge/openapi/tokens/<client_id> or runs the
 // authorization flow, then stores the token in memory and on disk. Call this
 // once before passing the OAuth to config. If a token exists and is expired,
 // it is refreshed automatically.

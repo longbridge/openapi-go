@@ -46,7 +46,7 @@ You can create a `Config` in two ways: with OAuth (recommended) or with legacy A
 
 ### Using OAuth 2.0 (Recommended)
 
-**Token storage:** After the authorization flow, the SDK stores the access and refresh tokens under `~/.longbridge-openapi/tokens/<client_id>` (or `%USERPROFILE%\.longbridge-openapi\tokens\<client_id>` on Windows). It loads and refreshes them automatically on later runs, so you typically authorize once per machine.
+**Token storage:** After the authorization flow, the SDK stores the access and refresh tokens under `~/.longbridge/openapi/tokens/<client_id>` (or `%USERPROFILE%\.longbridge\openapi\tokens\<client_id>` on Windows). It loads and refreshes them automatically on later runs, so you typically authorize once per machine.
 
 ```golang
 import (

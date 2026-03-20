@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.22.0] - 2026-03-20
+
+### Breaking changes
+
+- **CN endpoint URLs**: Migrated from `longportapp.cn` to `longbridge.cn` (HTTP, quote WebSocket, trade WebSocket).
+- **OAuth token storage path**: Changed from `~/.longbridge-openapi/tokens/` to `~/.longbridge/openapi/tokens/`. Existing tokens under the old path will not be read automatically; move them manually or re-authorize.
+
+## [0.21.0] - 2026-03-19
+
+### Added
+
+- New `content` package with `ContentContext` for accessing content APIs:
+  - `Topics` – list discussion topics for a symbol.
+  - `News` – list news articles for a symbol.
+- `QuoteContext.Filings` – list filing documents for a symbol.
+
 ## [0.20.0] - 2025-03-10
 
 ### Breaking changes
