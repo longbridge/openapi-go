@@ -66,8 +66,12 @@ type OwnedTopicList struct {
 	Items []*OwnedTopic `json:"items"`
 }
 
+type createTopicItem struct {
+	Id string `json:"id"`
+}
+
 type CreateTopicResponse struct {
-	Item *OwnedTopic `json:"item"`
+	Item createTopicItem `json:"item"`
 }
 
 type CreateTopicRequest struct {
