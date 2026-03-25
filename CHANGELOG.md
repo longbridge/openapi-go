@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.0] - 2026-03-24
+
+### Added
+
+- `ContentContext.TopicsMine` – list discussion topics created by the current authenticated user, with pagination and type filtering.
+- `ContentContext.CreateTopic` – create a new discussion topic for the current authenticated user.
+- New types: `OwnedTopic`, `Author`, `Image`, `TopicsMineOptions`, `CreateTopicOptions`.
+
 ## [0.22.0] - 2026-03-20
 
 ### Breaking changes
