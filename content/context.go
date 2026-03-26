@@ -37,9 +37,9 @@ func NewFromEnv() (*ContentContext, error) {
 	return NewFromCfg(cfg)
 }
 
-// TopicsMine returns the topics created by the current authenticated user.
+// MyTopics returns the topics created by the current authenticated user.
 // Path: GET /v1/content/topics/mine
-func (c *ContentContext) TopicsMine(ctx context.Context, opts *TopicsMineOptions) (items []*OwnedTopic, err error) {
+func (c *ContentContext) MyTopics(ctx context.Context, opts *MyTopicsOptions) (items []*OwnedTopic, err error) {
 	params := url.Values{}
 	if opts != nil {
 		if opts.Page > 0 {
@@ -71,7 +71,6 @@ func (c *ContentContext) TopicsMine(ctx context.Context, opts *TopicsMineOptions
 			ViewsCount:    item.ViewsCount,
 			SharesCount:   item.SharesCount,
 			TopicType:     item.TopicType,
-			License:       item.License,
 			DetailUrl:     item.DetailUrl,
 			CreatedAt:     time.Unix(item.CreatedAt, 0).UTC(),
 			UpdatedAt:     time.Unix(item.UpdatedAt, 0).UTC(),
@@ -103,7 +102,6 @@ func (c *ContentContext) CreateTopic(ctx context.Context, opts *CreateTopicOptio
 		TopicType: opts.TopicType,
 		Tickers:   opts.Tickers,
 		Hashtags:  opts.Hashtags,
-		License:   opts.License,
 	}
 	var resp jsontypes.CreateTopicResponse
 	err := c.httpClient.Post(ctx, "/v1/content/topics", req, &resp)

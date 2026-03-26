@@ -56,7 +56,6 @@ type OwnedTopic struct {
 	ViewsCount    int32        `json:"views_count"`
 	SharesCount   int32        `json:"shares_count"`
 	TopicType     string       `json:"topic_type"`
-	License       int32        `json:"license"`
 	DetailUrl     string       `json:"detail_url"`
 	CreatedAt     int64        `json:"created_at,string"`
 	UpdatedAt     int64        `json:"updated_at,string"`
@@ -80,6 +79,5 @@ type CreateTopicRequest struct {
 	TopicType string   `json:"topic_type,omitempty"`
 	Tickers   []string `json:"tickers,omitempty"`
 	Hashtags  []string `json:"hashtags,omitempty"`
-	License   int32    `json:"license,omitempty"`
 }
 

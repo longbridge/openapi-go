@@ -50,8 +50,6 @@ type OwnedTopic struct {
 	SharesCount int32
 	// Content type: "article" or "post"
 	TopicType string
-	// License: 0=none, 1=original, 2=non-original
-	License int32
 	// URL to the full topic page
 	DetailUrl string
 	// Created time
@@ -60,8 +58,8 @@ type OwnedTopic struct {
 	UpdatedAt time.Time
 }
 
-// TopicsMineOptions are the options for TopicsMine
-type TopicsMineOptions struct {
+// MyTopicsOptions are the options for MyTopics
+type MyTopicsOptions struct {
 	// Page number (default 1)
 	Page int32
 	// Number of records per page, range 1~500 (default 50)
@@ -82,8 +80,6 @@ type CreateTopicOptions struct {
 	Tickers []string
 	// Hashtag names, max 5
 	Hashtags []string
-	// License: 0=none (default), 1=original, 2=non-original
-	License int32
 }
 
 // TopicItem is a discussion topic for a security
