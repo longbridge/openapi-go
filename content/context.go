@@ -96,11 +96,7 @@ func (c *ContentContext) News(ctx context.Context, symbol string) (items []*News
 
 // TopicDetail returns the full details of a topic by ID.
 //
-// Reference: GET /v1/content/topics/{id}
-//
-// Example:
-//
-//	topic, err := cctx.TopicDetail(ctx, "6993508780031016960")
+// See: https://open.longbridge.com/docs/api?op=topic_detail
 func (c *ContentContext) TopicDetail(ctx context.Context, id string) (*OwnedTopic, error) {
 	resp := &jsontypes.TopicDetailResponse{}
 	if err := c.httpClient.Get(ctx, "/v1/content/topics/"+id, nil, resp); err != nil {
@@ -111,13 +107,7 @@ func (c *ContentContext) TopicDetail(ctx context.Context, id string) (*OwnedTopi
 
 // MyTopics returns topics created by the currently authenticated user.
 //
-// Reference: GET /v1/content/topics/mine
-//
-// Example:
-//
-//	topics, err := cctx.MyTopics(ctx, &content.ListMyTopicsOptions{
-//	  Page: 1, Size: 50, TopicType: "article",
-//	})
+// See: https://open.longbridge.com/docs/api?op=list_my_topics
 func (c *ContentContext) MyTopics(ctx context.Context, opts *ListMyTopicsOptions) ([]*OwnedTopic, error) {
 	resp := &struct {
 		Items []*jsontypes.OwnedTopic `json:"items"`
@@ -138,29 +128,7 @@ func (c *ContentContext) MyTopics(ctx context.Context, opts *ListMyTopicsOptions
 
 // CreateTopic publishes a new community topic and returns the new topic ID.
 //
-// Reference: POST /v1/content/topics
-//
-// Two content types are supported:
-//   - "post" (default): plain text; Markdown is NOT rendered.
-//   - "article": Markdown body (server converts to HTML); Title is required.
-//
-// Permission: user must hold a funded Longbridge account (HTTP 403 otherwise).
-//
-// Stock symbols mentioned in Body (e.g. "700.HK", "TSLA.US") are automatically
-// recognized and linked by the platform. Use Tickers to associate additional
-// symbols not explicitly mentioned in the body.
-// WARNING: do not abuse symbol linking for unrelated stocks — content moderation
-// may restrict publishing or mute the account.
-//
-// Rate limit: max 3 topics/min and 10/24h per user (HTTP 429 on excess).
-//
-// Example:
-//
-//	id, err := cctx.CreateTopic(ctx, &content.CreateTopicOptions{
-//	  Body:      "Bullish on 700.HK today",
-//	  Tickers:   []string{"700.HK"},
-//	  Hashtags:  []string{"hongkong"},
-//	})
+// See: https://open.longbridge.com/docs/api?op=create_topic
 func (c *ContentContext) CreateTopic(ctx context.Context, opts *CreateTopicOptions) (string, error) {
 	body := map[string]interface{}{
 		"body": opts.Body,
@@ -195,16 +163,7 @@ func (c *ContentContext) CreateTopic(ctx context.Context, opts *CreateTopicOptio
 
 // ListTopicReplies returns a paginated list of replies for a topic.
 //
-// Reference: GET /v1/content/topics/{topic_id}/comments
-//
-// Each reply includes author info, body (plain text), likes/replies counts, and a
-// ReplyToID field: "0" indicates a top-level reply; any other value is a nested reply.
-//
-// Example:
-//
-//	replies, err := cctx.ListTopicReplies(ctx, "6993508780031016960",
-//	  &content.ListTopicRepliesOptions{Page: 1, Size: 20},
-//	)
+// See: https://open.longbridge.com/docs/api?op=list_topic_replies
 func (c *ContentContext) ListTopicReplies(ctx context.Context, topicID string, opts *ListTopicRepliesOptions) ([]*TopicReply, error) {
 	resp := &jsontypes.TopicRepliesResponse{}
 	path := fmt.Sprintf("/v1/content/topics/%s/comments", topicID)
@@ -224,28 +183,7 @@ func (c *ContentContext) ListTopicReplies(ctx context.Context, topicID string, o
 
 // CreateTopicReply posts a reply to a topic and returns the created reply.
 //
-// Reference: POST /v1/content/topics/{topic_id}/comments
-//
-// Permission: user must hold a funded Longbridge account (HTTP 403 otherwise).
-//
-// Body is plain text only — Markdown is not rendered.
-// Stock symbols mentioned in Body (e.g. "700.HK", "TSLA.US") are automatically
-// recognized and linked by the platform.
-// WARNING: do not abuse symbol linking for unrelated stocks — content moderation
-// may restrict publishing or mute the account.
-//
-// Rate limit per user per topic: first 3 replies have no wait; subsequent replies
-// require incrementally longer intervals (3 s → 5 s → 8 s → 13 s → 21 s → 34 s → 55 s cap).
-// Exceeding the limit returns HTTP 429.
-//
-// To post a top-level reply, leave ReplyToID empty or set it to "0".
-// To nest under an existing reply, set ReplyToID to that reply's ID.
-//
-// Example:
-//
-//	reply, err := cctx.CreateTopicReply(ctx, "6993508780031016960",
-//	  &content.CreateReplyOptions{Body: "Great post!"},
-//	)
+// See: https://open.longbridge.com/docs/api?op=create_topic_reply
 func (c *ContentContext) CreateTopicReply(ctx context.Context, topicID string, opts *CreateReplyOptions) (*TopicReply, error) {
 	body := map[string]interface{}{
 		"body": opts.Body,
