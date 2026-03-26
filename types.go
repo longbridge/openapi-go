@@ -9,3 +9,11 @@ const (
 	MarketCN Market = "CN"
 	MarketSG Market = "SG"
 )
+
+type Language string
+
+const (
+	LanguageZHCN Language = "zh-CN"
+	LanguageZHHK Language = "zh-HK"
+	LanguageEN   Language = "en"
+)

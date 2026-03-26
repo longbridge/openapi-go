@@ -1,23 +1,24 @@
 package trade
 
 import (
-	"github.com/longportapp/openapi-go/http"
-	"github.com/longportapp/openapi-go/log"
-	"github.com/longportapp/openapi-go/longbridge"
-	protocol "github.com/longportapp/openapi-protocol/go"
+	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/log"
+	"github.com/longbridge/openapi-go/longbridge"
+	protocol "github.com/longbridge/openapi-protocol/go"
 )
 
 const (
-	DefaultTradeUrl = "wss://openapi-trade.longportapp.com/v2"
+	DefaultTradeUrl = "wss://openapi-trade.longbridge.com/v2"
 )
 
 // Options for quote context
 type Options struct {
-	tradeURL   string
-	httpClient *http.Client
-	lbOpts     *longbridge.Options
-	logLevel   string
-	logger     log.Logger
+	tradeURL           string
+	httpClient         *http.Client
+	lbOpts             *longbridge.Options
+	logLevel           string
+	logger             log.Logger
+	reconnectCallbacks []func(resubFlag bool)
 }
 
 // Option
@@ -32,7 +33,7 @@ func WithTradeURL(url string) Option {
 	}
 }
 
-// WithHttpClient to set http client for trade context
+// WithHttpClient use to set http client for trade context
 func WithHttpClient(client *http.Client) Option {
 	return func(o *Options) {
 		if client != nil {
@@ -41,6 +42,7 @@ func WithHttpClient(client *http.Client) Option {
 	}
 }
 
+// WithLbOptions to set longbridge options for trade context
 func WithLbOptions(opts *longbridge.Options) Option {
 	return func(o *Options) {
 		if opts != nil {
@@ -64,6 +66,13 @@ func WithLogger(logger log.Logger) Option {
 		if logger != nil {
 			o.logger = logger
 		}
+	}
+}
+
+// OnReconnect to set reconnect callbacks for trade context
+func OnReconnect(fn func(successResub bool)) Option {
+	return func(o *Options) {
+		o.reconnectCallbacks = append(o.reconnectCallbacks, fn)
 	}
 }
 

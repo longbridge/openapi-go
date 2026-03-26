@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/longportapp/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/internal/util"
 	"github.com/shopspring/decimal"
 )
 
@@ -21,8 +21,8 @@ func (p params) AddInt(key string, val int64) {
 	p[key] = strconv.FormatInt(val, 10)
 }
 
-func (p params) AddUInt(key string, val int64) {
-	p[key] = strconv.FormatInt(val, 10)
+func (p params) AddUInt(key string, val uint64) {
+	p[key] = strconv.FormatUint(val, 10)
 }
 
 func (p params) AddDate(key string, val time.Time) {

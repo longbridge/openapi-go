@@ -3,32 +3,33 @@ package quote
 import (
 	"time"
 
-	quotev1 "github.com/longportapp/openapi-protobufs/gen/go/quote"
+	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
 	"github.com/shopspring/decimal"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/quote/jsontypes"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/quote/jsontypes"
 )
 
 type (
-	TradeStatus            int32
-	TradeSession           int32
-	TradeSessionType       int32
-	EventType              int8
-	SubType                uint8
-	Period                 int32
-	AdjustType             int32
-	CalcIndex              int32
-	WarrantStatus          int32
-	WarrantSortBy          int32
-	WarrantSortOrder       int32
-	WarrantType            int32
-	WarrantExpiryDateType  int32
-	WarrantInOutBoundsType int32
-	WarrantLanguage        int32
-	SecurityListCategory   string
-	WatchlistUpdateMode    string
+	TradeStatus             int32
+	TradeSession            int32
+	TradeSessionType        int32
+	EventType               int8
+	SubType                 uint8
+	Period                  int32
+	AdjustType              int32
+	CalcIndex               int32
+	WarrantStatus           int32
+	WarrantSortBy           int32
+	WarrantSortOrder        int32
+	WarrantType             int32
+	WarrantExpiryDateType   int32
+	WarrantInOutBoundsType  int32
+	WarrantLanguage         int32
+	SecurityListCategory    string
+	WatchlistUpdateMode     string
+	CandlestickTradeSession int32
 )
 
 const (
@@ -59,6 +60,17 @@ const (
 	// AdjustType
 	AdjustTypeNo      = AdjustType(quotev1.AdjustType_NO_ADJUST)
 	AdjustTypeForward = AdjustType(quotev1.AdjustType_FORWARD_ADJUST)
+
+	// TradeSession
+	TradeSessionNormal    = TradeSession(quotev1.TradeSession_NORMAL_TRADE)
+	TradeSessionPreTrade  = TradeSession(quotev1.TradeSession_PRE_TRADE)
+	TradeSessionPostTrade = TradeSession(quotev1.TradeSession_POST_TRADE)
+	TradeSessionOvernight = TradeSession(quotev1.TradeSession_OVERNIGHT_TRADE)
+
+	// CandlestickTradeSessionNormal includes normal trade session
+	CandlestickTradeSessionNormal = CandlestickTradeSession(0)
+	// CandlestickTradeSessionAll includes all trade sessions
+	CandlestickTradeSessionAll = CandlestickTradeSession(100)
 
 	// CalcIndex
 	CalcIndexUnknown               CalcIndex = CalcIndex(quotev1.CalcIndex_CALCINDEX_UNKNOWN)
@@ -458,6 +470,7 @@ type SecurityQuote struct {
 	TradeStatus     TradeStatus
 	PreMarketQuote  *PrePostQuote
 	PostMarketQuote *PrePostQuote
+	OverNightQuote  *PrePostQuote
 }
 
 // PrePostQuote is pre or post quote details
@@ -614,6 +627,22 @@ type SecurityCalcIndex struct {
 // Security is base info contains symbol and name
 type Security = jsontypes.Security
 
+// FilingItem is a filing document for a security
+type FilingItem struct {
+	// Filing ID
+	Id string
+	// Title
+	Title string
+	// Description
+	Description string
+	// File name
+	FileName string
+	// File URLs
+	FileUrls []string
+	// Published time
+	PublishAt time.Time
+}
+
 // doRatio process some ratio fields
 func doRatio(calcIndex *SecurityCalcIndex) {
 	calcIndex.ChangeRate = util.Percent(calcIndex.ChangeRate)
@@ -629,4 +658,46 @@ func doRatio(calcIndex *SecurityCalcIndex) {
 	calcIndex.ItmOtm = util.Percent(calcIndex.ItmOtm)
 	calcIndex.ImpliedVolatility = util.Percent(calcIndex.ImpliedVolatility)
 	calcIndex.ToCallPrice = util.Percent(calcIndex.ToCallPrice)
+}
+
+type UserProfile struct {
+	MemberId                int64
+	QuoteLevel              string
+	SubscribeLimit          int32
+	HistoryCandlestickLimit int32
+	RateLimit               []*RateLimit
+	QuoteLevelDetail        *UserQuoteLevelDetail
+}
+
+type RateLimit struct {
+	Cmd   uint32
+	Limit int32
+	Burst int32
+}
+
+type UserQuoteLevelDetail struct {
+	ByPackageKey map[string]*PackageDetail
+	ByMarketCode map[string]*MarketPackageDetail
+}
+
+type PackageDetail struct {
+	PackageKey string
+	Limit      int32
+	Burst      int32
+}
+
+type MarketPackageDetail struct {
+	MarketCode string
+	Limit      int32
+	Burst      int32
+}
+
+// CandlestickRequestOption is the option for the candlestick request
+type CandlestickRequestOption func(*quotev1.SecurityHistoryCandlestickRequest)
+
+// CandlestickRequestTradeSession sets the trade session of the candlestick request
+func CandlestickRequestTradeSession(session CandlestickTradeSession) CandlestickRequestOption {
+	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
+		req.TradeSession = int32(session)
+	}
 }

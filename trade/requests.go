@@ -3,7 +3,7 @@ package trade
 import (
 	"time"
 
-	"github.com/longportapp/openapi-go"
+	"github.com/longbridge/openapi-go"
 	"github.com/shopspring/decimal"
 )
 
@@ -85,4 +85,8 @@ type GetEstimateMaxPurchaseQuantity struct {
 	Currency  string
 	OrderId   string
 	Side      OrderSide
+}
+
+type GetAccountBalance struct {
+	Currency Currency // optional
 }

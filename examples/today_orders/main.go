@@ -26,9 +26,11 @@ func main() {
 	}
 	defer tradeContext.Close()
 	ctx := context.Background()
-	ab, err := tradeContext.AccountBalance(ctx, &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
+	orders, err := tradeContext.TodayOrders(ctx, &trade.GetTodayOrders{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", ab[0])
+	for _, o := range orders {
+		fmt.Printf("%+v\n", o)
+	}
 }

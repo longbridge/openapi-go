@@ -5,14 +5,14 @@ import (
 	"sync"
 	"time"
 
-	quotev1 "github.com/longportapp/openapi-protobufs/gen/go/quote"
-	protocol "github.com/longportapp/openapi-protocol/go"
-	"github.com/longportapp/openapi-protocol/go/client"
+	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
+	protocol "github.com/longbridge/openapi-protocol/go"
+	"github.com/longbridge/openapi-protocol/go/client"
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/log"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/log"
 )
 
 type core struct {
@@ -21,12 +21,12 @@ type core struct {
 	mu            sync.Mutex
 	subscriptions map[string][]SubType
 	store         *store
+	userProfile   *UserProfile
 }
 
 func newCore(opts *Options) (*core, error) {
 	getOTP := func() (otp string, err error) {
-		otp, err = opts.httpClient.GetOTP(context.Background())
-
+		otp, err = opts.httpClient.GetOTPV2(context.Background())
 		if err != nil {
 			return "", errors.Wrap(err, "failed to get otp")
 		}
@@ -36,7 +36,12 @@ func newCore(opts *Options) (*core, error) {
 	logger := opts.logger
 	logger.SetLevel(opts.logLevel)
 
-	cl := client.New(client.WithLogger(logger))
+	clientOpts := []client.ClientOption{client.WithLogger(logger)}
+	if opts.enableOvernight {
+		clientOpts = append(clientOpts, client.WithConnectMetadata(map[string]string{"need_over_night_quote": "true"}))
+	}
+	cl := client.New(clientOpts...)
+
 	err := cl.Dial(context.Background(), opts.quoteURL,
 		&protocol.Handshake{
 			Version:  1,
@@ -62,10 +67,20 @@ func newCore(opts *Options) (*core, error) {
 		store:         newStore(),
 	}
 	core.client.AfterReconnected(func() {
+		resubFlag := true
+
 		if err := core.resubscribe(context.Background()); err != nil {
 			log.Errorf("faield to do sub, err: %v", err)
+			resubFlag = false
+		}
+		for _, fn := range opts.reconnectCallbacks {
+			fn(resubFlag)
 		}
 	})
+	core.userProfile, err = core.queryProfile(context.Background(), string(opts.language))
+	if err != nil {
+		return nil, err
+	}
 	return core, nil
 }
 
@@ -147,6 +162,30 @@ func (c *core) resubscribe(ctx context.Context) error {
 	return nil
 }
 
+func (c *core) Profile() *UserProfile {
+	return c.userProfile
+}
+
+func (c *core) queryProfile(ctx context.Context, lang string) (quoteProfile *UserProfile, err error) {
+	req := &quotev1.UserQuoteProfileRequest{
+		Language: lang,
+	}
+	var res *protocol.Packet
+	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryUserQuoteProfile), Body: req})
+	if err != nil {
+		return
+	}
+	var ret quotev1.UserQuoteProfileResponse
+	err = res.Unmarshal(&ret)
+	if err != nil {
+		return
+	}
+	quoteProfile = &UserProfile{}
+	// nolint:govet
+	err = util.Copy(&quoteProfile, ret)
+	return
+}
+
 func (c *core) Subscriptions(ctx context.Context) (subscriptions map[string][]SubType, err error) {
 	req := &quotev1.SubscriptionRequest{}
 	var res *protocol.Packet
@@ -212,7 +251,7 @@ func (c *core) OptionQuote(ctx context.Context, symbols []string) (optionQuotes 
 		Symbol: symbols,
 	}
 	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QuerySecurityQuote), Body: req})
+	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryOptionQuote), Body: req})
 	if err != nil {
 		return
 	}
@@ -342,6 +381,65 @@ func (c *core) Candlesticks(ctx context.Context, symbol string, period Period, c
 	}
 	var res *protocol.Packet
 	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryCandlestick), Body: req})
+	if err != nil {
+		return
+	}
+	var ret quotev1.SecurityCandlestickResponse
+	err = res.Unmarshal(&ret)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&sticks, ret.GetCandlesticks())
+	return
+}
+
+func (c *core) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32, options ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	direction := quotev1.Direction_BACKWARD
+	if isForward {
+		direction = quotev1.Direction_FORWARD
+	}
+	req := &quotev1.SecurityHistoryCandlestickRequest{
+		Symbol:     symbol,
+		Period:     quotev1.Period(period),
+		AdjustType: quotev1.AdjustType(adjustType),
+		QueryType:  quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET,
+		OffsetRequest: &quotev1.SecurityHistoryCandlestickRequest_OffsetQuery{
+			Direction: direction,
+			Date:      util.FormatDateSimple(dateTime),
+			Minute:    util.FormatMinuteSimple(dateTime),
+			Count:     int32(count),
+		},
+	}
+
+	for _, option := range options {
+		option(req)
+	}
+
+	return c.historyCandlesticks(ctx, req)
+}
+
+func (c *core) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time, options ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	req := &quotev1.SecurityHistoryCandlestickRequest{
+		Symbol:     symbol,
+		Period:     quotev1.Period(period),
+		AdjustType: quotev1.AdjustType(adjustType),
+		QueryType:  quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE,
+		DateRequest: &quotev1.SecurityHistoryCandlestickRequest_DateQuery{
+			StartDate: util.FormatDateSimple(startDate),
+			EndDate:   util.FormatDateSimple(endDate),
+		},
+	}
+
+	for _, option := range options {
+		option(req)
+	}
+
+	return c.historyCandlesticks(ctx, req)
+}
+
+func (c *core) historyCandlesticks(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest) (sticks []*Candlestick, err error) {
+	var res *protocol.Packet
+	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryHistoryCandlestick), Body: req})
 	if err != nil {
 		return
 	}

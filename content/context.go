@@ -1,17 +1,20 @@
 // Package content provides a client for the Longbridge Content OpenAPI.
-// It covers community topics and replies.
+// It covers community topics, replies, and related data.
 package content
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/content/jsontypes"
-	httplib "github.com/longportapp/openapi-go/http"
+	"github.com/pkg/errors"
+
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/content/jsontypes"
+	httplib "github.com/longbridge/openapi-go/http"
 )
 
 // ContentContext is a client for the Longbridge Content OpenAPI.
@@ -26,12 +29,69 @@ type ContentContext struct {
 }
 
 // NewFromCfg creates a ContentContext from a *config.Config.
-func NewFromCfg(c *config.Config) (*ContentContext, error) {
-	cli, err := httplib.NewFromCfg(c)
+func NewFromCfg(cfg *config.Config) (*ContentContext, error) {
+	httpClient, err := httplib.NewFromCfg(cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "create http client error")
 	}
-	return &ContentContext{httpClient: cli}, nil
+	return &ContentContext{httpClient: httpClient}, nil
+}
+
+// NewFromEnv returns a ContentContext configured from environment variables.
+func NewFromEnv() (*ContentContext, error) {
+	cfg, err := config.NewFormEnv()
+	if err != nil {
+		return nil, errors.Wrap(err, "load config from env error")
+	}
+	return NewFromCfg(cfg)
+}
+
+// Topics returns the discussion topics list for a symbol.
+// Reference: https://open.longbridge.com/en/docs/quote/security/topics
+func (c *ContentContext) Topics(ctx context.Context, symbol string) (items []*TopicItem, err error) {
+	var resp jsontypes.TopicList
+	err = c.httpClient.Get(ctx, fmt.Sprintf("/v1/content/%s/topics", symbol), url.Values{}, &resp)
+	if err != nil {
+		return
+	}
+	items = make([]*TopicItem, 0, len(resp.Items))
+	for _, item := range resp.Items {
+		items = append(items, &TopicItem{
+			Id:            item.Id,
+			Title:         item.Title,
+			Description:   item.Description,
+			Url:           item.Url,
+			PublishedAt:   time.Unix(item.PublishedAt, 0).UTC(),
+			CommentsCount: item.CommentsCount,
+			LikesCount:    item.LikesCount,
+			SharesCount:   item.SharesCount,
+		})
+	}
+	return
+}
+
+// News returns the news list for a symbol.
+// Reference: https://open.longbridge.com/en/docs/quote/security/news
+func (c *ContentContext) News(ctx context.Context, symbol string) (items []*NewsItem, err error) {
+	var resp jsontypes.NewsList
+	err = c.httpClient.Get(ctx, fmt.Sprintf("/v1/content/%s/news", symbol), url.Values{}, &resp)
+	if err != nil {
+		return
+	}
+	items = make([]*NewsItem, 0, len(resp.Items))
+	for _, item := range resp.Items {
+		items = append(items, &NewsItem{
+			Id:            item.Id,
+			Title:         item.Title,
+			Description:   item.Description,
+			Url:           item.Url,
+			PublishedAt:   time.Unix(item.PublishedAt, 0).UTC(),
+			CommentsCount: item.CommentsCount,
+			LikesCount:    item.LikesCount,
+			SharesCount:   item.SharesCount,
+		})
+	}
+	return
 }
 
 // TopicDetail returns the full details of a topic by ID.

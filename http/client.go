@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/go-querystring/query"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/log"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/log"
 )
 
 type apiResponse struct {
@@ -80,7 +80,7 @@ func (c *Client) Delete(ctx context.Context, path string, queryParams interface{
 }
 
 // GetOTP to get one time password
-// Reference: https://open.longportapp.com/en/docs/socket-token-api
+// Reference: https://open.longbridge.com/en/docs/socket-token-api
 func (c *Client) GetOTP(ctx context.Context, ropts ...RequestOption) (string, error) {
 	res := &otpResponse{}
 	err := c.Get(ctx, "/v1/socket/token", nil, res, ropts...)
@@ -130,12 +130,33 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		return err
 	}
 
+	appKey := c.opts.AppKey
+	accessToken := c.opts.AccessToken
+	appSecret := c.opts.AppSecret
+	if c.opts.OAuthClient != nil {
+		token, err := c.opts.OAuthClient.AccessToken(ctx)
+		if err != nil {
+			return err
+		}
+		appKey = c.opts.OAuthClient.ClientID()
+		accessToken = "Bearer " + token
+		appSecret = ""
+	}
+
+	// set headers
+	req.Header.Add("accept-language", string(c.opts.Language))
+	req.Header.Add("x-api-key", appKey)
+	req.Header.Add("authorization", accessToken)
 	if ro.Header != nil {
 		for k, v := range ro.Header {
 			req.Header[k] = v
 		}
 	}
+	if len(bb) != 0 {
+		req.Header.Add("content-type", "application/json; charset=utf-8")
+	}
 
+	// set query params
 	if queryParams != nil {
 		vals, ok := queryParams.(url.Values)
 		if !ok {
@@ -145,12 +166,8 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		}
 		req.URL.RawQuery = vals.Encode()
 	}
-	req.Header.Add("x-api-key", c.opts.AppKey)
-	req.Header.Add("authorization", c.opts.AccessToken)
-	if len(bb) != 0 {
-		req.Header.Add("content-type", "application/json; charset=utf-8")
-	}
-	signature(req, c.opts.AppSecret, bb)
+	// set signature (no-op for OAuth when appSecret is empty)
+	signature(req, appSecret, bb)
 
 	log.Debugf("http call method:%v url:%v body:%v", req.Method, req.URL, string(bb))
 	req.Close = true
@@ -226,12 +243,24 @@ func New(opt ...Option) (*Client, error) {
 
 // NewFromCfg init longbridge http client from *config.Config
 func NewFromCfg(c *config.Config) (*Client, error) {
-	return New(
-		WithAccessToken(c.AccessToken),
-		WithAppKey(c.AppKey),
-		WithAppSecret(c.AppSecret),
+	url := c.HttpURL
+	if url == "" {
+		url = DefaultHttpUrl
+	}
+	opts := []Option{
 		WithTimeout(c.HTTPTimeout),
 		WithClient(c.Client),
-		WithURL(c.HttpURL),
-	)
+		WithURL(url),
+		WithLanguage(c.Language),
+	}
+	if c.OAuthClient != nil {
+		opts = append(opts, WithOAuthClient(c.OAuthClient))
+	} else {
+		opts = append(opts,
+			WithAccessToken(c.AccessToken),
+			WithAppKey(c.AppKey),
+			WithAppSecret(c.AppSecret),
+		)
+	}
+	return New(opts...)
 }

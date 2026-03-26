@@ -5,7 +5,7 @@ type Execution struct {
 	OrderId     string `json:"order_id"`
 	TradeId     string `json:"trade_id"`
 	Symbol      string `json:"symbol"`
-	TradeDoneAt string `json:"trade_done_at"`
+	TradeDoneAt int64  `json:"trade_done_at,string"`
 	Quantity    string `json:"quantity"`
 	Price       string `json:"price"`
 }
@@ -176,6 +176,7 @@ type PushOrderChanged struct {
 	TriggerPrice     string `json:"trigger_price"`
 	TriggerStatus    string `json:"trigger_status"`
 	UpdatedAt        string `json:"updated_at"`
+	Remark           string `json:"remark"`
 }
 
 type ReplaceOrder struct {

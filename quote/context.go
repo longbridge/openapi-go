@@ -7,16 +7,16 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go"
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/http"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/longbridge"
-	"github.com/longportapp/openapi-go/quote/jsontypes"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/longbridge"
+	"github.com/longbridge/openapi-go/quote/jsontypes"
 )
 
 // QuoteContext is a client for interacting with Longbridge Quote OpenAPI
-// Longbrige Quote OpenAPI document is https://open.longportapp.com/en/docs/quote/overview
+// Longbridge Quote OpenAPI document is https://open.longbridge.com/en/docs/quote/overview
 //
 // Example:
 //
@@ -45,6 +45,11 @@ type QuoteContext struct {
 	core *core
 }
 
+// Profile obtain the user quote profile
+func (c *QuoteContext) Profile() *UserProfile {
+	return c.core.Profile()
+}
+
 // OnQuote set callback function which will be called when server push quote events.
 func (c *QuoteContext) OnQuote(f func(*PushQuote)) {
 	c.core.SetQuoteHandler(f)
@@ -66,19 +71,19 @@ func (c *QuoteContext) OnBrokers(f func(*PushBrokers)) {
 }
 
 // Subscribe quote
-// Reference: https://open.longportapp.com/en/docs/quote/subscribe/subscribe
+// Reference: https://open.longbridge.com/en/docs/quote/subscribe/subscribe
 func (c *QuoteContext) Subscribe(ctx context.Context, symbols []string, subTypes []SubType, isFirstPush bool) (err error) {
 	return c.core.Subscribe(ctx, symbols, subTypes, isFirstPush)
 }
 
 // Unsubscribe quote
-// Reference: https://open.longportapp.com/en/docs/quote/subscribe/unsubscribe
+// Reference: https://open.longbridge.com/en/docs/quote/subscribe/unsubscribe
 func (c *QuoteContext) Unsubscribe(ctx context.Context, unSubAll bool, symbols []string, subTypes []SubType) (err error) {
 	return c.core.Unsubscribe(ctx, unSubAll, symbols, subTypes)
 }
 
 // Subscriptions obtain the subscription information.
-// Reference: https://open.longportapp.com/en/docs/quote/subscribe/subscription
+// Reference: https://open.longbridge.com/en/docs/quote/subscribe/subscription
 //
 // Example:
 //
@@ -89,7 +94,7 @@ func (c *QuoteContext) Subscriptions(ctx context.Context) (subscriptions map[str
 }
 
 // StaticInfo obtain the basic information of securities.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/static
+// Reference: https://open.longbridge.com/en/docs/quote/pull/static
 //
 // Example:
 //
@@ -101,7 +106,7 @@ func (c *QuoteContext) StaticInfo(ctx context.Context, symbols []string) (static
 }
 
 // Quote obtain the real-time quotes of securities, and supports all types of securities.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/quote
+// Reference: https://open.longbridge.com/en/docs/quote/pull/quote
 //
 // Example:
 //
@@ -112,7 +117,7 @@ func (c *QuoteContext) Quote(ctx context.Context, symbols []string) (quotes []*S
 }
 
 // OptionQuote obtain the real-time quotes of US stock options, including the option-specific data.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/option-quote
+// Reference: https://open.longbridge.com/en/docs/quote/pull/option-quote
 //
 // Example:
 //
@@ -123,7 +128,7 @@ func (c *QuoteContext) OptionQuote(ctx context.Context, symbols []string) (optio
 }
 
 // WarrantQuote obtain the real-time quotes of HK warrants, including the warrant-specific data.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/warrant-quote
+// Reference: https://open.longbridge.com/en/docs/quote/pull/warrant-quote
 //
 // Example:
 //
@@ -134,7 +139,7 @@ func (c *QuoteContext) WarrantQuote(ctx context.Context, symbols []string) (warr
 }
 
 // Depth obtain the depth data of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/depth
+// Reference: https://open.longbridge.com/en/docs/quote/pull/depth
 //
 // Example:
 //
@@ -145,7 +150,7 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 }
 
 // Brokers obtain the real-time broker queue data of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/brokers
+// Reference: https://open.longbridge.com/en/docs/quote/pull/brokers
 //
 // Example:
 //
@@ -156,7 +161,7 @@ func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrok
 }
 
 // Participants obtain participant IDs data (which can be synchronized once a day).
-// Reference: https://open.longportapp.com/en/docs/quote/pull/broker-ids
+// Reference: https://open.longbridge.com/en/docs/quote/pull/broker-ids
 //
 // Example:
 //
@@ -167,7 +172,7 @@ func (c *QuoteContext) Participants(ctx context.Context) (infos []*ParticipantIn
 }
 
 // Trades obtain the trades data of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/trade
+// Reference: https://open.longbridge.com/en/docs/quote/pull/trade
 //
 // Example:
 //
@@ -178,7 +183,7 @@ func (c *QuoteContext) Trades(ctx context.Context, symbol string, count int32) (
 }
 
 // Intraday obtain the intraday data of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/intraday
+// Reference: https://open.longbridge.com/en/docs/quote/pull/intraday
 // Example:
 //
 //	qctx, err := quote.NewFromEnv()
@@ -188,7 +193,7 @@ func (c *QuoteContext) Intraday(ctx context.Context, symbol string) (lines []*In
 }
 
 // Candlesticks obtain the candlestick data of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/candlestick
+// Reference: https://open.longbridge.com/en/docs/quote/pull/candlestick
 // periond support values:
 //   - quote.PeriodOneMinute - 1m
 //   - quote.PeriodFiveMinute - 5m
@@ -206,13 +211,64 @@ func (c *QuoteContext) Intraday(ctx context.Context, symbol string) (lines []*In
 // Example:
 //
 //	qctx, err := quote.NewFromEnv()
-//	klines, err := qctx.Candlesticks(context.Background(), "AAPL.US", quote.QuotePeriodDay, 10, quote.AdjustTypeNo)
+//	klines, err := qctx.Candlesticks(context.Background(), "AAPL.US", quote.PeriodDay, 10, quote.AdjustTypeNo)
 func (c *QuoteContext) Candlesticks(ctx context.Context, symbol string, period Period, count int32, adjustType AdjustType) (sticks []*Candlestick, err error) {
 	return c.core.Candlesticks(ctx, symbol, period, count, adjustType)
 }
 
+// HistoryCandlesticksByDate obtains the history candlestick data of security within a date range.
+// Reference: https://open.longbridge.com/en/docs/quote/pull/history-candlestick
+// periond support values:
+//   - quote.PeriodOneMinute - 1m
+//   - quote.PeriodFiveMinute - 5m
+//   - quote.PeriodFifteenMinute - 15m
+//   - quote.PeriodThirtyMinute - 40m
+//   - quote.PeriodDay - 1 day
+//   - quote.PeriodWeek - 1 week
+//   - quote.PeriodMonth - 1 month
+//   - quote.PeriodYear - 1 year
+//
+// adjustType support values:
+//   - quote.AdjustTypeNo
+//   - quote.AdjustTypeForward
+//
+// Example:
+//
+//	qctx, err := quote.NewFromEnv()
+//	dateTime := time.Date(2022, 5, 10, 11, 10, 0, 0, time.UTC)
+//	klines, err := qctx.HistoryCandlesticksByOffset(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, true, &dateTime, 100)
+func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	return c.core.HistoryCandlesticksByOffset(ctx, symbol, period, adjustType, isForward, dateTime, count, opts...)
+}
+
+// HistoryCandlesticksByOffset obtains the history candlestick data of security after or before an offset time.
+// Reference: https://open.longbridge.com/en/docs/quote/pull/history-candlestick
+// periond support values:
+//   - quote.PeriodOneMinute - 1m
+//   - quote.PeriodFiveMinute - 5m
+//   - quote.PeriodFifteenMinute - 15m
+//   - quote.PeriodThirtyMinute - 40m
+//   - quote.PeriodDay - 1 day
+//   - quote.PeriodWeek - 1 week
+//   - quote.PeriodMonth - 1 month
+//   - quote.PeriodYear - 1 year
+//
+// adjustType support values:
+//   - quote.AdjustTypeNo
+//   - quote.AdjustTypeForward
+//
+// Example:
+//
+//	qctx, err := quote.NewFromEnv()
+//	startDate := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
+//	endDate := time.Date(2022, 6, 10, 0, 0, 0, 0, time.UTC)
+//	klines, err := qctx.HistoryCandlesticksByDate(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, &startDate, &endDate)
+func (c *QuoteContext) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	return c.core.HistoryCandlesticksByDate(ctx, symbol, period, adjustType, startDate, endDate, opts...)
+}
+
 // OptionChainExpiryDateList obtain the the list of expiration dates of option chain
-// Reference: https://open.longportapp.com/en/docs/quote/pull/optionchain-date
+// Reference: https://open.longbridge.com/en/docs/quote/pull/optionchain-date
 //
 // Example:
 //
@@ -223,7 +279,7 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 }
 
 // OptionChainInfoByDate obtain a list of option securities by the option chain expiry date.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/optionchain-date-strike
+// Reference: https://open.longbridge.com/en/docs/quote/pull/optionchain-date-strike
 //
 // Example:
 //
@@ -235,7 +291,7 @@ func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string,
 }
 
 // WarrantIssuers obtain the warrant issuer IDs data (which can be synchronized once a day).
-// Reference: https://open.longportapp.com/en/docs/quote/pull/issuer
+// Reference: https://open.longbridge.com/en/docs/quote/pull/issuer
 //
 // Example:
 //
@@ -246,7 +302,7 @@ func (c *QuoteContext) WarrantIssuers(ctx context.Context) (infos []*IssuerInfo,
 }
 
 // WarrantIssuers obtain the quotes of HK warrants, and supports sorting and filtering.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/warrant-filter
+// Reference: https://open.longbridge.com/en/docs/quote/pull/warrant-filter
 //
 // Example:
 //
@@ -263,7 +319,7 @@ func (c *QuoteContext) WarrantList(ctx context.Context, symbol string, config Wa
 }
 
 // TradingSession obtain the daily trading hours of each market.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/trade-session
+// Reference: https://open.longbridge.com/en/docs/quote/pull/trade-session
 //
 // Example:
 //
@@ -274,7 +330,7 @@ func (c *QuoteContext) TradingSession(ctx context.Context) (sessions []*MarketTr
 }
 
 // TradingDays obtain the trading days of the market.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/trade-day
+// Reference: https://open.longbridge.com/en/docs/quote/pull/trade-day
 //
 // Example:
 //
@@ -287,7 +343,7 @@ func (c *QuoteContext) TradingDays(ctx context.Context, market openapi.Market, b
 }
 
 // CapitalDistribution is used to obtain the daily capital distribution of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/capital-distribution
+// Reference: https://open.longbridge.com/en/docs/quote/pull/capital-distribution
 //
 // Example:
 //
@@ -298,7 +354,7 @@ func (c *QuoteContext) CapitalDistribution(ctx context.Context, symbol string) (
 }
 
 // CapitalFlow is used to obtain the daily capital flow intraday of security.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/capital-flow-intraday
+// Reference: https://open.longbridge.com/en/docs/quote/pull/capital-flow-intraday
 //
 // Example:
 //
@@ -309,7 +365,7 @@ func (c *QuoteContext) CapitalFlow(ctx context.Context, symbol string) (capitalF
 }
 
 // CalcIndex is used to obtain the calculate indexes of securities.
-// Reference: https://open.longportapp.com/en/docs/quote/pull/calc-index
+// Reference: https://open.longbridge.com/en/docs/quote/pull/calc-index
 //
 // Example:
 //
@@ -359,7 +415,7 @@ func (c *QuoteContext) RealtimeBrokers(ctx context.Context, symbol string) (*Sec
 	return c.core.RealtimeBrokers(ctx, symbol)
 }
 
-// CreateWatchlistGroup use to create watchlist group. Doc: https://open.longportapp.com/en/docs/quote/individual/watchlist_create_group
+// CreateWatchlistGroup use to create watchlist group. Doc: https://open.longbridge.com/en/docs/quote/individual/watchlist_create_group
 //
 // Example:
 //
@@ -385,7 +441,7 @@ func (c *QuoteContext) CreateWatchlistGroup(ctx context.Context, name string, sy
 // DeleteWatchlistGroup use to delete watchlist group.
 // If `purge` set to true, the securities in the group will be unfollowed even in the *other* groups.
 // If `purge` set to false, the securities in the group will remain in the *other* groups.
-// Doc: https://open.longportapp.com/en/docs/quote/individual/watchlist_delete_group
+// Doc: https://open.longbridge.com/en/docs/quote/individual/watchlist_delete_group
 //
 // Example:
 //
@@ -403,7 +459,7 @@ func (c *QuoteContext) DeleteWatchlistGroup(ctx context.Context, id int64, purge
 }
 
 // UpdateWatchlistGroup use to update watchlist group.
-// Doc: https://open.longportapp.com/en/docs/quote/individual/watchlist_update_group
+// Doc: https://open.longbridge.com/en/docs/quote/individual/watchlist_update_group
 //
 // Example:
 //
@@ -423,7 +479,7 @@ func (c *QuoteContext) UpdateWatchlistGroup(ctx context.Context, id int64, name 
 }
 
 // WatchedGroups to get all watchlist groups.
-// Reference: https://open.longportapp.com/en/docs/quote/individual/watchlist_groups
+// Reference: https://open.longbridge.com/en/docs/quote/individual/watchlist_groups
 //
 // Example:
 //
@@ -442,7 +498,30 @@ func (c *QuoteContext) WatchedGroups(ctx context.Context) (groupList []*WatchedG
 	return
 }
 
-// SecurityList used to list securities. Doc: https://open.longportapp.com/en/docs/quote/security/security_list
+// Filings returns the filings list for a symbol.
+func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*FilingItem, err error) {
+	var resp jsontypes.FilingList
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	err = c.opts.httpClient.Get(ctx, "/v1/quote/filings", values, &resp)
+	if err != nil {
+		return
+	}
+	items = make([]*FilingItem, 0, len(resp.Items))
+	for _, item := range resp.Items {
+		items = append(items, &FilingItem{
+			Id:          item.Id,
+			Title:       item.Title,
+			Description: item.Description,
+			FileName:    item.FileName,
+			FileUrls:    item.FileUrls,
+			PublishAt:   time.Unix(item.PublishAt, 0).UTC(),
+		})
+	}
+	return
+}
+
+// SecurityList used to list securities. Doc: https://open.longbridge.com/en/docs/quote/security/security_list
 func (c *QuoteContext) SecurityList(ctx context.Context, market openapi.Market, category SecurityListCategory) (list []*Security, err error) {
 	var resp jsontypes.SecurityList
 	values := url.Values{}
@@ -473,12 +552,7 @@ func NewFormEnv() (*QuoteContext, error) {
 
 // NewFromCfg return QuoteContext with config.Config
 func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
-	httpClient, err := http.New(
-		http.WithAccessToken(cfg.AccessToken),
-		http.WithAppKey(cfg.AppKey),
-		http.WithAppSecret(cfg.AppSecret),
-		http.WithURL(cfg.HttpURL),
-	)
+	httpClient, err := http.NewFromCfg(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "create http client error")
 	}
@@ -496,6 +570,8 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 		WithLogLevel(cfg.LogLevel),
 		WithLogger(cfg.Logger()),
 		WithLbOptions(lbOpts),
+		WithEnableOvernight(cfg.EnableOvernight),
+		WithLanguage(cfg.Language),
 	)
 }
 

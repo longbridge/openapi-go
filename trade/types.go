@@ -5,7 +5,7 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/longportapp/openapi-go"
+	"github.com/longbridge/openapi-go"
 )
 
 type (
@@ -22,6 +22,7 @@ type (
 	CommissionFreeStatus string
 	DeductionStatus      string
 	ChargeCategoryCode   string
+	Currency             string
 )
 
 const (
@@ -77,7 +78,7 @@ const (
 	OrderRejectedStatus       OrderStatus = "RejectedStatus"
 	OrderCanceledStatus       OrderStatus = "CanceledStatus"
 	OrderExpiredStatus        OrderStatus = "ExpiredStatus"
-	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawn"
+	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
 
 	// Outside RTH
 	OutsideRTHOnly    OutsideRTH = "RTH_ONLY"          // Regular trading hour only
@@ -100,6 +101,12 @@ const (
 	ChargeCategoryCodeUnknown    ChargeCategoryCode = "UNKNOWN"
 	ChargeCategoryCodeBrokerFees ChargeCategoryCode = "BROKER_FEES"
 	ChargeCategoryCodeThirdFees  ChargeCategoryCode = "THIRD_FEES"
+
+	// Currency
+	CurrencyHKD     Currency = "HKD"
+	CurrencyUSD     Currency = "USD"
+	CurrencyCNH     Currency = "CNH"
+	CurrencyDefault Currency = ""
 )
 
 // Execution is execution details
@@ -344,6 +351,7 @@ type PushOrderChanged struct {
 	TriggerPrice     *decimal.Decimal
 	TriggerStatus    TriggerStatus
 	UpdatedAt        string
+	Remark           string
 }
 
 // SubResponse is subscribe function response

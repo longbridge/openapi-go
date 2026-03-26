@@ -1,102 +1,178 @@
-# Longport OpenAPI SDK for Go
+# Longbridge OpenAPI SDK for Go
 
-`Longport` provides an easy-to-use interface for invokes [`Longport OpenAPI`](https://open.longportapp.com/en/).
+`Longbridge` provides an easy-to-use interface for invoking [Longbridge OpenAPI](https://open.longbridge.com/).
 
 ## Quickstart
 
 _With Go module support , simply add the following import_
 
 ```golang
-import "github.com/longportapp/openapi-go"
+import "github.com/longbridge/openapi-go"
 ```
 
-_Setting environment variables(MacOS/Linux)_
+## Authentication
+
+Longbridge OpenAPI supports two authentication methods:
+
+1. **OAuth 2.0 (Recommended)** — Bearer tokens, no HMAC; token is stored and refreshed automatically. See [Config: Using OAuth 2.0](#using-oauth-20-recommended).
+2. **Legacy API Key** — App key, secret, and access token via environment variables. See [Config: Using Legacy API Key](#using-legacy-api-key-environment-variables).
+
+If you use OAuth, register an OAuth client first to get your `client_id`:
 
 ```bash
-export LONGPORT_APP_KEY="App Key get from user center"
-export LONGPORT_APP_SECRET="App Secret get from user center"
-export LONGPORT_ACCESS_TOKEN="Access Token get from user center"
+curl -X POST https://openapi.longbridge.com/v1/oauth2/client/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Application",
+    "redirect_uris": ["http://localhost:60355/callback"],
+    "grant_types": ["authorization_code", "refresh_token"]
+  }'
 ```
 
-_Setting environment variables(Windows)_
-
-```powershell
-setx LONGPORT_APP_KEY "App Key get from user center"
-setx LONGPORT_APP_SECRET "App Secret get from user center"
-setx LONGPORT_ACCESS_TOKEN "Access Token get from user center"
+Response:
+```json
+{
+  "client_id": "your-client-id-here",
+  "name": "My Application",
+  "redirect_uris": ["http://localhost:60355/callback"]
+}
 ```
+
+Save the `client_id` for use when building config (see Config section below).
 
 ## Config
 
-### Load from env
+You can create a `Config` in two ways: with OAuth (recommended) or with legacy API key (environment variables). The examples in this README use OAuth.
 
-Support init config from env, and support load env from `.env` file
+### Using OAuth 2.0 (Recommended)
+
+**Token storage:** After the authorization flow, the SDK stores the access and refresh tokens under `~/.longbridge/openapi/tokens/<client_id>` (or `%USERPROFILE%\.longbridge\openapi\tokens\<client_id>` on Windows). It loads and refreshes them automatically on later runs, so you typically authorize once per machine.
 
 ```golang
 import (
-    "github.com/longportapp/openapi-go/config"
-    "github.com/longportapp/openapi-go/trade"
-    "github.com/longportapp/openapi-go/http"
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
 )
 
 func main() {
-    c, err := config.New()
-
-    if err != nil {
-        // panic
+    o := oauth.New("your-client-id").
+        OnOpenURL(func(url string) {
+            fmt.Println("Please visit:", url)
+        })
+    if err := o.Build(context.Background()); err != nil {
+        log.Fatal(err)
     }
 
-    // init http client from config
-    c, err := http.NewFromCfg(c)
-
-    // init trade context from config
-    tc, err := trade.NewFromCfg(c)
-
-    // init quote context from config
-    qc, err := quote.NewFromCfg(c)
+    cfg, err := config.New(config.WithOAuthClient(o))
+    if err != nil {
+        log.Fatal(err)
+    }
+    // Use cfg with quote.NewFromCfg(cfg), trade.NewFromCfg(cfg), http.NewFromCfg(cfg), etc.
 }
+```
+
+**Benefits:** No shared secret; no per-request HMAC; token load/refresh/persist is automatic.
+
+### Using Legacy API Key (Environment Variables)
+
+For backward compatibility you can use the traditional three keys. **Load from env** and **Load from file** (see below) only support Legacy API Key (app key, secret, access token); they do not support OAuth. Set env vars (or a `.env` file), then call `config.New()`.
+
+_macOS / Linux_
+
+```bash
+export LONGBRIDGE_APP_KEY="App Key get from user center"
+export LONGBRIDGE_APP_SECRET="App Secret get from user center"
+export LONGBRIDGE_ACCESS_TOKEN="Access Token get from user center"
+```
+
+_Windows_
+
+```powershell
+setx LONGBRIDGE_APP_KEY "App Key get from user center"
+setx LONGBRIDGE_APP_SECRET "App Secret get from user center"
+setx LONGBRIDGE_ACCESS_TOKEN "Access Token get from user center"
+```
+
+
+```golang
+c, err := config.New()
+if err != nil {
+    log.Fatal(err)
+}
+// Use c with NewFromCfg(c) for quote, trade, http.
 
 ```
 
-All envs is listed in the last of [README](#environment-variables)
+All supported env vars are listed in [Environment Variables](#environment-variables).
 
-### Load from file[yaml,toml]
+### Load From File (YAML, TOML)
 
-yaml
+Load from file (and load from env above) only supports Legacy API Key. For OAuth, use [Using OAuth 2.0 (Recommended)](#using-oauth-20-recommended).
+
+#### YAML Example
+
+To load configuration from a YAML file, use the following code snippet:
 
 ```golang
 conf, err := config.New(config.WithFilePath("./test.yaml"))
 ```
 
-toml
+Here is an example of what the `test.yaml` file might look like:
+
+
+```yaml
+longbridge:
+  app_key: xxxxx
+  app_secret: xxxxx 
+  access_token: xxxxx 
+```
+
+#### TOML Example
+
+Similarly, to load configuration from a TOML file, use this code snippet:
 
 ```golang
 conf, err := config.New(config.WithFilePath("./test.toml"))
 ```
 
-### Init Config manually
+And here is an example of a `test.toml` file:
+
+```toml
+[longbridge]
+app_key = "xxxxx"
+app_secret = "xxxxx"
+access_token = "xxxxx"
+```
+
+### Init Config Manually
 
 Config structure as follow:
 
 ```golang
 type Config struct {
-    HttpURL     string        `env:"LONGPORT_HTTP_URL" yaml:"LONGPORT_HTTP_URL" toml:"LONGPORT_HTTP_URL"`
-    HTTPTimeout time.Duration `env:"LONGPORT_HTTP_TIMEOUT" yaml:"LONGPORT_HTTP_TIMEOUT" toml:"LONGPORT_HTTP_TIMEOUT"`
-    AppKey      string        `env:"LONGPORT_APP_KEY" yaml:"LONGPORT_APP_KEY" toml:"LONGPORT_APP_KEY"`
-    AppSecret   string        `env:"LONGPORT_APP_SECRET" yaml:"LONGPORT_APP_SECRET" toml:"LONGPORT_APP_SECRET"`
-    AccessToken string        `env:"LONGPORT_ACCESS_TOKEN" yaml:"LONGPORT_ACCESS_TOKEN" toml:"LONGPORT_ACCESS_TOKEN"`
-    TradeUrl    string        `env:"LONGPORT_TRADE_URL" yaml:"LONGPORT_TRADE_URL" toml:"LONGPORT_TRADE_URL"`
-    QuoteUrl    string        `env:"LONGPORT_QUOTE_URL" yaml:"LONGPORT_QUOTE_URL" toml:"LONGPORT_QUOTE_URL"`
+    HttpURL     string        `env:"LONGBRIDGE_HTTP_URL" yaml:"http_url" toml:"http_url"`
+    HTTPTimeout time.Duration `env:"LONGBRIDGE_HTTP_TIMEOUT" yaml:"http_timeout" toml:"http_timeout"`
+    AppKey      string        `env:"LONGBRIDGE_APP_KEY" yaml:"app_key" toml:"app_key"`
+    AppSecret   string        `env:"LONGBRIDGE_APP_SECRET" yaml:"app_secret" toml:"app_secret"`
+    AccessToken string        `env:"LONGBRIDGE_ACCESS_TOKEN" yaml:"access_token" toml:"access_token"`
+    TradeUrl    string        `env:"LONGBRIDGE_TRADE_URL" yaml:"trade_url" toml:"trade_url"`
+    QuoteUrl    string        `env:"LONGBRIDGE_QUOTE_URL" yaml:"quote_url" toml:"quote_url"`
+    EnableOvernight bool          `env:"LONGBRIDGE_ENABLE_OVERNIGHT" yaml:"enable_overnight" toml:"enable_overnight"`
+    Language    openapi.Language `env:"LONGBRIDGE_LANGUAGE" yaml:"language" toml:"language"`
 
-    LogLevel string `env:"LONGPORT_LOG_LEVEL" yaml:"LONGPORT_LOG_LEVEL" toml:"LONGPORT_LOG_LEVEL"`
-    // LONGPORT protocol config
-    AuthTimeout    time.Duration `env:"LONGPORT_AUTH_TIMEOUT" yaml:"LONGPORT_AUTH_TIMEOUT"toml:"LONGPORT_AUTH_TIMEOUT"`
-    Timeout        time.Duration `env:"LONGPORT_TIMEOUT" yaml:"LONGPORT_TIMEOUT" toml:"LONGPORT_TIMEOUT"`
-    WriteQueueSize int           `env:"LONGPORT_WRITE_QUEUE_SIZE" yaml:"LONGPORT_WRITE_QUEUE_SIZE" toml:"LONGPORT_WRITE_QUEUE_SIZE"`
-    ReadQueueSize  int           `env:"LONGPORT_READ_QUEUE_SIZE" yaml:"LONGPORT_READ_QUEUE_SIZE" toml:"LONGPORT_READ_QUEUE_SIZE"`
-    ReadBufferSize int           `env:"LONGPORT_READ_BUFFER_SIZE" yaml:"LONGPORT_READ_BUFFER_SIZE" toml:"LONGPORT_READ_BUFFER_SIZE"`
-    MinGzipSize    int           `env:"LONGPORT_MIN_GZIP_SIZE" yaml:"LONGPORT_MIN_GZIP_SIZE" toml:"LONGPORT_MIN_GZIP_SIZE"`
-    Region Region `env:"LONGPORT_REGION" yaml:"LONGPORT_REGION" toml:"LONGPORT_REGION"`
+    LogLevel string `env:"LONGBRIDGE_LOG_LEVEL" yaml:"log_level" toml:"log_level"`
+    // Longbridge protocol config
+    AuthTimeout    time.Duration `env:"LONGBRIDGE_AUTH_TIMEOUT" yaml:"auth_timeout" toml:"timeout"`
+    Timeout        time.Duration `env:"LONGBRIDGE_TIMEOUT" yaml:"timeout" toml:"timeout"`
+    WriteQueueSize int           `env:"LONGBRIDGE_WRITE_QUEUE_SIZE" yaml:"write_queue_size" toml:"write_queue_size"`
+    ReadQueueSize  int           `env:"LONGBRIDGE_READ_QUEUE_SIZE" yaml:"read_queue_size" toml:"read_queue_size"`
+    ReadBufferSize int           `env:"LONGBRIDGE_READ_BUFFER_SIZE" yaml:"read_buffer_size" toml:"read_buffer_size"`
+    MinGzipSize    int           `env:"LONGBRIDGE_MIN_GZIP_SIZE" yaml:"min_gzip_size" toml:"min_gzip_size"`
+    Region Region `env:"LONGBRIDGE_REGION" yaml:"region" toml:"region"`
 }
 
 ```
@@ -111,7 +187,7 @@ c.AccessToken = "xxx"
 
 ```
 
-### set custom logger
+### Set Custom Logger
 
 Our logger interface as follow:
 
@@ -141,7 +217,7 @@ c.SetLogger(l)
 
 ```
 
-### use custom \*(net/http).Client
+### Use Custom \*(net/http).Client
 
 the default http client is initialized simply as follow:
 
@@ -160,7 +236,7 @@ c.Client = &http.Client{
 
 ```
 
-## Quote API (Get basic information of securities)
+## Quote API (Get Basic Information of Securities)
 
 ```golang
 package main
@@ -170,35 +246,37 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/quote"
-    "github.com/longportapp/openapi-go/config"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
+    "github.com/longbridge/openapi-go/quote"
 )
 
 func main() {
-    conf, err := config.New()
-    if err != nil {
+    o := oauth.New("your-client-id").
+        OnOpenURL(func(url string) {
+            fmt.Println("Please visit:", url)
+        })
+    if err := o.Build(context.Background()); err != nil {
         log.Fatal(err)
-        return
     }
-    // create quote context from environment variables
-    quoteContext, err := quote.NewFromCfg(conf)
+    cfg, err := config.New(config.WithOAuthClient(o))
     if err != nil {
         log.Fatal(err)
-        return
+    }
+    quoteContext, err := quote.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
     }
     defer quoteContext.Close()
-    ctx := context.Background()
-    // Get basic information of securities
-    quotes, err := quoteContext.Quote(ctx, []string{"700.HK", "AAPL.US", "TSLA.US", "NFLX.US"})
+    quotes, err := quoteContext.Quote(context.Background(), []string{"700.HK", "AAPL.US", "TSLA.US", "NFLX.US"})
     if err != nil {
         log.Fatal(err)
-        return
     }
     fmt.Printf("quotes: %v", quotes)
 }
 ```
 
-## Trade API (Submit order)
+## Trade API (Submit Order)
 
 ```golang
 package main
@@ -208,26 +286,29 @@ import (
     "fmt"
     "log"
 
-    "github.com/longportapp/openapi-go/trade"
-    "github.com/longportapp/openapi-go/config"
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/oauth"
+    "github.com/longbridge/openapi-go/trade"
     "github.com/shopspring/decimal"
 )
 
 func main() {
-    conf, err := config.New()
-    if err != nil {
+    o := oauth.New("your-client-id").
+        OnOpenURL(func(url string) {
+            fmt.Println("Please visit:", url)
+        })
+    if err := o.Build(context.Background()); err != nil {
         log.Fatal(err)
-        return
     }
-    // create trade context from environment variables
-    tradeContext, err := trade.NewFromCfg(conf)
+    cfg, err := config.New(config.WithOAuthClient(o))
     if err != nil {
         log.Fatal(err)
-        return
+    }
+    tradeContext, err := trade.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
     }
     defer tradeContext.Close()
-    ctx := context.Background()
-    // submit order
     order := &trade.SubmitOrder{
         Symbol:            "700.HK",
         OrderType:         trade.OrderTypeLO,
@@ -236,10 +317,9 @@ func main() {
         TimeInForce:       trade.TimeTypeDay,
         SubmittedPrice:    decimal.NewFromFloat(12),
     }
-    orderId, err := tradeContext.SubmitOrder(ctx, order)
+    orderId, err := tradeContext.SubmitOrder(context.Background(), order)
     if err != nil {
         log.Fatal(err)
-        return
     }
     fmt.Printf("orderId: %v\n", orderId)
 }
@@ -249,22 +329,24 @@ func main() {
 
 Support load env from `.env` file.
 
-| name                      | description                                                                                           | default value                       | example |
-| ------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------- | ------- |
-| LONGPORT_REGION           | Set access region, if region equals `cn`, sdk will set httpUrl, quoteUrl, tradeUrl to China endpoints | -                                   | cn      |
-| LONGPORT_HTTP_URL         | LONGPORT rest api url                                                                                 | <https://openapi.longportapp.com>   |         |
-| LONGPORT_APP_KEY          | app key                                                                                               |                                     |         |
-| LONGPORT_APP_SECRET       | app secret                                                                                            |                                     |         |
-| LONGPORT_ACCESS_TOKEN     | access token                                                                                          |                                     |         |
-| LONGPORT_TRADE_URL        | LONGPORT protocol url for trade context                                                               | wss://openapi-trade.longportapp.com |         |
-| LONGPORT_QUOTE_URL        | LONGPORT protocol url for quote context                                                               | wss://openapi-quote.longportapp.com |         |
-| LONGPORT_LOG_LEVEL        | log level                                                                                             | info                                |         |
-| LONGPORT_AUTH_TIMEOUT     | LONGPORT protocol authorize request time out                                                          | 10 second                           | 10s     |
-| LONGPORT_TIMEOUT          | LONGPORT protocol dial timeout                                                                        | 5 second                            | 6s      |
-| LONGPORT_WRITE_QUEUE_SIZE | longport protocol write queue size                                                                    | 16                                  |         |
-| LONGPORT_READ_QUEUE_SIZE  | longport protocol read queue size                                                                     | 16                                  |         |
-| LONGPORT_READ_BUFFER_SIZE | longport protocol read buffer size                                                                    | 4096                                |         |
-| LONGPORT_MIN_GZIP_SIZE    | longport protocol minimal gzip size                                                                   | 1024                                |         |
+| name                      | description                                                                                           | default value                       | example | optional       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------- | ------- | -------------- |
+| LONGBRIDGE_REGION           | Set access region, if region equals `cn`, SDK will set httpUrl, quoteUrl, tradeUrl to China endpoints | -                                   | cn      | cn             |
+| LONGBRIDGE_HTTP_URL         | Longbridge REST API URL                                                                               | <https://openapi.longbridge.com>    |         |                |
+| LONGBRIDGE_APP_KEY          | app key                                                                                               |                                     |         |                |
+| LONGBRIDGE_APP_SECRET       | app secret                                                                                            |                                     |         |                |
+| LONGBRIDGE_ACCESS_TOKEN     | access token                                                                                          |                                     |         |                |
+| LONGBRIDGE_TRADE_URL        | Longbridge protocol URL for trade context                                                             | wss://openapi-trade.longbridge.com  |         |                |
+| LONGBRIDGE_QUOTE_URL        | Longbridge protocol URL for quote context                                                             | wss://openapi-quote.longbridge.com  |         |                |
+| LONGBRIDGE_LOG_LEVEL        | log level                                                                                             | info                                |         |                |
+| LONGBRIDGE_AUTH_TIMEOUT     | Longbridge protocol authorize request timeout                                                         | 10 second                           | 10s     |                |
+| LONGBRIDGE_TIMEOUT          | Longbridge protocol dial timeout                                                                      | 5 second                            | 6s      |                |
+| LONGBRIDGE_WRITE_QUEUE_SIZE | Longbridge protocol write queue size                                                                  | 16                                  |         |                |
+| LONGBRIDGE_READ_QUEUE_SIZE  | Longbridge protocol read queue size                                                                   | 16                                  |         |                |
+| LONGBRIDGE_READ_BUFFER_SIZE | Longbridge protocol read buffer size                                                                  | 4096                                |         |                |
+| LONGBRIDGE_MIN_GZIP_SIZE    | Longbridge protocol minimal gzip size                                                                 | 1024                                |         |                |
+| LONGBRIDGE_ENABLE_OVERNIGHT | enable overnight quote subscription feature                                                           | false                               |         |                |
+| LONGBRIDGE_LANGUAGE         | set user language for some information.                                                              | -                                   | en      | en,zh-CN,zh-HK |
 
 ## License
 

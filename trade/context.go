@@ -7,15 +7,15 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go/config"
-	"github.com/longportapp/openapi-go/http"
-	"github.com/longportapp/openapi-go/internal/util"
-	"github.com/longportapp/openapi-go/longbridge"
-	"github.com/longportapp/openapi-go/trade/jsontypes"
+	"github.com/longbridge/openapi-go/config"
+	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/longbridge"
+	"github.com/longbridge/openapi-go/trade/jsontypes"
 )
 
 // TradeContext is a client for interacting with Longbridge Trade OpenAPI.
-// Longbrige Quote OpenAPI document is https://open.longportapp.com/en/docs/trade/trade-overview
+// Longbridge Trade OpenAPI document is https://open.longbridge.com/en/docs/trade/trade-overview
 //
 // Example:
 //
@@ -45,19 +45,19 @@ func (c *TradeContext) OnTrade(f func(*PushEvent)) {
 }
 
 // Subscribe topics then the handler will receive push event.
-// Reference: https://open.longportapp.com/en/docs/trade/trade-push#subscribe
+// Reference: https://open.longbridge.com/en/docs/trade/trade-push#subscribe
 func (c *TradeContext) Subscribe(ctx context.Context, topics []string) (subRes *SubResponse, err error) {
 	return c.core.Subscribe(ctx, topics)
 }
 
 // Unsubscribe topics then the handler will not receive the symbol's event.
-// Reference: https://open.longportapp.com/en/docs/trade/trade-push#cancel-subscribe
+// Reference: https://open.longbridge.com/en/docs/trade/trade-push#cancel-subscribe
 func (c *TradeContext) Unsubscribe(ctx context.Context, topics []string) (unsubRes *UnsubResponse, err error) {
 	return c.core.Unsubscribe(ctx, topics)
 }
 
 // HistoryExecutions will return history executions.
-// Reference: https://open.longportapp.com/en/docs/trade/execution/history_executions
+// Reference: https://open.longbridge.com/en/docs/trade/execution/history_executions
 //
 // Example:
 //
@@ -79,7 +79,7 @@ func (c *TradeContext) HistoryExecutions(ctx context.Context, params *GetHistory
 }
 
 // TodayExecutions will return today's executions
-// Reference: https://open.longportapp.com/en/docs/trade/execution/today_executions
+// Reference: https://open.longbridge.com/en/docs/trade/execution/today_executions
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -96,7 +96,7 @@ func (c *TradeContext) TodayExecutions(ctx context.Context, params *GetTodayExec
 }
 
 // HistoryOrders will return history orders
-// Reference: https://open.longportapp.com/en/docs/trade/order/history_orders
+// Reference: https://open.longbridge.com/en/docs/trade/order/history_orders
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -117,7 +117,7 @@ func (c *TradeContext) HistoryOrders(ctx context.Context, params *GetHistoryOrde
 }
 
 // TodayOrders will return today orders
-// Reference: https://open.longportapp.com/en/docs/trade/order/today_orders
+// Reference: https://open.longbridge.com/en/docs/trade/order/today_orders
 //
 // Example:
 //
@@ -135,7 +135,7 @@ func (c *TradeContext) TodayOrders(ctx context.Context, params *GetTodayOrders) 
 }
 
 // ReplaceOrder modify quantity or price
-// Reference: https://open.longportapp.com/en/docs/trade/order/replace
+// Reference: https://open.longbridge.com/en/docs/trade/order/replace
 //
 // Example:
 //
@@ -153,7 +153,7 @@ func (c *TradeContext) ReplaceOrder(ctx context.Context, params *ReplaceOrder) (
 }
 
 // SubmitOrder HK and US stocks, warrant and option
-// Reference: https://open.longportapp.com/en/docs/trade/order/submit
+// Reference: https://open.longbridge.com/en/docs/trade/order/submit
 //
 // Example:
 //
@@ -183,14 +183,25 @@ func (c *TradeContext) SubmitOrder(ctx context.Context, params *SubmitOrder) (or
 	return resp.OrderId, nil
 }
 
-// WithdrawOrder to close an open order
-// Reference: https://open.longportapp.com/en/docs/trade/order/withdraw
+// WithdrawOrder to close an open order. It is same as CancelOrder function.
+// Reference: https://open.longbridge.com/en/docs/trade/order/withdraw
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	err = tctx.WithdrawOrder(context.Background(), "12123123")
 func (c *TradeContext) WithdrawOrder(ctx context.Context, orderId string) (err error) {
+	return c.CancelOrder(ctx, orderId)
+}
+
+// CancelOrder to close an open order
+// Reference: https://open.longbridge.com/en/docs/trade/order/withdraw
+// Example:
+//
+//	conf, err := config.NewFromEnv()
+//	tctx, err := trade.NewFromCfg(conf)
+//	err = tctx.CancelOrder(context.Background(), "12123123")
+func (c *TradeContext) CancelOrder(ctx context.Context, orderId string) (err error) {
 	values := url.Values{}
 	values.Add("order_id", orderId)
 	err = c.opts.httpClient.Delete(ctx, "/v1/trade/order", values, nil)
@@ -198,15 +209,15 @@ func (c *TradeContext) WithdrawOrder(ctx context.Context, orderId string) (err e
 }
 
 // AccountBalance to obtain the available, desirable, frozen, to-be-settled, and in-transit funds (fund purchase and redemption) information for each currency of the user.
-// Reference: https://open.longportapp.com/en/docs/trade/asset/account
+// Reference: https://open.longbridge.com/en/docs/trade/asset/account
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
-//	ab, err := trade.AccountBalance(context.Background())
-func (c *TradeContext) AccountBalance(ctx context.Context) (accounts []*AccountBalance, err error) {
+//	ab, err := trade.AccountBalance(context.Background(), &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
+func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBalance) (accounts []*AccountBalance, err error) {
 	var resp jsontypes.AccountBalances
-	err = c.opts.httpClient.Get(ctx, "/v1/asset/account", nil, &resp)
+	err = c.opts.httpClient.Get(ctx, "/v1/asset/account", params.Values(), &resp)
 	if err != nil {
 		return
 	}
@@ -215,7 +226,7 @@ func (c *TradeContext) AccountBalance(ctx context.Context) (accounts []*AccountB
 }
 
 // CashFlow to obtain capital inflow/outflow direction, capital type, capital amount, occurrence time, associated stock code and capital flow description information.
-// Reference: https://open.longportapp.com/en/docs/trade/asset/cashflow
+// Reference: https://open.longbridge.com/en/docs/trade/asset/cashflow
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -238,7 +249,7 @@ func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashf
 }
 
 // FundPositions to obtain fund position information including account, fund code, holding share, cost net worth, current net worth, and currency.
-// Reference: https://open.longportapp.com/en/docs/trade/asset/fund
+// Reference: https://open.longbridge.com/en/docs/trade/asset/fund
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -258,7 +269,7 @@ func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fun
 }
 
 // StockPositions to obtain stock position information including account, stock code, number of shares held, number of available shares, average position price (calculated according to account settings), and currency.
-// Reference: https://open.longportapp.com/en/docs/trade/asset/stock
+// Reference: https://open.longbridge.com/en/docs/trade/asset/stock
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -278,7 +289,7 @@ func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (st
 }
 
 // MarginRatio is used to obtain the initial margin ratio, maintain the margin ratio and strengthen the margin ratio of stocks.
-// Reference: https://open.longportapp.com/en/docs/trade/asset/margin_ratio
+// Reference: https://open.longbridge.com/en/docs/trade/asset/margin_ratio
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -297,7 +308,7 @@ func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRa
 }
 
 // OrderDetail is used for order detail query
-// Reference: https://open.longportapp.com/en/docs/trade/order/order_detail
+// Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -316,7 +327,7 @@ func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDe
 }
 
 // EstimateMaxPurchaseQuantity is used for estimating the maximum purchase quantity for Hong Kong and US stocks, warrants, and options.
-// Reference: https://open.longportapp.com/en/docs/trade/order/estimate_available_buy_limit
+// Reference: https://open.longbridge.com/en/docs/trade/order/estimate_available_buy_limit
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -356,12 +367,7 @@ func NewFormEnv() (*TradeContext, error) {
 
 // NewFromCfg return TradeContext with config.Config.
 func NewFromCfg(cfg *config.Config) (*TradeContext, error) {
-	httpClient, err := http.New(
-		http.WithAccessToken(cfg.AccessToken),
-		http.WithAppKey(cfg.AppKey),
-		http.WithAppSecret(cfg.AppSecret),
-		http.WithURL(cfg.HttpURL),
-	)
+	httpClient, err := http.NewFromCfg(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "create http client error")
 	}

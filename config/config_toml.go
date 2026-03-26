@@ -8,12 +8,15 @@ import (
 type TOMLConfig struct {
 }
 
-func (c *TOMLConfig) GetConfig(opts *Options) (data *Config, err error) {
-	data = &Config{}
-	_, err = toml.DecodeFile(opts.filePath, data)
+func (c *TOMLConfig) GetConfig(opts *Options) (*Config, error) {
+	parseData := &parseConfig{}
+	_, err := toml.DecodeFile(opts.filePath, parseData)
 	if err != nil {
 		err = errors.Wrapf(err, "TOML GetConfig err")
-		return
+		return nil, err
 	}
-	return
+	if parseData.Longbridge == nil {
+		return nil, errors.New("Longbridge config is not exist in toml file")
+	}
+	return parseData.Longbridge, nil
 }

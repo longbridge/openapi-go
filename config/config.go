@@ -7,7 +7,9 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/pkg/errors"
 
-	"github.com/longportapp/openapi-go/log"
+	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/log"
+	"github.com/longbridge/openapi-go/oauth"
 )
 
 type IConfig interface {
@@ -25,9 +27,9 @@ type Region string
 var (
 	RegionCN Region = "cn"
 
-	cnHttpUrl  = "https://openapi.longportapp.cn"
-	cnQuoteUrl = "wss://openapi-quote.longportapp.cn"
-	cnTradeUrl = "wss://openapi-trade.longportapp.cn"
+	cnHttpUrl  = "https://openapi.longbridge.cn"
+	cnQuoteUrl = "wss://openapi-quote.longbridge.cn"
+	cnTradeUrl = "wss://openapi-trade.longbridge.cn"
 )
 
 // Config store Longbridge config
@@ -35,25 +37,35 @@ type Config struct {
 	// Client custom http client
 	Client *http.Client
 
-	HttpURL     string        `env:"LONGBRIDGE_HTTP_URL,LONGPORT_HTTP_URL" yaml:"LONGBRIDGE_HTTP_URL,LONGPORT_HTTP_URL" toml:"LONGBRIDGE_HTTP_URL,LONGPORT_HTTP_URL"`
-	HTTPTimeout time.Duration `env:"LONGBRIDGE_HTTP_TIMEOUT,LONGPORT_HTTP_TIMEOUT" yaml:"LONGBRIDGE_HTTP_TIMEOUT,LONGPORT_HTTP_TIMEOUT" toml:"LONGPORT_HTTP_TIMEOUT"`
-	AppKey      string        `env:"LONGBRIDGE_APP_KEY,LONGPORT_APP_KEY" yaml:"LONGBRIDGE_APP_KEY,LONGPORT_APP_KEY" toml:"LONGBRIDGE_APP_KEY,LONGPORT_APP_KEY"`
-	AppSecret   string        `env:"LONGBRIDGE_APP_SECRET,LONGPORT_APP_SECRET" yaml:"eONGBRIDGE_APP_SECRET,LONGPORT_APP_SECRET" toml:"LONGBRIDGE_APP_SECRET,LONGPORT_APP_SECRET"`
-	AccessToken string        `env:"LONGBRIDGE_ACCESS_TOKEN,LONGPORT_ACCESS_TOKEN" yaml:"LONGBRIDGE_ACCESS_TOKEN,LONGPORT_ACCESS_TOKEN" toml:"LONGBRIDGE_ACCESS_TOKEN,LONGPORT_ACCESS_TOKEN"`
-	TradeUrl    string        `env:"LONGBRIDGE_TRADE_URL,LONGPORT_TRADE_URL" yaml:"LONGBRIDGE_TRADE_URL,LONGPORT_TRADE_URL" toml:"LONGBRIDGE_TRADE_URL,LONGPORT_TRADE_URL"`
-	QuoteUrl    string        `env:"LONGBRIDGE_QUOTE_URL,LONGPORT_QUOTE_URL" yaml:"LONGBRIDGE_QUOTE_URL,LONGPORT_QUOTE_URL" toml:"LONGBRIDGE_QUOTE_URL,LONGPORT_QUOTE_URL"`
+	HttpURL         string           `env:"LONGBRIDGE_HTTP_URL,LONGPORT_HTTP_URL" yaml:"http_url" toml:"http_url"`
+	HTTPTimeout     time.Duration    `env:"LONGBRIDGE_HTTP_TIMEOUT,LONGPORT_HTTP_TIMEOUT" yaml:"http_timeout" toml:"http_timeout"`
+	AppKey          string           `env:"LONGBRIDGE_APP_KEY,LONGPORT_APP_KEY" yaml:"app_key" toml:"app_key"`
+	AppSecret       string           `env:"LONGBRIDGE_APP_SECRET,LONGPORT_APP_SECRET" yaml:"app_secret" toml:"app_secret"`
+	AccessToken     string           `env:"LONGBRIDGE_ACCESS_TOKEN,LONGPORT_ACCESS_TOKEN" yaml:"access_token" toml:"access_token"`
+	TradeUrl        string           `env:"LONGBRIDGE_TRADE_URL,LONGPORT_TRADE_URL" yaml:"trade_url" toml:"trade_url"`
+	QuoteUrl        string           `env:"LONGBRIDGE_QUOTE_URL,LONGPORT_QUOTE_URL" yaml:"quote_url" toml:"quote_url"`
+	EnableOvernight bool             `env:"LONGPORT_ENABLE_OVERNIGHT" yaml:"enable_overnight" toml:"enable_overnight"`
+	Language        openapi.Language `env:"LONGPORT_LANGUAGE" yaml:"language" toml:"language"`
 
-	LogLevel string `env:"LONGBRIDGE_LOG_LEVEL,LONGPORT_LOG_LEVEL" yaml:"LONGBRIDGE_LOG_LEVEL,LONGPORT_LOG_LEVEL" toml:"LONGBRIDGE_LOG_LEVEL,LONGPORT_LOG_LEVEL"`
+	LogLevel string `env:"LONGBRIDGE_LOG_LEVEL,LONGPORT_LOG_LEVEL" yaml:"log_level" toml:"log_level"`
 	logger   log.Logger
 
+	// OAuthClient is set when using OAuth 2.0 with auto-refresh (see WithOAuthClient).
+	OAuthClient *oauth.OAuth
+
 	// longbridge protocol config
-	AuthTimeout    time.Duration `env:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT" yaml:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT" toml:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT"`
-	Timeout        time.Duration `env:"LONGBRIDGE_TIMEOUT,LONGPORT_TIMEOUT" yaml:"LONGBRIDGE_TIMEOUT,LONGPORT_TIMEOUT" toml:"LONGBRIDGE_TIMEOUT,LONGPORT_TIMEOUT"`
-	WriteQueueSize int           `env:"LONGBRIDGE_WRITE_QUEUE_SIZE,LONGPORT_WRITE_QUEUE_SIZE" yaml:"LONGBRIDGE_WRITE_QUEUE_SIZE,LONGPORT_WRITE_QUEUE_SIZE" toml:"LONGBRIDGE_WRITE_QUEUE_SIZE,LONGPORT_WRITE_QUEUE_SIZE"`
-	ReadQueueSize  int           `env:"LONGBRIDGE_READ_QUEUE_SIZE,LONGPORT_READ_QUEUE_SIZE" yaml:"LONGBRIDGE_READ_QUEUE_SIZE,LONGPORT_READ_QUEUE_SIZE" toml:"LONGBRIDGE_READ_QUEUE_SIZE,LONGPORT_READ_QUEUE_SIZE"`
-	ReadBufferSize int           `env:"LONGBRIDGE_READ_BUFFER_SIZE,LONGPORT_READ_BUFFER_SIZE" yaml:"LONGBRIDGE_READ_BUFFER_SIZE,LONGPORT_READ_BUFFER_SIZE" toml:"LONGBRIDGE_READ_BUFFER_SIZE,LONGPORT_READ_BUFFER_SIZE"`
-	MinGzipSize    int           `env:"LONGBRIDGE_MIN_GZIP_SIZE,LONGPORT_MIN_GZIP_SIZE" yaml:"LONGBRIDGE_MIN_GZIP_SIZE,LONGPORT_MIN_GZIP_SIZE" toml:"LONGBRIDGE_MIN_GZIP_SIZE,LONGPORT_MIN_GZIP_SIZE"`
-	Region         Region        `env:"LONGPORT_REGION" yaml:"LONGPORT_REGION" toml:"LONGPORT_REGION"`
+	AuthTimeout    time.Duration `env:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT" yaml:"auth_timeout" toml:"auth_timeout"`
+	Timeout        time.Duration `env:"LONGBRIDGE_TIMEOUT,LONGPORT_TIMEOUT" yaml:"timeout" toml:"timeout"`
+	WriteQueueSize int           `env:"LONGBRIDGE_WRITE_QUEUE_SIZE,LONGPORT_WRITE_QUEUE_SIZE" yaml:"write_queue_size" toml:"write_queue_size"`
+	ReadQueueSize  int           `env:"LONGBRIDGE_READ_QUEUE_SIZE,LONGPORT_READ_QUEUE_SIZE" yaml:"read_queue_size" toml:"read_queue_size"`
+	ReadBufferSize int           `env:"LONGBRIDGE_READ_BUFFER_SIZE,LONGPORT_READ_BUFFER_SIZE" yaml:"read_buffer_size" toml:"read_buffer_size"`
+	MinGzipSize    int           `env:"LONGBRIDGE_MIN_GZIP_SIZE,LONGPORT_MIN_GZIP_SIZE" yaml:"min_gzip_size" toml:"min_gzip_size"`
+	Region         Region        `env:"LONGPORT_REGION" yaml:"region" toml:"region"`
+}
+
+// parseConfig is a config for toml/yaml
+type parseConfig struct {
+	Longbridge *Config `toml:"longbridge" yaml:"longbridge"`
 }
 
 func (c *Config) SetLogger(l log.Logger) {
@@ -90,6 +102,9 @@ func New(opts ...Option) (configData *Config, err error) {
 	if options.accessToken != nil {
 		configData.AccessToken = *options.accessToken
 	}
+	if options.oauthClient != nil {
+		configData.OAuthClient = options.oauthClient
+	}
 
 	if configData.Region == RegionCN {
 		configData.HttpURL = cnHttpUrl
@@ -107,22 +122,27 @@ func New(opts ...Option) (configData *Config, err error) {
 }
 
 func (c *Config) check() (err error) {
+	if c.OAuthClient != nil {
+		// OAuth 2.0 with client: token and app key are resolved at request time
+		return nil
+	}
 	if c.AccessToken == "" {
-		err = errors.New("Don't has accessToken. Please set access token on LONGBRIDGE_ACCESS_TOKEN env")
+		err = errors.New("missing access token (set LONGBRIDGE_ACCESS_TOKEN or use WithOAuthClient)")
 		return
 	}
 	if c.AppKey == "" {
-		err = errors.New("Don't has appKey. Please set app key on LONGBRIDGE_APP_KEY env")
+		err = errors.New("missing app key (set LONGBRIDGE_APP_KEY or use WithOAuthClient)")
 		return
 	}
+	// WithOAuthClient skips this path; here AppSecret is required
 	if c.AppSecret == "" {
-		err = errors.New("Don't has appSecret. Please set app secret on LONGBRIDGE_APP_SECRET env")
+		err = errors.New("missing app secret (set LONGBRIDGE_APP_SECRET or use WithOAuthClient)")
 		return
 	}
 	return
 }
 
-// Deprecated: NewFormEnv to create config with enviromente variables
+// Deprecated: NewFormEnv to create config from environment variables
 func NewFormEnv() (*Config, error) {
 	return New()
 }
