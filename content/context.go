@@ -150,7 +150,7 @@ func (c *ContentContext) MyTopics(ctx context.Context, opts *ListMyTopicsOptions
 // recognized and linked by the platform. Use Tickers to associate additional
 // symbols not explicitly mentioned in the body.
 // WARNING: do not abuse symbol linking for unrelated stocks — content moderation
-// may restrict publishing or suspend the account.
+// may restrict publishing or mute the account.
 //
 // Rate limit: max 3 topics/min and 10/24h per user (HTTP 429 on excess).
 //
@@ -232,7 +232,7 @@ func (c *ContentContext) ListTopicReplies(ctx context.Context, topicID string, o
 // Stock symbols mentioned in Body (e.g. "700.HK", "TSLA.US") are automatically
 // recognized and linked by the platform.
 // WARNING: do not abuse symbol linking for unrelated stocks — content moderation
-// may restrict publishing or suspend the account.
+// may restrict publishing or mute the account.
 //
 // Rate limit per user per topic: first 3 replies have no wait; subsequent replies
 // require incrementally longer intervals (3 s → 5 s → 8 s → 13 s → 21 s → 34 s → 55 s cap).
