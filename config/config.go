@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -30,7 +31,16 @@ var (
 	cnHttpUrl  = "https://openapi.longbridge.cn"
 	cnQuoteUrl = "wss://openapi-quote.longbridge.cn"
 	cnTradeUrl = "wss://openapi-trade.longbridge.cn"
+
+	stagingHttpUrl  = "https://openapi.longbridge.xyz"
+	stagingQuoteUrl = "wss://openapi-quote.longbridge.xyz"
+	stagingTradeUrl = "wss://openapi-trade.longbridge.xyz"
 )
+
+// IsStaging returns true when LONGBRIDGE_ENV is set to "staging".
+func IsStaging() bool {
+	return os.Getenv("LONGBRIDGE_ENV") == "staging"
+}
 
 // Config store Longbridge config
 type Config struct {
@@ -106,7 +116,11 @@ func New(opts ...Option) (configData *Config, err error) {
 		configData.OAuthClient = options.oauthClient
 	}
 
-	if configData.Region == RegionCN {
+	if IsStaging() {
+		configData.HttpURL = stagingHttpUrl
+		configData.QuoteUrl = stagingQuoteUrl
+		configData.TradeUrl = stagingTradeUrl
+	} else if configData.Region == RegionCN {
 		configData.HttpURL = cnHttpUrl
 		configData.QuoteUrl = cnQuoteUrl
 		configData.TradeUrl = cnTradeUrl

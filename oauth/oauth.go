@@ -30,11 +30,12 @@ import (
 )
 
 const (
-	authTimeout         = 5 * time.Minute
-	oauthBaseURL        = "https://openapi.longbridge.com"
-	defaultCallbackPort = 60355
-	expiresSoonSecs     = 3600
-	tokenDir            = ".longbridge/openapi/tokens"
+	authTimeout          = 5 * time.Minute
+	oauthBaseURL         = "https://openapi.longbridge.com"
+	oauthBaseURLStaging  = "https://openapi.longbridge.xyz"
+	defaultCallbackPort  = 60355
+	expiresSoonSecs      = 3600
+	tokenDir             = ".longbridge/openapi/tokens"
 )
 
 // oauthToken is the internal token type (not exported).
@@ -67,10 +68,14 @@ type OAuth struct {
 
 // New creates a new OAuth client with the given client ID.
 func New(clientID string) *OAuth {
+	base := oauthBaseURL
+	if os.Getenv("LONGBRIDGE_ENV") == "staging" {
+		base = oauthBaseURLStaging
+	}
 	return &OAuth{
 		clientID:     clientID,
 		callbackPort: defaultCallbackPort,
-		baseURL:      oauthBaseURL,
+		baseURL:      base,
 	}
 }
 
