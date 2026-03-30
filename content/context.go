@@ -23,7 +23,7 @@ import (
 //
 //	conf, err := config.NewFromEnv()
 //	cctx, err := content.NewFromCfg(conf)
-//	topics, err := cctx.MyTopics(context.Background(), &content.ListMyTopicsOptions{Size: 20})
+//	topics, err := cctx.MyTopics(context.Background(), &content.MyTopicsOptions{Size: 20})
 type ContentContext struct {
 	httpClient *httplib.Client
 }
@@ -108,7 +108,7 @@ func (c *ContentContext) TopicDetail(ctx context.Context, id string) (*OwnedTopi
 // MyTopics returns topics created by the currently authenticated user.
 //
 // See: https://open.longbridge.com/docs/api?op=list_my_topics
-func (c *ContentContext) MyTopics(ctx context.Context, opts *ListMyTopicsOptions) ([]*OwnedTopic, error) {
+func (c *ContentContext) MyTopics(ctx context.Context, opts *MyTopicsOptions) ([]*OwnedTopic, error) {
 	resp := &struct {
 		Items []*jsontypes.OwnedTopic `json:"items"`
 	}{}
