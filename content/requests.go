@@ -1,7 +1,7 @@
 package content
 
-// ListMyTopicsOptions holds optional parameters for listing topics created by the authenticated user.
-type ListMyTopicsOptions struct {
+// MyTopicsOptions holds optional parameters for listing topics created by the authenticated user.
+type MyTopicsOptions struct {
 	Page      int    // optional, default 1
 	Size      int    // optional, default 50, range 1–500
 	TopicType string // optional: "article" | "post"; empty returns all

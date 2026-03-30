@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.23.0] - 2026-03-30
+
+### Added
+
+- `ContentContext` adds two new methods:
+  - `MyTopics(opts *MyTopicsOptions)` — get topics created by the current authenticated user, with optional page/size/topic_type filtering.
+  - `CreateTopic(opts *CreateTopicOptions)` — create a new topic; returns the topic ID (`string`) on success.
+- New types: `OwnedTopic`, `MyTopicsOptions`, `CreateTopicOptions`, `TopicReply`, `TopicAuthor`, `TopicImage`.
+
 ## [0.22.0] - 2026-03-20
 
 ### Breaking changes

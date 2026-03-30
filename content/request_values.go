@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func (o *ListMyTopicsOptions) values() url.Values {
+func (o *MyTopicsOptions) values() url.Values {
 	p := url.Values{}
 	if o == nil {
 		return p
