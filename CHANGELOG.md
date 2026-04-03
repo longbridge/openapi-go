@@ -4,6 +4,10 @@
 
 ### Added
 
+- New `asset` package with `StatementContext` for accessing statement APIs:
+  - `StatementList` – list account statements with date range and pagination.
+  - `StatementDownloadURL` – get the download URL for a specific statement file.
+- Staging environment support: set `LONGBRIDGE_ENV=staging` to point to `longbridge.xyz` endpoints (HTTP, quote WebSocket, trade WebSocket, OAuth).
 - `ContentContext` adds two new methods:
   - `MyTopics(opts *MyTopicsOptions)` — get topics created by the current authenticated user, with optional page/size/topic_type filtering.
   - `CreateTopic(opts *CreateTopicOptions)` — create a new topic; returns the topic ID (`string`) on success.
