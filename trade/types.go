@@ -16,6 +16,7 @@ type (
 	Market               string
 	OrderTag             string
 	TriggerStatus        string
+	TriggerPriceType     string
 	BalanceType          int32
 	OfDirection          int32
 	TimeType             string
@@ -81,9 +82,30 @@ const (
 	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
 
 	// Outside RTH
-	OutsideRTHOnly    OutsideRTH = "RTH_ONLY"          // Regular trading hour only
-	OutsideRTHAny     OutsideRTH = "ANY_TIME"          // Any time
-	OutsideRTHUnknown OutsideRTH = "UnknownOutsideRth" // Default is UnknownOutsideRth when the order is not a US stock
+	OutsideRTHOnly      OutsideRTH = "RTH_ONLY"          // Regular trading hour only
+	OutsideRTHAny       OutsideRTH = "ANY_TIME"          // Any time
+	OutsideRTHOvernight OutsideRTH = "OVERNIGHT"         // Overnight
+	OutsideRTHUnknown   OutsideRTH = "UnknownOutsideRth" // Default is UnknownOutsideRth when the order is not a US stock
+
+	// Order tag
+	OrderTagNormal       OrderTag = "Normal"       // Normal Order
+	OrderTagLongTerm     OrderTag = "GTC"          // Long term Order
+	OrderTagGrey         OrderTag = "Grey"         // Grey Order
+	OrderTagMarginCall   OrderTag = "MarginCall"   // Force Selling
+	OrderTagOffline      OrderTag = "Offline"      // OTC
+	OrderTagCreditor     OrderTag = "Creditor"     // Option Exercise Long
+	OrderTagDebtor       OrderTag = "Debtor"       // Option Exercise Short
+	OrderTagNonExercise  OrderTag = "NonExercise"  // Wavier Of Option Exercise
+	OrderTagAllocatedSub OrderTag = "AllocatedSub" // Trade Allocation
+
+	// Trigger status
+	TriggerStatusDeactive TriggerStatus = "DEACTIVE"
+	TriggerStatusActive   TriggerStatus = "ACTIVE"
+	TriggerStatusReleased TriggerStatus = "RELEASED"
+
+	// Trigger price type
+	TriggerPriceTypeLimit  TriggerPriceType = "LIT" // Limit If Touched
+	TriggerPriceTypeMarket TriggerPriceType = "MIT" // Market If Touched
 
 	// Commission-free Status
 	CommissionFreeStatusNone      CommissionFreeStatus = "None"
