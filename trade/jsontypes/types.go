@@ -71,6 +71,7 @@ type AccountBalance struct {
 	InitMargin             string      `json:"init_margin"`
 	MaintenanceMargin      string      `json:"maintenance_margin"`
 	Currency               string      `json:"currency"`
+	BuyPower               string      `json:"buy_power"`
 	CashInfos              []*CashInfo `json:"cash_infos"`
 }
 

@@ -268,6 +268,7 @@ type AccountBalance struct {
 	InitMargin             *decimal.Decimal // initial margin
 	MaintenanceMargin      *decimal.Decimal // maintenance margin
 	Currency               string
+	BuyPower               *decimal.Decimal
 	CashInfos              []*CashInfo
 }
 
