@@ -15,6 +15,7 @@ type (
 	TradeStatus             int32
 	TradeSession            int32
 	TradeSessionType        int32
+	TradeDirection          int32
 	EventType               int8
 	SubType                 uint8
 	Period                  int32
@@ -30,6 +31,8 @@ type (
 	SecurityListCategory    string
 	WatchlistUpdateMode     string
 	CandlestickTradeSession int32
+	OptionType              string
+	OptionDirection         string
 )
 
 const (
@@ -47,15 +50,24 @@ const (
 	EventDepth
 
 	// Period
-	PeriodOneMinute     = Period(quotev1.Period_ONE_MINUTE)
-	PeriodFiveMinute    = Period(quotev1.Period_FIVE_MINUTE)
-	PeriodFifteenMinute = Period(quotev1.Period_FIFTEEN_MINUTE)
-	PeriodThirtyMinute  = Period(quotev1.Period_THIRTY_MINUTE)
-	PeriodSixtyMinute   = Period(quotev1.Period_SIXTY_MINUTE)
-	PeriodDay           = Period(quotev1.Period_DAY)
-	PeriodWeek          = Period(quotev1.Period_WEEK)
-	PeriodMonth         = Period(quotev1.Period_MONTH)
-	PeriodYear          = Period(quotev1.Period_YEAR)
+	PeriodOneMinute       = Period(quotev1.Period_ONE_MINUTE)
+	PeriodTwoMinute       = Period(quotev1.Period_TWO_MINUTE)
+	PeriodThreeMinute     = Period(quotev1.Period_THREE_MINUTE)
+	PeriodFiveMinute      = Period(quotev1.Period_FIVE_MINUTE)
+	PeriodTenMinute       = Period(quotev1.Period_TEN_MINUTE)
+	PeriodFifteenMinute   = Period(quotev1.Period_FIFTEEN_MINUTE)
+	PeriodTwentyMinute    = Period(quotev1.Period_TWENTY_MINUTE)
+	PeriodThirtyMinute    = Period(quotev1.Period_THIRTY_MINUTE)
+	PeriodFortyFiveMinute = Period(quotev1.Period_FORTY_FIVE_MINUTE)
+	PeriodSixtyMinute     = Period(quotev1.Period_SIXTY_MINUTE)
+	PeriodTwoHour         = Period(quotev1.Period_TWO_HOUR)
+	PeriodThreeHour       = Period(quotev1.Period_THREE_HOUR)
+	PeriodFourHour        = Period(quotev1.Period_FOUR_HOUR)
+	PeriodDay             = Period(quotev1.Period_DAY)
+	PeriodWeek            = Period(quotev1.Period_WEEK)
+	PeriodMonth           = Period(quotev1.Period_MONTH)
+	PeriodQuarter         = Period(quotev1.Period_QUARTER)
+	PeriodYear            = Period(quotev1.Period_YEAR)
 
 	// AdjustType
 	AdjustTypeNo      = AdjustType(quotev1.AdjustType_NO_ADJUST)
@@ -66,6 +78,32 @@ const (
 	TradeSessionPreTrade  = TradeSession(quotev1.TradeSession_PRE_TRADE)
 	TradeSessionPostTrade = TradeSession(quotev1.TradeSession_POST_TRADE)
 	TradeSessionOvernight = TradeSession(quotev1.TradeSession_OVERNIGHT_TRADE)
+
+	// TradeStatus
+	TradeStatusNormal             = TradeStatus(quotev1.TradeStatus_NORMAL)
+	TradeStatusHalted             = TradeStatus(quotev1.TradeStatus_HALTED)
+	TradeStatusDelisted           = TradeStatus(quotev1.TradeStatus_DELISTED)
+	TradeStatusFuse               = TradeStatus(quotev1.TradeStatus_FUSE)
+	TradeStatusPrepareList        = TradeStatus(quotev1.TradeStatus_PREPARE_LIST)
+	TradeStatusCodeMoved          = TradeStatus(quotev1.TradeStatus_CODE_MOVED)
+	TradeStatusToBeOpened         = TradeStatus(quotev1.TradeStatus_TO_BE_OPENED)
+	TradeStatusSplitStockHalts    = TradeStatus(quotev1.TradeStatus_SPLIT_STOCK_HALTS)
+	TradeStatusExpired            = TradeStatus(quotev1.TradeStatus_EXPIRED)
+	TradeStatusWarrantPrepareList = TradeStatus(quotev1.TradeStatus_WARRANT_PREPARE_LIST)
+	TradeStatusSuspendTrade       = TradeStatus(quotev1.TradeStatus_SUSPEND_TRADE)
+
+	// TradeDirection
+	TradeDirectionNeutral TradeDirection = 0
+	TradeDirectionDown    TradeDirection = 1
+	TradeDirectionUp      TradeDirection = 2
+
+	// OptionType
+	OptionTypeAmerican OptionType = "A"
+	OptionTypeEurope   OptionType = "U"
+
+	// OptionDirection
+	OptionDirectionPut  OptionDirection = "P"
+	OptionDirectionCall OptionDirection = "C"
 
 	// CandlestickTradeSessionNormal includes normal trade session
 	CandlestickTradeSessionNormal = CandlestickTradeSession(0)
@@ -285,7 +323,7 @@ type Trade struct {
 	// - `X` - Cross trade
 	// - `1` - Stopped stock(Regular trade)
 	TradeType    string
-	Direction    int32
+	Direction    TradeDirection
 	TradeSession TradeSession
 }
 
