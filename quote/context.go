@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/config"
@@ -549,7 +550,16 @@ func (c *QuoteContext) ShortPositions(ctx context.Context, symbols []string) (po
 	if err != nil {
 		return
 	}
-	err = util.Copy(&positions, resp.List)
+	for _, p := range resp.List {
+		positions = append(positions, &ShortPosition{
+			Symbol:            p.Symbol,
+			Date:              p.Date,
+			ShortSellQty:      p.ShortSellQty,
+			MarketTurnover:    parseDecimalOpt(p.MarketTurnover),
+			ShortSellTurnover: parseDecimalOpt(p.ShortSellTurnover),
+			ShortSellRatio:    parseDecimalOpt(p.ShortSellRatio),
+		})
+	}
 	return
 }
 
@@ -564,7 +574,14 @@ func (c *QuoteContext) OptionVolume(ctx context.Context, symbols []string) (stat
 	if err != nil {
 		return
 	}
-	err = util.Copy(&stats, resp.List)
+	for _, p := range resp.List {
+		stats = append(stats, &OptionVolumeStats{
+			Symbol:       p.Symbol,
+			CallVolume:   p.CallVolume,
+			PutVolume:    p.PutVolume,
+			CallPutRatio: parseDecimalOpt(p.CallPutRatio),
+		})
+	}
 	return
 }
 
@@ -579,7 +596,14 @@ func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, cou
 		return
 	}
 	stat = &OptionVolumeDailyStat{Symbol: resp.Symbol}
-	err = util.Copy(&stat.Items, resp.Items)
+	for _, p := range resp.Items {
+		stat.Items = append(stat.Items, &DailyOptionVolume{
+			Date:         p.Date,
+			CallVolume:   p.CallVolume,
+			PutVolume:    p.PutVolume,
+			CallPutRatio: parseDecimalOpt(p.CallPutRatio),
+		})
+	}
 	return
 }
 
@@ -645,4 +669,15 @@ func New(opt ...Option) (*QuoteContext, error) {
 		core: core,
 	}
 	return tc, nil
+}
+
+func parseDecimalOpt(s string) *decimal.Decimal {
+	if s == "" {
+		return nil
+	}
+	d, err := decimal.NewFromString(s)
+	if err != nil {
+		return nil
+	}
+	return &d
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/longbridge/openapi-go/alert/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/util"
 )
 
 // AlertContext is a client for price alert management.
@@ -55,7 +56,7 @@ func (c *AlertContext) List(ctx context.Context) (*AlertList, error) {
 	result := &AlertList{}
 	for _, g := range resp.Lists {
 		group := &AlertSymbolGroup{
-			Symbol:  jsontypes.CounterIDToSymbol(g.CounterId),
+			Symbol:  util.CounterIDToSymbol(g.CounterId),
 			Code:    g.Code,
 			Market:  g.Market,
 			Name:    g.Name,
@@ -83,7 +84,7 @@ func (c *AlertContext) List(ctx context.Context) (*AlertList, error) {
 
 // Add creates a new price alert.
 func (c *AlertContext) Add(ctx context.Context, symbol string, condition AlertCondition, triggerValue string, frequency AlertFrequency) error {
-	counterID := jsontypes.SymbolToCounterID(symbol)
+	counterID := util.SymbolToCounterID(symbol)
 	var key string
 	switch condition {
 	case AlertConditionPriceRise, AlertConditionPriceFall:

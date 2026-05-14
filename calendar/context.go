@@ -3,13 +3,13 @@ package calendar
 import (
 	"context"
 	"net/url"
-	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/longbridge/openapi-go/calendar/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/util"
 )
 
 // CalendarContext is a client for financial calendar events.
@@ -57,7 +57,7 @@ func (c *CalendarContext) FinanceCalendar(ctx context.Context, category Calendar
 		group := &CalendarDateGroup{Date: g.Date, Count: g.Count}
 		for _, info := range g.Infos {
 			event := &CalendarEventInfo{
-				Symbol:              counterIDToSymbol(info.CounterId),
+				Symbol:              util.CounterIDToSymbol(info.CounterId),
 				Market:              info.Market,
 				Content:             info.Content,
 				CounterName:         info.CounterName,
@@ -86,12 +86,4 @@ func (c *CalendarContext) FinanceCalendar(ctx context.Context, category Calendar
 		result.List = append(result.List, group)
 	}
 	return result, nil
-}
-
-func counterIDToSymbol(counterID string) string {
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return parts[2] + "." + parts[1]
-	}
-	return counterID
 }
