@@ -63,6 +63,9 @@ type Config struct {
 	// OAuthClient is set when using OAuth 2.0 with auto-refresh (see WithOAuthClient).
 	OAuthClient *oauth.OAuth
 
+	// ExtraHeaders are additional HTTP headers injected into every request.
+	ExtraHeaders map[string]string
+
 	// longbridge protocol config
 	AuthTimeout    time.Duration `env:"LONGBRIDGE_AUTH_TIMEOUT,LONGPORT_AUTH_TIMEOUT" yaml:"auth_timeout" toml:"auth_timeout"`
 	Timeout        time.Duration `env:"LONGBRIDGE_TIMEOUT,LONGPORT_TIMEOUT" yaml:"timeout" toml:"timeout"`
@@ -88,6 +91,15 @@ func (c *Config) SetLogger(l log.Logger) {
 
 func (c *Config) Logger() log.Logger {
 	return c.logger
+}
+
+// WithHeader adds a key/value pair to ExtraHeaders and returns c for chaining.
+func (c *Config) WithHeader(key, value string) *Config {
+	if c.ExtraHeaders == nil {
+		c.ExtraHeaders = make(map[string]string)
+	}
+	c.ExtraHeaders[key] = value
+	return c
 }
 
 func New(opts ...Option) (configData *Config, err error) {

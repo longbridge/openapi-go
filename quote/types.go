@@ -30,6 +30,7 @@ type (
 	SecurityListCategory    string
 	WatchlistUpdateMode     string
 	CandlestickTradeSession int32
+	PinnedMode              int32
 )
 
 const (
@@ -195,6 +196,11 @@ const (
 	//   it will become BABA.US, AAPL.US, MSFT.US,
 	//   removing TSLA.US and adding MSFT.US, while adjusting the order of BABA.US and AAPL.US.
 	ReplaceWatchlist WatchlistUpdateMode = "replace"
+)
+
+const (
+	PinnedModePin   PinnedMode = 1
+	PinnedModeUnpin PinnedMode = 2
 )
 
 // PushQuote is quote info push from server
@@ -549,6 +555,7 @@ type WatchedSecurity struct {
 	Name      string
 	Price     *decimal.Decimal
 	WatchedAt int64 // timestamp
+	IsPinned  bool
 }
 
 // WatchedGroup a group of the security is watched
@@ -700,4 +707,36 @@ func CandlestickRequestTradeSession(session CandlestickTradeSession) Candlestick
 	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
 		req.TradeSession = int32(session)
 	}
+}
+
+// ShortPosition is the short position data for a security.
+type ShortPosition struct {
+	Symbol            string
+	Date              string
+	ShortSellQty      int64
+	MarketTurnover    *decimal.Decimal
+	ShortSellTurnover *decimal.Decimal
+	ShortSellRatio    *decimal.Decimal
+}
+
+// OptionVolumeStats is the option volume statistics for a security.
+type OptionVolumeStats struct {
+	Symbol       string
+	CallVolume   int64
+	PutVolume    int64
+	CallPutRatio *decimal.Decimal
+}
+
+// DailyOptionVolume is the option volume data for a single day.
+type DailyOptionVolume struct {
+	Date         string
+	CallVolume   int64
+	PutVolume    int64
+	CallPutRatio *decimal.Decimal
+}
+
+// OptionVolumeDailyStat is the daily option volume history for a security.
+type OptionVolumeDailyStat struct {
+	Symbol string
+	Items  []*DailyOptionVolume
 }

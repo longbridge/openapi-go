@@ -2,7 +2,9 @@ package quote
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -445,9 +447,9 @@ func (c *QuoteContext) CreateWatchlistGroup(ctx context.Context, name string, sy
 //
 // Example:
 //
-//  qctx, err := quote.NewFromCfg(conf)
-//  // ignore handle error
-//  err = qctx.DeleteWatchlistGroup(context.Background(), 1, false)
+//	qctx, err := quote.NewFromCfg(conf)
+//	// ignore handle error
+//	err = qctx.DeleteWatchlistGroup(context.Background(), 1, false)
 
 func (c *QuoteContext) DeleteWatchlistGroup(ctx context.Context, id int64, purge bool) (err error) {
 	var resp struct{}
@@ -463,9 +465,9 @@ func (c *QuoteContext) DeleteWatchlistGroup(ctx context.Context, id int64, purge
 //
 // Example:
 //
-//  qctx, err := quote.NewFromCfg(conf)
-//  // ignore handle error
-//  err = qctx.UpdateWatchlistGroup(context.Background(), 1, "test", []string{"AAPL.US"}, quote.AddWatchlist)
+//	qctx, err := quote.NewFromCfg(conf)
+//	// ignore handle error
+//	err = qctx.UpdateWatchlistGroup(context.Background(), 1, "test", []string{"AAPL.US"}, quote.AddWatchlist)
 
 func (c *QuoteContext) UpdateWatchlistGroup(ctx context.Context, id int64, name string, symbols []string, mode WatchlistUpdateMode) (err error) {
 	var resp struct{}
@@ -483,9 +485,9 @@ func (c *QuoteContext) UpdateWatchlistGroup(ctx context.Context, id int64, name 
 //
 // Example:
 //
-//  qctx, err := quote.NewFromCfg(conf)
-//  // ignore handle error
-//  err = qctx.WatchedGroups(context.Background())
+//	qctx, err := quote.NewFromCfg(conf)
+//	// ignore handle error
+//	err = qctx.WatchedGroups(context.Background())
 
 func (c *QuoteContext) WatchedGroups(ctx context.Context) (groupList []*WatchedGroup, err error) {
 	var resp jsontypes.WatchedGroupList
@@ -534,6 +536,61 @@ func (c *QuoteContext) SecurityList(ctx context.Context, market openapi.Market, 
 	}
 	err = util.Copy(&list, resp.List)
 	return
+}
+
+// ShortPositions returns the short selling position statistics for the given symbols.
+func (c *QuoteContext) ShortPositions(ctx context.Context, symbols []string) (positions []*ShortPosition, err error) {
+	var resp jsontypes.ShortPositionsResponse
+	values := url.Values{}
+	for _, s := range symbols {
+		values.Add("symbol", s)
+	}
+	err = c.opts.httpClient.Get(ctx, "/v1/quote/short_position", values, &resp)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&positions, resp.List)
+	return
+}
+
+// OptionVolume returns the option chain volume statistics for the given symbols.
+func (c *QuoteContext) OptionVolume(ctx context.Context, symbols []string) (stats []*OptionVolumeStats, err error) {
+	var resp jsontypes.OptionVolumeResponse
+	values := url.Values{}
+	for _, s := range symbols {
+		values.Add("symbol", s)
+	}
+	err = c.opts.httpClient.Get(ctx, "/v1/quote/option-chain/volume", values, &resp)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&stats, resp.List)
+	return
+}
+
+// OptionVolumeDaily returns the daily option chain volume history for a symbol.
+func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, count int32) (stat *OptionVolumeDailyStat, err error) {
+	var resp jsontypes.OptionVolumeDailyResponse
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	values.Add("count", strconv.FormatInt(int64(count), 10))
+	err = c.opts.httpClient.Get(ctx, "/v1/quote/option-chain/volume/daily", values, &resp)
+	if err != nil {
+		return
+	}
+	stat = &OptionVolumeDailyStat{Symbol: resp.Symbol}
+	err = util.Copy(&stat.Items, resp.Items)
+	return
+}
+
+// UpdatePinned pins or unpins a security within a watchlist group.
+func (c *QuoteContext) UpdatePinned(ctx context.Context, groupId int64, symbol string, mode PinnedMode) error {
+	return c.opts.httpClient.Put(ctx,
+		fmt.Sprintf("/v1/watchlist/groups/%d/securities/is_pinned", groupId),
+		map[string]interface{}{
+			"symbol": symbol,
+			"mode":   mode,
+		}, nil)
 }
 
 // Close

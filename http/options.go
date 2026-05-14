@@ -26,6 +26,9 @@ type Options struct {
 
 	// OAuthClient when set: token and app key are taken from it (auto-refresh).
 	OAuthClient *oauth.OAuth
+
+	// ExtraHeaders are injected into every outgoing request.
+	ExtraHeaders map[string]string
 }
 
 // Option for http client
@@ -98,6 +101,15 @@ func WithLanguage(language openapi.Language) Option {
 func WithOAuthClient(o *oauth.OAuth) Option {
 	return func(opts *Options) {
 		opts.OAuthClient = o
+	}
+}
+
+// WithExtraHeaders sets additional headers injected into every request.
+func WithExtraHeaders(headers map[string]string) Option {
+	return func(opts *Options) {
+		if headers != nil {
+			opts.ExtraHeaders = headers
+		}
 	}
 }
 
