@@ -147,6 +147,9 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	req.Header.Add("accept-language", string(c.opts.Language))
 	req.Header.Add("x-api-key", appKey)
 	req.Header.Add("authorization", accessToken)
+	for k, v := range c.opts.ExtraHeaders {
+		req.Header.Set(k, v)
+	}
 	if ro.Header != nil {
 		for k, v := range ro.Header {
 			req.Header[k] = v
@@ -252,6 +255,7 @@ func NewFromCfg(c *config.Config) (*Client, error) {
 		WithClient(c.Client),
 		WithURL(url),
 		WithLanguage(c.Language),
+		WithExtraHeaders(c.ExtraHeaders),
 	}
 	if c.OAuthClient != nil {
 		opts = append(opts, WithOAuthClient(c.OAuthClient))

@@ -2,7 +2,9 @@ package quote
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -521,6 +523,89 @@ func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*Fil
 	return
 }
 
+// ShortPositions returns short interest data for a US security.
+// Path: GET /v1/quote/short-positions/us
+func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string) (*ShortPositionStats, error) {
+	var resp jsontypes.ShortPositionStats
+	values := url.Values{}
+	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("last_timestamp", "0")
+	values.Set("page_size", "100")
+	if err := c.opts.httpClient.Get(ctx, "/v1/quote/short-positions/us", values, &resp); err != nil {
+		return nil, err
+	}
+	stats := &ShortPositionStats{
+		Symbol:  resp.Symbol,
+		Sources: resp.Sources,
+	}
+	stats.Data = make([]*ShortPosition, 0, len(resp.Data))
+	for _, d := range resp.Data {
+		stats.Data = append(stats.Data, &ShortPosition{
+			Timestamp:           d.Timestamp,
+			Rate:                d.Rate,
+			AvgDailyShareVolume: d.AvgDailyShareVolume,
+			CurrentSharesShort:  d.CurrentSharesShort,
+			DaysToCover:         d.DaysToCover,
+			Close:               d.Close,
+		})
+	}
+	return stats, nil
+}
+
+// OptionVolume returns aggregated call/put volume stats for a security.
+// Path: GET /v1/quote/option-volume-stats
+func (c *QuoteContext) OptionVolume(ctx context.Context, symbol string) (*OptionVolumeStats, error) {
+	var resp jsontypes.OptionVolumeStats
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	if err := c.opts.httpClient.Get(ctx, "/v1/quote/option-volume-stats", values, &resp); err != nil {
+		return nil, err
+	}
+	return &OptionVolumeStats{
+		CallVolume: resp.CallVolume,
+		PutVolume:  resp.PutVolume,
+	}, nil
+}
+
+// OptionVolumeDaily returns daily option volume data for a security within a time range.
+// Path: GET /v1/quote/option-volume-stats/daily
+func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, start time.Time, end time.Time) ([]*DailyOptionVolume, error) {
+	var resp jsontypes.OptionVolumeDaily
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	values.Add("start", start.Format("2006-01-02"))
+	values.Add("end", end.Format("2006-01-02"))
+	if err := c.opts.httpClient.Get(ctx, "/v1/quote/option-volume-stats/daily", values, &resp); err != nil {
+		return nil, err
+	}
+	result := make([]*DailyOptionVolume, 0, len(resp.Stats))
+	for _, s := range resp.Stats {
+		result = append(result, &DailyOptionVolume{
+			Symbol:                   s.Symbol,
+			Timestamp:                s.Timestamp,
+			TotalVolume:              s.TotalVolume,
+			TotalPutVolume:           s.TotalPutVolume,
+			TotalCallVolume:          s.TotalCallVolume,
+			PutCallVolumeRatio:       s.PutCallVolumeRatio,
+			TotalOpenInterest:        s.TotalOpenInterest,
+			TotalPutOpenInterest:     s.TotalPutOpenInterest,
+			TotalCallOpenInterest:    s.TotalCallOpenInterest,
+			PutCallOpenInterestRatio: s.PutCallOpenInterestRatio,
+		})
+	}
+	return result, nil
+}
+
+// UpdatePinned pins or unpins securities in the watchlist.
+// Path: POST /v1/watchlist/pinned
+func (c *QuoteContext) UpdatePinned(ctx context.Context, mode PinnedMode, symbols []string) error {
+	var resp struct{}
+	return c.opts.httpClient.Post(ctx, "/v1/watchlist/pinned", map[string]interface{}{
+		"mode":       mode.String(),
+		"securities": symbols,
+	}, &resp)
+}
+
 // SecurityList used to list securities. Doc: https://open.longbridge.com/en/docs/quote/security/security_list
 func (c *QuoteContext) SecurityList(ctx context.Context, market openapi.Market, category SecurityListCategory) (list []*Security, err error) {
 	var resp jsontypes.SecurityList
@@ -588,4 +673,14 @@ func New(opt ...Option) (*QuoteContext, error) {
 		core: core,
 	}
 	return tc, nil
+}
+
+// quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints
+// that require the internal counter_id format.
+func quoteSymbolToCounterID(symbol string) string {
+	idx := strings.LastIndex(symbol, ".")
+	if idx < 0 {
+		return symbol
+	}
+	return fmt.Sprintf("ST/%s/%s", strings.ToUpper(symbol[idx+1:]), symbol[:idx])
 }
