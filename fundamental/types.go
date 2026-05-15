@@ -977,3 +977,257 @@ type RatingLeafIndicator struct {
 	// Letter grade.
 	Letter string
 }
+
+// ── industry_rank enums ───────────────────────────────────────────
+
+// IndustryRankIndicator identifies the metric used for industry ranking.
+type IndustryRankIndicator string
+
+const (
+	// IndustryRankIndicator0 is indicator 0.
+	IndustryRankIndicator0 IndustryRankIndicator = "0"
+	// IndustryRankIndicator1 is indicator 1.
+	IndustryRankIndicator1 IndustryRankIndicator = "1"
+	// IndustryRankIndicator2 is indicator 2.
+	IndustryRankIndicator2 IndustryRankIndicator = "2"
+	// IndustryRankIndicator3 is indicator 3.
+	IndustryRankIndicator3 IndustryRankIndicator = "3"
+	// IndustryRankIndicator4 is indicator 4.
+	IndustryRankIndicator4 IndustryRankIndicator = "4"
+	// IndustryRankIndicator5 is indicator 5.
+	IndustryRankIndicator5 IndustryRankIndicator = "5"
+	// IndustryRankIndicator6 is indicator 6.
+	IndustryRankIndicator6 IndustryRankIndicator = "6"
+	// IndustryRankIndicator7 is indicator 7.
+	IndustryRankIndicator7 IndustryRankIndicator = "7"
+)
+
+// IndustryRankSortType specifies the sort direction for industry ranking.
+type IndustryRankSortType string
+
+const (
+	// IndustryRankSortTypeAscending sorts ascending.
+	IndustryRankSortTypeAscending IndustryRankSortType = "0"
+	// IndustryRankSortTypeDescending sorts descending.
+	IndustryRankSortTypeDescending IndustryRankSortType = "1"
+)
+
+// ── business_segments ─────────────────────────────────────────────
+
+// BusinessSegments is the response for FundamentalContext.BusinessSegments.
+type BusinessSegments struct {
+	// Report date.
+	Date string
+	// Total revenue.
+	Total string
+	// Reporting currency.
+	Currency string
+	// Business segment breakdown.
+	Business []BusinessSegmentItem
+}
+
+// BusinessSegmentItem is one business segment entry (latest snapshot).
+type BusinessSegmentItem struct {
+	// Segment name.
+	Name string
+	// Percentage of total revenue.
+	Percent string
+}
+
+// BusinessSegmentsHistory is the response for
+// FundamentalContext.BusinessSegmentsHistory.
+type BusinessSegmentsHistory struct {
+	// Historical snapshots.
+	Historical []BusinessSegmentsHistoricalItem
+}
+
+// BusinessSegmentsHistoricalItem is one historical business segments snapshot.
+type BusinessSegmentsHistoricalItem struct {
+	// Report date.
+	Date string
+	// Total revenue.
+	Total string
+	// Reporting currency.
+	Currency string
+	// Business segment breakdown.
+	Business []BusinessSegmentHistoryItem
+	// Regional breakdown.
+	Regionals []BusinessSegmentHistoryItem
+}
+
+// BusinessSegmentHistoryItem is one business/regional segment entry in a
+// historical snapshot.
+type BusinessSegmentHistoryItem struct {
+	// Segment name.
+	Name string
+	// Percentage of total.
+	Percent string
+	// Absolute value.
+	Value string
+}
+
+// ── institution_rating_views ──────────────────────────────────────
+
+// InstitutionRatingViews is the response for
+// FundamentalContext.InstitutionRatingViews.
+type InstitutionRatingViews struct {
+	// Historical rating distribution snapshots.
+	Elist []InstitutionRatingViewItem
+}
+
+// InstitutionRatingViewItem is one historical rating distribution snapshot.
+type InstitutionRatingViewItem struct {
+	// Date of the snapshot.
+	Date time.Time
+	// Number of "Buy" ratings.
+	Buy int32
+	// Number of "Outperform" ratings.
+	Over int32
+	// Number of "Hold" ratings.
+	Hold int32
+	// Number of "Underperform" ratings.
+	Under int32
+	// Number of "Sell" ratings.
+	Sell int32
+	// Total analyst count.
+	Total int32
+}
+
+// ── industry_rank ─────────────────────────────────────────────────
+
+// IndustryRankResponse is the response for FundamentalContext.IndustryRank.
+type IndustryRankResponse struct {
+	// Grouped rank items.
+	Items []IndustryRankGroup
+}
+
+// IndustryRankGroup is a group of ranked industry items.
+type IndustryRankGroup struct {
+	// Items in this group.
+	Lists []IndustryRankItem
+}
+
+// IndustryRankItem is one ranked industry item.
+type IndustryRankItem struct {
+	// Industry / sector name.
+	Name string
+	// Counter ID of the industry.
+	CounterID string
+	// Change percentage.
+	Chg string
+	// Name of the leading stock.
+	LeadingName string
+	// Ticker of the leading stock.
+	LeadingTicker string
+	// Change percentage of the leading stock.
+	LeadingChg string
+	// Value label name.
+	ValueName string
+	// Value data.
+	ValueData string
+}
+
+// ── industry_peers ────────────────────────────────────────────────
+
+// IndustryPeersResponse is the response for FundamentalContext.IndustryPeers.
+type IndustryPeersResponse struct {
+	// Top-level industry node info.
+	Top IndustryPeersTop
+	// Root peer chain node (nil if no data).
+	Chain *IndustryPeerNode
+}
+
+// IndustryPeersTop holds the top-level industry info.
+type IndustryPeersTop struct {
+	// Industry name.
+	Name string
+	// Market code.
+	Market string
+}
+
+// IndustryPeerNode is a node in the recursive industry peer chain.
+type IndustryPeerNode struct {
+	// Node name.
+	Name string
+	// Counter ID.
+	CounterID string
+	// Number of stocks in this node.
+	StockNum string
+	// Change percentage.
+	Chg string
+	// Year-to-date change.
+	YtdChg string
+	// Child nodes (recursive).
+	Next []IndustryPeerNode
+}
+
+// ── financial_report_snapshot ─────────────────────────────────────
+
+// FinancialReportSnapshot is the response for
+// FundamentalContext.FinancialReportSnapshot.
+type FinancialReportSnapshot struct {
+	// Company name.
+	Name string
+	// Ticker code.
+	Ticker string
+	// Fiscal period start date.
+	FpStart string
+	// Fiscal period end date.
+	FpEnd string
+	// Reporting currency.
+	Currency string
+	// Report description.
+	ReportDesc string
+	// Forecast revenue.
+	FoRevenue *SnapshotForecastMetric
+	// Forecast EBIT.
+	FoEbit *SnapshotForecastMetric
+	// Forecast EPS.
+	FoEps *SnapshotForecastMetric
+	// Reported revenue.
+	FrRevenue *SnapshotReportedMetric
+	// Reported net profit.
+	FrProfit *SnapshotReportedMetric
+	// Reported operating cash flow.
+	FrOperateCash *SnapshotReportedMetric
+	// Reported investing cash flow.
+	FrInvestCash *SnapshotReportedMetric
+	// Reported financing cash flow.
+	FrFinanceCash *SnapshotReportedMetric
+	// Reported total assets.
+	FrTotalAssets *SnapshotReportedMetric
+	// Reported total liabilities.
+	FrTotalLiability *SnapshotReportedMetric
+	// ROE TTM.
+	FrRoeTtm string
+	// Profit margin.
+	FrProfitMargin string
+	// Profit margin TTM.
+	FrProfitMarginTtm string
+	// Asset turnover TTM.
+	FrAssetTurnTtm string
+	// Leverage TTM.
+	FrLeverageTtm string
+	// Debt-to-assets ratio.
+	FrDebtAssetsRatio string
+}
+
+// SnapshotForecastMetric is a forecast metric in the financial report snapshot.
+type SnapshotForecastMetric struct {
+	// Actual value.
+	Value string
+	// Year-over-year change.
+	Yoy string
+	// Beat/miss description.
+	CmpDesc string
+	// Consensus estimate value.
+	EstValue string
+}
+
+// SnapshotReportedMetric is a reported metric in the financial report snapshot.
+type SnapshotReportedMetric struct {
+	// Actual value.
+	Value string
+	// Year-over-year change.
+	Yoy string
+}
