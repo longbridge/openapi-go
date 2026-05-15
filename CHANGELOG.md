@@ -1,5 +1,24 @@
 # Changelog
 
+## [v4.1.0] - 2026-05-14
+
+### Added
+
+- New `alert` package with `AlertContext` for price alert management: `List`, `Add`, `Update`, `Delete`.
+- New `calendar` package with `CalendarContext` for the finance calendar: `FinanceCalendar` (earnings, dividends, IPOs, macro data, market closures).
+- New `dca` package with `DCAContext` for dollar-cost-averaging plan management: `List`, `Create`, `Update`, `Pause`, `Resume`, `Stop`, `History`, `Stats`, `CheckSupport`, `CalcDate`, `SetReminder`.
+- New `fundamental` package with `FundamentalContext` covering financial reports, analyst ratings, dividends, EPS forecasts, consensus estimates, valuation (PE/PB/PS), industry valuation, company overview, executives, shareholders, fund holders, corporate actions, investor relations, operating reports, buyback data, and stock ratings (20 methods).
+- New `market` package with `MarketContext` for market-level data: `MarketStatus`, `BrokerHolding`, `BrokerHoldingDetail`, `BrokerHoldingDaily`, `AhPremium`, `AhPremiumIntraday`, `TradeStats`, `Anomaly`, `Constituent`.
+- New `portfolio` package with `PortfolioContext` for portfolio analysis: `ExchangeRate`, `ProfitAnalysis`, `ProfitAnalysisByMarket`, `ProfitAnalysisDetail`, `ProfitAnalysisFlows`.
+- New `sharelist` package with `SharelistContext` for community sharelist management: `List`, `Detail`, `Popular`, `Create`, `Delete`, `AddSecurities`, `RemoveSecurities`, `SortSecurities`.
+- `QuoteContext` gains four new methods: `ShortPositions`, `OptionVolume`, `OptionVolumeDaily`, `UpdatePinned`.
+- `WatchedSecurity` gains a new `IsPinned bool` field.
+- `Config` gains `ExtraHeaders map[string]string` and `WithHeader(key, value string) *Config` for injecting custom HTTP headers into every request.
+
+### Fixed
+
+- `AlertContext.enable` and `AlertContext.disable` (from prior drafts) replaced by a single `AlertContext.Update(item)` method, matching the v4.1.0 breaking change in the Rust SDK.
+
 ## [0.23.0] - 2026-03-30
 
 ### Added

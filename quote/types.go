@@ -30,6 +30,7 @@ type (
 	SecurityListCategory    string
 	WatchlistUpdateMode     string
 	CandlestickTradeSession int32
+	PinnedMode              int32
 )
 
 const (
@@ -549,6 +550,7 @@ type WatchedSecurity struct {
 	Name      string
 	Price     *decimal.Decimal
 	WatchedAt int64 // timestamp
+	IsPinned  bool
 }
 
 // WatchedGroup a group of the security is watched
@@ -690,6 +692,79 @@ type MarketPackageDetail struct {
 	MarketCode string
 	Limit      int32
 	Burst      int32
+}
+
+// PinnedMode constants for UpdatePinned
+const (
+	// PinnedModeAdd pins securities to the top of the watchlist
+	PinnedModeAdd PinnedMode = iota
+	// PinnedModeRemove unpins securities from the top of the watchlist
+	PinnedModeRemove
+)
+
+func (m PinnedMode) String() string {
+	if m == PinnedModeRemove {
+		return "remove"
+	}
+	return "add"
+}
+
+// ShortPosition is a single short interest data point
+type ShortPosition struct {
+	// Settlement date (unix timestamp string)
+	Timestamp string
+	// Short interest as a ratio of float shares
+	Rate string
+	// Average daily share volume
+	AvgDailyShareVolume string
+	// Current shares short
+	CurrentSharesShort string
+	// Days to cover (short ratio)
+	DaysToCover string
+	// Closing price on the settlement date
+	Close string
+}
+
+// ShortPositionStats contains short interest data for a security
+type ShortPositionStats struct {
+	// Security symbol
+	Symbol string
+	// Short interest data points
+	Data []*ShortPosition
+	// Number of data sources
+	Sources int32
+}
+
+// OptionVolumeStats contains aggregated call/put volume for a security
+type OptionVolumeStats struct {
+	// Total call volume
+	CallVolume string
+	// Total put volume
+	PutVolume string
+}
+
+// DailyOptionVolume is a single daily option volume data point
+type DailyOptionVolume struct {
+	// Underlying security symbol
+	Symbol string
+	// Settlement date (unix timestamp string)
+	Timestamp string
+	// Total option volume (calls + puts)
+	TotalVolume string
+	// Total put volume
+	TotalPutVolume string
+	// Total call volume
+	TotalCallVolume string
+	// Put/call volume ratio
+	PutCallVolumeRatio string
+	// Total open interest
+	TotalOpenInterest string
+	// Total put open interest
+	TotalPutOpenInterest string
+	// Total call open interest
+	TotalCallOpenInterest string
+	// Put/call open interest ratio
+	PutCallOpenInterestRatio string
 }
 
 // CandlestickRequestOption is the option for the candlestick request

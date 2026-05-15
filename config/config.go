@@ -71,11 +71,23 @@ type Config struct {
 	ReadBufferSize int           `env:"LONGBRIDGE_READ_BUFFER_SIZE,LONGPORT_READ_BUFFER_SIZE" yaml:"read_buffer_size" toml:"read_buffer_size"`
 	MinGzipSize    int           `env:"LONGBRIDGE_MIN_GZIP_SIZE,LONGPORT_MIN_GZIP_SIZE" yaml:"min_gzip_size" toml:"min_gzip_size"`
 	Region         Region        `env:"LONGPORT_REGION" yaml:"region" toml:"region"`
+
+	// ExtraHeaders are additional HTTP headers sent with every request.
+	ExtraHeaders map[string]string
 }
 
 // parseConfig is a config for toml/yaml
 type parseConfig struct {
 	Longbridge *Config `toml:"longbridge" yaml:"longbridge"`
+}
+
+// WithHeader adds a custom HTTP header that will be sent with every request.
+func (c *Config) WithHeader(key, value string) *Config {
+	if c.ExtraHeaders == nil {
+		c.ExtraHeaders = make(map[string]string)
+	}
+	c.ExtraHeaders[key] = value
+	return c
 }
 
 func (c *Config) SetLogger(l log.Logger) {
