@@ -236,9 +236,9 @@ func main() {
 	}
 
 	// ══════════════════════════════════════════════════════════
-	// fundamental (26 methods)
+	// fundamental (20 methods)
 	// ══════════════════════════════════════════════════════════
-	fmt.Println("\n=== fundamental.FundamentalContext (26 methods) ===")
+	fmt.Println("\n=== fundamental.FundamentalContext (20 methods) ===")
 	fundCtx, err := fundamental.NewFromCfg(cfg)
 	if err != nil {
 		log.Printf("fundamental.NewFromCfg: %v", err)
@@ -372,72 +372,6 @@ func main() {
 		t.check("Ratings(AAPL.US)", func() error {
 			_, err := fundCtx.Ratings(ctx, sym)
 			return err
-		})
-		// ── new APIs (PR #91) ──────────────────────────────────
-		t.check("BusinessSegments(AAPL.US)", func() error {
-			r, err := fundCtx.BusinessSegments(ctx, sym)
-			if err != nil {
-				return err
-			}
-			fmt.Printf(" (%d segments)", len(r.Business))
-			return nil
-		})
-		t.check("BusinessSegmentsHistory(AAPL.US, qf, \"\")", func() error {
-			r, err := fundCtx.BusinessSegmentsHistory(ctx, sym, "qf", "")
-			if err != nil {
-				return err
-			}
-			fmt.Printf(" (%d periods)", len(r.Historical))
-			return nil
-		})
-		t.check("InstitutionRatingViews(AAPL.US)", func() error {
-			r, err := fundCtx.InstitutionRatingViews(ctx, sym)
-			if err != nil {
-				return err
-			}
-			fmt.Printf(" (%d months)", len(r.Elist))
-			return nil
-		})
-		var bkCounterID string
-		t.check("IndustryRank(US, Indicator0/leading-gainer, Ascending, 10)", func() error {
-			r, err := fundCtx.IndustryRank(ctx, "US", fundamental.IndustryRankIndicator0, fundamental.IndustryRankSortTypeAscending, 10)
-			if err != nil {
-				return err
-			}
-			n := 0
-			for _, g := range r.Items {
-				n += len(g.Lists)
-				for _, item := range g.Lists {
-					if bkCounterID == "" && item.CounterID != "" {
-						bkCounterID = item.CounterID
-					}
-				}
-			}
-			fmt.Printf(" (%d industries, first_id:%s)", n, bkCounterID)
-			return nil
-		})
-		t.check("IndustryPeers(BK/US/..., US, \"\")", func() error {
-			if bkCounterID == "" {
-				bkCounterID = "BK/US/IN00258" // fallback
-			}
-			r, err := fundCtx.IndustryPeers(ctx, bkCounterID, "US", "")
-			if err != nil {
-				return err
-			}
-			children := 0
-			if r.Chain != nil {
-				children = len(r.Chain.Next)
-			}
-			fmt.Printf(" (top:%s children:%d)", r.Top.Name, children)
-			return nil
-		})
-		t.check("FinancialReportSnapshot(AAPL.US)", func() error {
-			r, err := fundCtx.FinancialReportSnapshot(ctx, sym, "", 0, "")
-			if err != nil {
-				return err
-			}
-			fmt.Printf(" (%s %s–%s)", r.Ticker, r.FpStart, r.FpEnd)
-			return nil
 		})
 	}
 
