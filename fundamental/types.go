@@ -1080,17 +1080,17 @@ type InstitutionRatingViewItem struct {
 	// Date of the snapshot.
 	Date time.Time
 	// Number of "Buy" ratings.
-	Buy int32
+	Buy string
 	// Number of "Outperform" ratings.
-	Over int32
+	Over string
 	// Number of "Hold" ratings.
-	Hold int32
+	Hold string
 	// Number of "Underperform" ratings.
-	Under int32
+	Under string
 	// Number of "Sell" ratings.
-	Sell int32
+	Sell string
 	// Total analyst count.
-	Total int32
+	Total string
 }
 
 // ── industry_rank ─────────────────────────────────────────────────
@@ -1152,7 +1152,7 @@ type IndustryPeerNode struct {
 	// Counter ID.
 	CounterID string
 	// Number of stocks in this node.
-	StockNum string
+	StockNum int32
 	// Change percentage.
 	Chg string
 	// Year-to-date change.

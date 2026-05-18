@@ -638,12 +638,12 @@ type InstitutionRatingViews struct {
 // InstitutionRatingViewItem is one historical rating distribution snapshot.
 type InstitutionRatingViewItem struct {
 	Date  json.Number `json:"date"` // int64 or quoted string timestamp
-	Buy   int32       `json:"buy"`
-	Over  int32       `json:"over"`
-	Hold  int32       `json:"hold"`
-	Under int32       `json:"under"`
-	Sell  int32       `json:"sell"`
-	Total int32       `json:"total"`
+	Buy   string      `json:"buy"`
+	Over  string      `json:"over"`
+	Hold  string      `json:"hold"`
+	Under string      `json:"under"`
+	Sell  string      `json:"sell"`
+	Total string      `json:"total"`
 }
 
 // ── industry_rank ─────────────────────────────────────────────────
@@ -687,12 +687,12 @@ type IndustryPeersTop struct {
 
 // IndustryPeerNode is a node in the recursive industry peer chain.
 type IndustryPeerNode struct {
-	Name     string             `json:"name"`
-	CounterID string            `json:"counter_id"`
-	StockNum string             `json:"stock_num"`
-	Chg      string             `json:"chg"`
-	YtdChg   string             `json:"ytd_chg"`
-	Next     []IndustryPeerNode `json:"next"`
+	Name      string             `json:"name"`
+	CounterID string             `json:"counter_id"`
+	StockNum  int32              `json:"stock_num"`
+	Chg       string             `json:"chg"`
+	YtdChg    string             `json:"ytd_chg"`
+	Next      []IndustryPeerNode `json:"next"`
 }
 
 // ── financial_report_snapshot ─────────────────────────────────────
