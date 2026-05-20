@@ -320,17 +320,17 @@ type ConstituentStock struct {
 // StockEventsResponse holds the raw data for market stock events from
 // POST /v1/quote/market/stock-events.
 type StockEventsResponse struct {
-	Data json.RawMessage
+	Data json.RawMessage `json:"data"`
 }
 
 // RankCategoriesResponse holds the raw data for rank categories from
 // GET /v1/quote/market/rank/categories.
 type RankCategoriesResponse struct {
-	Data json.RawMessage
+	Data json.RawMessage `json:"data"`
 }
 
 // RankListResponse holds the raw data for a rank list from
 // GET /v1/quote/market/rank/list.
 type RankListResponse struct {
-	Data json.RawMessage
+	Data json.RawMessage `json:"data"`
 }

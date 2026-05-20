@@ -1120,11 +1120,11 @@ func (c *FundamentalContext) ShareholderTop(
 ) (*ShareholderTopResponse, error) {
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
-	var resp jsontypes.ShareholderTopResponse
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/top", q, &resp); err != nil {
 		return nil, err
 	}
-	return &ShareholderTopResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &ShareholderTopResponse{Data: resp}, nil
 }
 
 // ─── ShareholderDetail ────────────────────────────────────────────────────────
@@ -1140,11 +1140,11 @@ func (c *FundamentalContext) ShareholderDetail(
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("object_id", strconv.FormatInt(objectID, 10))
-	var resp jsontypes.ShareholderDetailResponse
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/holding", q, &resp); err != nil {
 		return nil, err
 	}
-	return &ShareholderDetailResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &ShareholderDetailResponse{Data: resp}, nil
 }
 
 // ─── ValuationComparison ──────────────────────────────────────────────────────
@@ -1175,11 +1175,11 @@ func (c *FundamentalContext) ValuationComparison(
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("currency", currency)
 	q.Set("comparison_counter_ids", string(counterIDsJSON))
-	var resp jsontypes.ValuationComparisonResponse
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/compare/valuation", q, &resp); err != nil {
 		return nil, err
 	}
-	return &ValuationComparisonResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &ValuationComparisonResponse{Data: resp}, nil
 }
 
 // parseTimestampNumber converts a json.Number (int or quoted string) to int64 Unix seconds.

@@ -63,13 +63,11 @@ func symbolToCounterID(symbol string) string {
 //
 // Path: GET /v1/quote/screener/strategies/recommend
 func (c *ScreenerContext) ScreenerRecommendStrategies(ctx context.Context) (*RecommendStrategiesResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategies/recommend", url.Values{}, &resp); err != nil {
 		return nil, err
 	}
-	return &RecommendStrategiesResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &RecommendStrategiesResponse{Data: resp}, nil
 }
 
 // ─── ScreenerUserStrategies ───────────────────────────────────────────────────
@@ -78,13 +76,11 @@ func (c *ScreenerContext) ScreenerRecommendStrategies(ctx context.Context) (*Rec
 //
 // Path: GET /v1/quote/screener/strategies/mine
 func (c *ScreenerContext) ScreenerUserStrategies(ctx context.Context) (*UserStrategiesResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategies/mine", url.Values{}, &resp); err != nil {
 		return nil, err
 	}
-	return &UserStrategiesResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &UserStrategiesResponse{Data: resp}, nil
 }
 
 // ─── ScreenerStrategy ─────────────────────────────────────────────────────────
@@ -95,13 +91,11 @@ func (c *ScreenerContext) ScreenerUserStrategies(ctx context.Context) (*UserStra
 func (c *ScreenerContext) ScreenerStrategy(ctx context.Context, id int64) (*StrategyResponse, error) {
 	q := url.Values{}
 	q.Set("id", fmt.Sprintf("%d", id))
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategy", q, &resp); err != nil {
 		return nil, err
 	}
-	return &StrategyResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &StrategyResponse{Data: resp}, nil
 }
 
 // ─── ScreenerSearch ───────────────────────────────────────────────────────────
@@ -122,13 +116,11 @@ func (c *ScreenerContext) ScreenerSearch(ctx context.Context, market string, str
 	if strategyID != nil {
 		body["strategy_id"] = *strategyID
 	}
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := c.httpClient.Post(ctx, "/v1/quote/screener/search", body, &resp); err != nil {
 		return nil, err
 	}
-	return &ScreenerSearchResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &ScreenerSearchResponse{Data: resp}, nil
 }
 
 // ─── ScreenerIndicators ───────────────────────────────────────────────────────
@@ -137,11 +129,9 @@ func (c *ScreenerContext) ScreenerSearch(ctx context.Context, market string, str
 //
 // Path: GET /v1/quote/screener/indicators
 func (c *ScreenerContext) ScreenerIndicators(ctx context.Context) (*ScreenerIndicatorsResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/screener/indicators", url.Values{}, &resp); err != nil {
 		return nil, err
 	}
-	return &ScreenerIndicatorsResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &ScreenerIndicatorsResponse{Data: resp}, nil
 }

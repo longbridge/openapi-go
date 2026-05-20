@@ -280,26 +280,22 @@ func (m *MarketContext) StockEvents(ctx context.Context, markets []string, sort 
 	if date != "" {
 		body["date"] = date
 	}
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := m.httpClient.Post(ctx, "/v1/quote/market/stock-events", body, &resp); err != nil {
 		return nil, err
 	}
-	return &StockEventsResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &StockEventsResponse{Data: resp}, nil
 }
 
 // RankCategories returns the available rank categories.
 //
 // Path: GET /v1/quote/market/rank/categories
 func (m *MarketContext) RankCategories(ctx context.Context) (*RankCategoriesResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/categories", url.Values{}, &resp); err != nil {
 		return nil, err
 	}
-	return &RankCategoriesResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &RankCategoriesResponse{Data: resp}, nil
 }
 
 // RankList returns the ranked stock list for a given rank key.
@@ -317,13 +313,11 @@ func (m *MarketContext) RankList(ctx context.Context, key string, needArticle bo
 	params.Set("key", key)
 	params.Set("delay_bmp", "false")
 	params.Set("need_article", needArticleStr)
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
+	var resp json.RawMessage
 	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/list", params, &resp); err != nil {
 		return nil, err
 	}
-	return &RankListResponse{Data: json.RawMessage(resp.Data)}, nil
+	return &RankListResponse{Data: resp}, nil
 }
 
 // --- helpers ---
