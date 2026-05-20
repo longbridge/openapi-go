@@ -1117,3 +1117,305 @@ func parseTimestampNumber(n json.Number) int64 {
 	v, _ := strconv.ParseInt(s, 10, 64)
 	return v
 }
+
+// ─── BusinessSegments ─────────────────────────────────────────────────────
+
+// BusinessSegments fetches the latest business segment breakdown for a security.
+//
+// Path: GET /v1/quote/fundamentals/business-segments
+func (c *FundamentalContext) BusinessSegments(
+	ctx context.Context,
+	symbol string,
+) (*BusinessSegments, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	var resp jsontypes.BusinessSegments
+	if err := c.httpClient.Get(ctx, "/v1/quote/fundamentals/business-segments", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertBusinessSegments(&resp), nil
+}
+
+// BusinessSegmentsHistory fetches historical business segment breakdowns for a
+// security.
+//
+// Path: GET /v1/quote/fundamentals/business-segments/history
+func (c *FundamentalContext) BusinessSegmentsHistory(
+	ctx context.Context,
+	symbol string,
+	report string,
+	cate string,
+) (*BusinessSegmentsHistory, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	if report != "" {
+		q.Set("report", report)
+	}
+	if cate != "" {
+		q.Set("cate", cate)
+	}
+	var resp jsontypes.BusinessSegmentsHistory
+	if err := c.httpClient.Get(ctx, "/v1/quote/fundamentals/business-segments/history", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertBusinessSegmentsHistory(&resp), nil
+}
+
+// ─── InstitutionRatingViews ───────────────────────────────────────────────
+
+// InstitutionRatingViews fetches historical institutional rating views for a
+// security.
+//
+// Path: GET /v1/quote/ratings/institutional
+func (c *FundamentalContext) InstitutionRatingViews(
+	ctx context.Context,
+	symbol string,
+) (*InstitutionRatingViews, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	var resp jsontypes.InstitutionRatingViews
+	if err := c.httpClient.Get(ctx, "/v1/quote/ratings/institutional", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertInstitutionRatingViews(&resp), nil
+}
+
+// ─── IndustryRank ─────────────────────────────────────────────────────────
+
+// IndustryRank fetches the industry rank for a market.
+//
+// Path: GET /v1/quote/industry/rank
+//
+// indicator is an IndustryRankIndicator constant ("0"–"7").
+// sortType is an IndustryRankSortType constant ("0" ascending, "1" descending).
+func (c *FundamentalContext) IndustryRank(
+	ctx context.Context,
+	market string,
+	indicator IndustryRankIndicator,
+	sortType IndustryRankSortType,
+	limit int,
+) (*IndustryRankResponse, error) {
+	q := url.Values{}
+	q.Set("market", market)
+	q.Set("indicator", string(indicator))
+	q.Set("sort_type", string(sortType))
+	q.Set("limit", strconv.Itoa(limit))
+	var resp jsontypes.IndustryRankResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/industry/rank", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertIndustryRankResponse(&resp), nil
+}
+
+// ─── IndustryPeers ────────────────────────────────────────────────────────
+
+// IndustryPeers fetches the industry peer chain for a security or industry.
+//
+// Path: GET /v1/quote/industries/peers
+//
+// counterID may be a regular symbol like "AAPL.US" (auto-converted) or an
+// industry counter ID like "BK/US/123" (passed through as-is when it contains
+// a "/").
+func (c *FundamentalContext) IndustryPeers(
+	ctx context.Context,
+	counterID string,
+	market string,
+	industryID string,
+) (*IndustryPeersResponse, error) {
+	// pass industry counter IDs (BK/xx/xx, IN/xx/xx, etc.) through as-is
+	cid := counterID
+	if !strings.Contains(counterID, "/") {
+		cid = symbolToCounterID(counterID)
+	}
+	q := url.Values{}
+	q.Set("type", "1")
+	q.Set("market", market)
+	q.Set("industry_id", industryID)
+	q.Set("counter_id", cid)
+	var resp jsontypes.IndustryPeersResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/industries/peers", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertIndustryPeersResponse(&resp), nil
+}
+
+// ─── FinancialReportSnapshot ──────────────────────────────────────────────
+
+// FinancialReportSnapshot fetches a financial report snapshot (earnings
+// snapshot) for a security.
+//
+// Path: GET /v1/quote/financials/earnings-snapshot
+func (c *FundamentalContext) FinancialReportSnapshot(
+	ctx context.Context,
+	symbol string,
+	report string,
+	fiscalYear int,
+	fiscalPeriod string,
+) (*FinancialReportSnapshot, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	if report != "" {
+		q.Set("report", report)
+	}
+	if fiscalYear != 0 {
+		q.Set("fiscal_year", strconv.Itoa(fiscalYear))
+	}
+	if fiscalPeriod != "" {
+		q.Set("fiscal_period", fiscalPeriod)
+	}
+	var resp jsontypes.FinancialReportSnapshot
+	if err := c.httpClient.Get(ctx, "/v1/quote/financials/earnings-snapshot", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertFinancialReportSnapshot(&resp), nil
+}
+
+// ─── new converters ───────────────────────────────────────────────────────
+
+func convertBusinessSegments(j *jsontypes.BusinessSegments) *BusinessSegments {
+	items := make([]BusinessSegmentItem, 0, len(j.Business))
+	for _, b := range j.Business {
+		items = append(items, BusinessSegmentItem{Name: b.Name, Percent: b.Percent})
+	}
+	return &BusinessSegments{
+		Date:     j.Date,
+		Total:    j.Total,
+		Currency: j.Currency,
+		Business: items,
+	}
+}
+
+func convertBusinessSegmentHistoryItems(js []jsontypes.BusinessSegmentHistoryItem) []BusinessSegmentHistoryItem {
+	out := make([]BusinessSegmentHistoryItem, 0, len(js))
+	for _, b := range js {
+		out = append(out, BusinessSegmentHistoryItem{Name: b.Name, Percent: b.Percent, Value: b.Value})
+	}
+	return out
+}
+
+func convertBusinessSegmentsHistory(j *jsontypes.BusinessSegmentsHistory) *BusinessSegmentsHistory {
+	items := make([]BusinessSegmentsHistoricalItem, 0, len(j.Historical))
+	for _, h := range j.Historical {
+		items = append(items, BusinessSegmentsHistoricalItem{
+			Date:      h.Date,
+			Total:     h.Total,
+			Currency:  h.Currency,
+			Business:  convertBusinessSegmentHistoryItems(h.Business),
+			Regionals: convertBusinessSegmentHistoryItems(h.Regionals),
+		})
+	}
+	return &BusinessSegmentsHistory{Historical: items}
+}
+
+func convertInstitutionRatingViews(j *jsontypes.InstitutionRatingViews) *InstitutionRatingViews {
+	items := make([]InstitutionRatingViewItem, 0, len(j.Elist))
+	for _, e := range j.Elist {
+		items = append(items, InstitutionRatingViewItem{
+			Date:  time.Unix(parseTimestampNumber(e.Date), 0).UTC(),
+			Buy:   e.Buy,
+			Over:  e.Over,
+			Hold:  e.Hold,
+			Under: e.Under,
+			Sell:  e.Sell,
+			Total: e.Total,
+		})
+	}
+	return &InstitutionRatingViews{Elist: items}
+}
+
+func convertIndustryRankResponse(j *jsontypes.IndustryRankResponse) *IndustryRankResponse {
+	groups := make([]IndustryRankGroup, 0, len(j.Items))
+	for _, g := range j.Items {
+		items := make([]IndustryRankItem, 0, len(g.Lists))
+		for _, it := range g.Lists {
+			items = append(items, IndustryRankItem{
+				Name:          it.Name,
+				CounterID:     it.CounterID,
+				Chg:           it.Chg,
+				LeadingName:   it.LeadingName,
+				LeadingTicker: it.LeadingTicker,
+				LeadingChg:    it.LeadingChg,
+				ValueName:     it.ValueName,
+				ValueData:     it.ValueData,
+			})
+		}
+		groups = append(groups, IndustryRankGroup{Lists: items})
+	}
+	return &IndustryRankResponse{Items: groups}
+}
+
+func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
+	if j == nil {
+		return nil
+	}
+	next := make([]IndustryPeerNode, 0, len(j.Next))
+	for i := range j.Next {
+		if converted := convertIndustryPeerNode(&j.Next[i]); converted != nil {
+			next = append(next, *converted)
+		}
+	}
+	return &IndustryPeerNode{
+		Name:      j.Name,
+		CounterID: j.CounterID,
+		StockNum:  j.StockNum,
+		Chg:       j.Chg,
+		YtdChg:    j.YtdChg,
+		Next:      next,
+	}
+}
+
+func convertIndustryPeersResponse(j *jsontypes.IndustryPeersResponse) *IndustryPeersResponse {
+	return &IndustryPeersResponse{
+		Top: IndustryPeersTop{
+			Name:   j.Top.Name,
+			Market: j.Top.Market,
+		},
+		Chain: convertIndustryPeerNode(j.Chain),
+	}
+}
+
+func convertSnapshotForecastMetric(j *jsontypes.SnapshotForecastMetric) *SnapshotForecastMetric {
+	if j == nil {
+		return nil
+	}
+	return &SnapshotForecastMetric{
+		Value:    j.Value,
+		Yoy:      j.Yoy,
+		CmpDesc:  j.CmpDesc,
+		EstValue: j.EstValue,
+	}
+}
+
+func convertSnapshotReportedMetric(j *jsontypes.SnapshotReportedMetric) *SnapshotReportedMetric {
+	if j == nil {
+		return nil
+	}
+	return &SnapshotReportedMetric{Value: j.Value, Yoy: j.Yoy}
+}
+
+func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *FinancialReportSnapshot {
+	return &FinancialReportSnapshot{
+		Name:              j.Name,
+		Ticker:            j.Ticker,
+		FpStart:           j.FpStart,
+		FpEnd:             j.FpEnd,
+		Currency:          j.Currency,
+		ReportDesc:        j.ReportDesc,
+		FoRevenue:         convertSnapshotForecastMetric(j.FoRevenue),
+		FoEbit:            convertSnapshotForecastMetric(j.FoEbit),
+		FoEps:             convertSnapshotForecastMetric(j.FoEps),
+		FrRevenue:         convertSnapshotReportedMetric(j.FrRevenue),
+		FrProfit:          convertSnapshotReportedMetric(j.FrProfit),
+		FrOperateCash:     convertSnapshotReportedMetric(j.FrOperateCash),
+		FrInvestCash:      convertSnapshotReportedMetric(j.FrInvestCash),
+		FrFinanceCash:     convertSnapshotReportedMetric(j.FrFinanceCash),
+		FrTotalAssets:     convertSnapshotReportedMetric(j.FrTotalAssets),
+		FrTotalLiability:  convertSnapshotReportedMetric(j.FrTotalLiability),
+		FrRoeTtm:          j.FrRoeTtm,
+		FrProfitMargin:    j.FrProfitMargin,
+		FrProfitMarginTtm: j.FrProfitMarginTtm,
+		FrAssetTurnTtm:    j.FrAssetTurnTtm,
+		FrLeverageTtm:     j.FrLeverageTtm,
+		FrDebtAssetsRatio: j.FrDebtAssetsRatio,
+	}
+}

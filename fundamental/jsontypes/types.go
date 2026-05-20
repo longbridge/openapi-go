@@ -586,3 +586,154 @@ type RatingLeafIndicator struct {
 	Score     json.RawMessage `json:"score"`
 	Letter    string          `json:"letter"`
 }
+
+// ── business_segments ─────────────────────────────────────────────
+
+// BusinessSegments is the raw response for
+// GET /v1/quote/fundamentals/business-segments.
+type BusinessSegments struct {
+	Date     string                `json:"date"`
+	Total    string                `json:"total"`
+	Currency string                `json:"currency"`
+	Business []BusinessSegmentItem `json:"business"`
+}
+
+// BusinessSegmentItem is one business segment entry (latest snapshot).
+type BusinessSegmentItem struct {
+	Name    string `json:"name"`
+	Percent string `json:"percent"`
+}
+
+// BusinessSegmentsHistory is the raw response for
+// GET /v1/quote/fundamentals/business-segments/history.
+type BusinessSegmentsHistory struct {
+	Historical []BusinessSegmentsHistoricalItem `json:"historical"`
+}
+
+// BusinessSegmentsHistoricalItem is one historical business segments snapshot.
+type BusinessSegmentsHistoricalItem struct {
+	Date      string                        `json:"date"`
+	Total     string                        `json:"total"`
+	Currency  string                        `json:"currency"`
+	Business  []BusinessSegmentHistoryItem  `json:"business"`
+	Regionals []BusinessSegmentHistoryItem  `json:"regionals"`
+}
+
+// BusinessSegmentHistoryItem is one business/regional segment entry in a
+// historical snapshot.
+type BusinessSegmentHistoryItem struct {
+	Name    string `json:"name"`
+	Percent string `json:"percent"`
+	Value   string `json:"value"`
+}
+
+// ── institution_rating_views ──────────────────────────────────────
+
+// InstitutionRatingViews is the raw response for
+// GET /v1/quote/ratings/institutional.
+type InstitutionRatingViews struct {
+	Elist []InstitutionRatingViewItem `json:"elist"`
+}
+
+// InstitutionRatingViewItem is one historical rating distribution snapshot.
+type InstitutionRatingViewItem struct {
+	Date  json.Number `json:"date"` // int64 or quoted string timestamp
+	Buy   string      `json:"buy"`
+	Over  string      `json:"over"`
+	Hold  string      `json:"hold"`
+	Under string      `json:"under"`
+	Sell  string      `json:"sell"`
+	Total string      `json:"total"`
+}
+
+// ── industry_rank ─────────────────────────────────────────────────
+
+// IndustryRankResponse is the raw response for GET /v1/quote/industry/rank.
+type IndustryRankResponse struct {
+	Items []IndustryRankGroup `json:"items"`
+}
+
+// IndustryRankGroup is a group of ranked industry items.
+type IndustryRankGroup struct {
+	Lists []IndustryRankItem `json:"lists"`
+}
+
+// IndustryRankItem is one ranked industry item.
+type IndustryRankItem struct {
+	Name          string `json:"name"`
+	CounterID     string `json:"counter_id"`
+	Chg           string `json:"chg"`
+	LeadingName   string `json:"leading_name"`
+	LeadingTicker string `json:"leading_ticker"`
+	LeadingChg    string `json:"leading_chg"`
+	ValueName     string `json:"value_name"`
+	ValueData     string `json:"value_data"`
+}
+
+// ── industry_peers ────────────────────────────────────────────────
+
+// IndustryPeersResponse is the raw response for
+// GET /v1/quote/industries/peers.
+type IndustryPeersResponse struct {
+	Top   IndustryPeersTop  `json:"top"`
+	Chain *IndustryPeerNode `json:"chain"`
+}
+
+// IndustryPeersTop holds the top-level industry info.
+type IndustryPeersTop struct {
+	Name   string `json:"name"`
+	Market string `json:"market"`
+}
+
+// IndustryPeerNode is a node in the recursive industry peer chain.
+type IndustryPeerNode struct {
+	Name      string             `json:"name"`
+	CounterID string             `json:"counter_id"`
+	StockNum  int32              `json:"stock_num"`
+	Chg       string             `json:"chg"`
+	YtdChg    string             `json:"ytd_chg"`
+	Next      []IndustryPeerNode `json:"next"`
+}
+
+// ── financial_report_snapshot ─────────────────────────────────────
+
+// FinancialReportSnapshot is the raw response for
+// GET /v1/quote/financials/earnings-snapshot.
+type FinancialReportSnapshot struct {
+	Name              string                    `json:"name"`
+	Ticker            string                    `json:"ticker"`
+	FpStart           string                    `json:"fp_start"`
+	FpEnd             string                    `json:"fp_end"`
+	Currency          string                    `json:"currency"`
+	ReportDesc        string                    `json:"report_desc"`
+	FoRevenue         *SnapshotForecastMetric   `json:"fo_revenue"`
+	FoEbit            *SnapshotForecastMetric   `json:"fo_ebit"`
+	FoEps             *SnapshotForecastMetric   `json:"fo_eps"`
+	FrRevenue         *SnapshotReportedMetric   `json:"fr_revenue"`
+	FrProfit          *SnapshotReportedMetric   `json:"fr_profit"`
+	FrOperateCash     *SnapshotReportedMetric   `json:"fr_operate_cash"`
+	FrInvestCash      *SnapshotReportedMetric   `json:"fr_invest_cash"`
+	FrFinanceCash     *SnapshotReportedMetric   `json:"fr_finance_cash"`
+	FrTotalAssets     *SnapshotReportedMetric   `json:"fr_total_assets"`
+	FrTotalLiability  *SnapshotReportedMetric   `json:"fr_total_liability"`
+	FrRoeTtm          string                    `json:"fr_roe_ttm"`
+	FrProfitMargin    string                    `json:"fr_profit_margin"`
+	FrProfitMarginTtm string                    `json:"fr_profit_margin_ttm"`
+	FrAssetTurnTtm    string                    `json:"fr_asset_turn_ttm"`
+	FrLeverageTtm     string                    `json:"fr_leverage_ttm"`
+	FrDebtAssetsRatio string                    `json:"fr_debt_assets_ratio"`
+}
+
+// SnapshotForecastMetric is a forecast metric in the financial report snapshot.
+type SnapshotForecastMetric struct {
+	Value    string `json:"value"`
+	Yoy      string `json:"yoy"`
+	CmpDesc  string `json:"cmp_desc"`
+	EstValue string `json:"est_value"`
+}
+
+// SnapshotReportedMetric is a reported metric in the financial report snapshot.
+type SnapshotReportedMetric struct {
+	Value string `json:"value"`
+	Yoy   string `json:"yoy"`
+}
