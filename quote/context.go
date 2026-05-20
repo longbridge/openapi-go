@@ -524,33 +524,31 @@ func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*Fil
 	return
 }
 
-// ShortPositions returns short interest data for a US security.
-// Path: GET /v1/quote/short-positions/us
-func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string) (*ShortPositionStats, error) {
-	var resp jsontypes.ShortPositionStats
+// ShortPositions returns short interest / short position data for a US or HK security.
+//
+// Market is auto-detected from the symbol suffix:
+//   - ".HK" → GET /v1/quote/short-positions/hk (HKEX daily data)
+//   - otherwise → GET /v1/quote/short-positions/us (FINRA bi-monthly data)
+//
+// count controls the number of records returned (1–100, default 20).
+// Response shape differs by market; raw JSON is returned via ShortPositionsResponse.Data.
+func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count uint32) (*ShortPositionsResponse, error) {
+	isHK := strings.HasSuffix(strings.ToUpper(symbol), ".HK")
+	path := "/v1/quote/short-positions/us"
+	if isHK {
+		path = "/v1/quote/short-positions/hk"
+	}
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
 	values := url.Values{}
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
-	values.Set("last_timestamp", "0")
-	values.Set("page_size", "100")
-	if err := c.opts.httpClient.Get(ctx, "/v1/quote/short-positions/us", values, &resp); err != nil {
+	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	values.Set("count", fmt.Sprintf("%d", count))
+	if err := c.opts.httpClient.Get(ctx, path, values, &resp); err != nil {
 		return nil, err
 	}
-	stats := &ShortPositionStats{
-		Symbol:  resp.Symbol,
-		Sources: resp.Sources,
-	}
-	stats.Data = make([]*ShortPosition, 0, len(resp.Data))
-	for _, d := range resp.Data {
-		stats.Data = append(stats.Data, &ShortPosition{
-			Timestamp:           d.Timestamp,
-			Rate:                d.Rate,
-			AvgDailyShareVolume: d.AvgDailyShareVolume,
-			CurrentSharesShort:  d.CurrentSharesShort,
-			DaysToCover:         d.DaysToCover,
-			Close:               d.Close,
-		})
-	}
-	return stats, nil
+	return &ShortPositionsResponse{Data: json.RawMessage(resp.Data)}, nil
 }
 
 // OptionVolume returns aggregated call/put volume stats for a security.
@@ -676,22 +674,6 @@ func New(opt ...Option) (*QuoteContext, error) {
 	return tc, nil
 }
 
-// HkShortPositions returns short interest position data for a HK security.
-//
-// Path: GET /v1/quote/short-positions/hk
-func (c *QuoteContext) HkShortPositions(ctx context.Context, symbol string, count uint32) (*HkShortPositionsResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
-	values := url.Values{}
-	values.Set("counter_id", quoteSymbolToCounterID(symbol))
-	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
-	values.Set("count", fmt.Sprintf("%d", count))
-	if err := c.opts.httpClient.Get(ctx, "/v1/quote/short-positions/hk", values, &resp); err != nil {
-		return nil, err
-	}
-	return &HkShortPositionsResponse{Data: json.RawMessage(resp.Data)}, nil
-}
 
 // ShortTrades returns short trade records for a HK or US security.
 //

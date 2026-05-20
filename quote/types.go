@@ -726,14 +726,11 @@ type ShortPosition struct {
 	Close string
 }
 
-// ShortPositionStats contains short interest data for a security
-type ShortPositionStats struct {
-	// Security symbol
-	Symbol string
-	// Short interest data points
-	Data []*ShortPosition
-	// Number of data sources
-	Sources int32
+// ShortPositionsResponse holds raw short interest/position data for US or HK.
+// Response shape differs by market: US returns a list under "list", HK returns
+// an array directly. Use json.Unmarshal on Data to parse.
+type ShortPositionsResponse struct {
+	Data json.RawMessage
 }
 
 // OptionVolumeStats contains aggregated call/put volume for a security
@@ -776,12 +773,6 @@ func CandlestickRequestTradeSession(session CandlestickTradeSession) Candlestick
 	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
 		req.TradeSession = int32(session)
 	}
-}
-
-// HkShortPositionsResponse holds the raw data for HK short interest positions
-// from GET /v1/quote/short-positions/hk.
-type HkShortPositionsResponse struct {
-	Data json.RawMessage
 }
 
 // ShortTradesResponse holds the raw data for short trade records
