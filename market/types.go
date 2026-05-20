@@ -1,6 +1,7 @@
 package market
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -314,4 +315,22 @@ type ConstituentStock struct {
 	Chg *decimal.Decimal
 	// Raw trade status code
 	TradeStatus int32
+}
+
+// StockEventsResponse holds the raw data for market stock events from
+// POST /v1/quote/market/stock-events.
+type StockEventsResponse struct {
+	Data json.RawMessage
+}
+
+// RankCategoriesResponse holds the raw data for rank categories from
+// GET /v1/quote/market/rank/categories.
+type RankCategoriesResponse struct {
+	Data json.RawMessage
+}
+
+// RankListResponse holds the raw data for a rank list from
+// GET /v1/quote/market/rank/list.
+type RankListResponse struct {
+	Data json.RawMessage
 }

@@ -1,6 +1,7 @@
 package quote
 
 import (
+	"encoding/json"
 	"time"
 
 	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
@@ -775,4 +776,16 @@ func CandlestickRequestTradeSession(session CandlestickTradeSession) Candlestick
 	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
 		req.TradeSession = int32(session)
 	}
+}
+
+// HkShortPositionsResponse holds the raw data for HK short interest positions
+// from GET /v1/quote/short-positions/hk.
+type HkShortPositionsResponse struct {
+	Data json.RawMessage
+}
+
+// ShortTradesResponse holds the raw data for short trade records
+// from GET /v1/quote/short-trades/hk or /v1/quote/short-trades/us.
+type ShortTradesResponse struct {
+	Data json.RawMessage
 }

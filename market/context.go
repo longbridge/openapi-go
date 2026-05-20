@@ -5,6 +5,7 @@ package market
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -260,6 +261,69 @@ func (m *MarketContext) Constituent(ctx context.Context, symbol string) (*IndexC
 		})
 	}
 	return out, nil
+}
+
+// StockEvents returns market stock events (e.g., earnings, dividends, IPOs).
+//
+// Path: POST /v1/quote/market/stock-events
+//
+// markets is a list of market codes (e.g., ["HK", "US"]).
+// sort controls the sort order (0 = ascending, 1 = descending).
+// date is an optional date filter in "YYYY-MM-DD" format; pass an empty string to omit.
+// limit controls the maximum number of events returned.
+func (m *MarketContext) StockEvents(ctx context.Context, markets []string, sort uint32, date string, limit uint32) (*StockEventsResponse, error) {
+	body := map[string]interface{}{
+		"limit":   limit,
+		"sort":    sort,
+		"markets": markets,
+	}
+	if date != "" {
+		body["date"] = date
+	}
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := m.httpClient.Post(ctx, "/v1/quote/market/stock-events", body, &resp); err != nil {
+		return nil, err
+	}
+	return &StockEventsResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
+// RankCategories returns the available rank categories.
+//
+// Path: GET /v1/quote/market/rank/categories
+func (m *MarketContext) RankCategories(ctx context.Context) (*RankCategoriesResponse, error) {
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/categories", url.Values{}, &resp); err != nil {
+		return nil, err
+	}
+	return &RankCategoriesResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
+// RankList returns the ranked stock list for a given rank key.
+//
+// Path: GET /v1/quote/market/rank/list
+//
+// key is the rank category key returned by RankCategories.
+// needArticle controls whether article content is included in the response.
+func (m *MarketContext) RankList(ctx context.Context, key string, needArticle bool) (*RankListResponse, error) {
+	needArticleStr := "false"
+	if needArticle {
+		needArticleStr = "true"
+	}
+	params := url.Values{}
+	params.Set("key", key)
+	params.Set("delay_bmp", "false")
+	params.Set("need_article", needArticleStr)
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/list", params, &resp); err != nil {
+		return nil, err
+	}
+	return &RankListResponse{Data: json.RawMessage(resp.Data)}, nil
 }
 
 // --- helpers ---

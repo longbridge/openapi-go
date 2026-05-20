@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -673,6 +674,47 @@ func New(opt ...Option) (*QuoteContext, error) {
 		core: core,
 	}
 	return tc, nil
+}
+
+// HkShortPositions returns short interest position data for a HK security.
+//
+// Path: GET /v1/quote/short-positions/hk
+func (c *QuoteContext) HkShortPositions(ctx context.Context, symbol string, count uint32) (*HkShortPositionsResponse, error) {
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
+	values := url.Values{}
+	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	values.Set("count", fmt.Sprintf("%d", count))
+	if err := c.opts.httpClient.Get(ctx, "/v1/quote/short-positions/hk", values, &resp); err != nil {
+		return nil, err
+	}
+	return &HkShortPositionsResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
+// ShortTrades returns short trade records for a HK or US security.
+//
+// The endpoint is automatically chosen based on the symbol suffix:
+//   - ".HK" → GET /v1/quote/short-trades/hk
+//   - ".US" → GET /v1/quote/short-trades/us
+func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uint32) (*ShortTradesResponse, error) {
+	var resp struct {
+		Data json.RawMessage `json:"data"`
+	}
+	values := url.Values{}
+	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	values.Set("page_size", fmt.Sprintf("%d", count))
+
+	path := "/v1/quote/short-trades/hk"
+	if strings.HasSuffix(strings.ToUpper(symbol), ".US") {
+		path = "/v1/quote/short-trades/us"
+	}
+	if err := c.opts.httpClient.Get(ctx, path, values, &resp); err != nil {
+		return nil, err
+	}
+	return &ShortTradesResponse{Data: json.RawMessage(resp.Data)}, nil
 }
 
 // quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints

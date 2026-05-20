@@ -1109,6 +1109,79 @@ func convertStockRatings(j *jsontypes.StockRatings) *StockRatings {
 	}
 }
 
+// ─── ShareholderTop ───────────────────────────────────────────────────────────
+
+// ShareholderTop fetches the top shareholders list for a security.
+//
+// Path: GET /v1/quote/shareholders/top
+func (c *FundamentalContext) ShareholderTop(
+	ctx context.Context,
+	symbol string,
+) (*ShareholderTopResponse, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	var resp jsontypes.ShareholderTopResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/top", q, &resp); err != nil {
+		return nil, err
+	}
+	return &ShareholderTopResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
+// ─── ShareholderDetail ────────────────────────────────────────────────────────
+
+// ShareholderDetail fetches the holding detail for a specific shareholder.
+//
+// Path: GET /v1/quote/shareholders/holding
+func (c *FundamentalContext) ShareholderDetail(
+	ctx context.Context,
+	symbol string,
+	objectID int64,
+) (*ShareholderDetailResponse, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("object_id", strconv.FormatInt(objectID, 10))
+	var resp jsontypes.ShareholderDetailResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/holding", q, &resp); err != nil {
+		return nil, err
+	}
+	return &ShareholderDetailResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
+// ─── ValuationComparison ──────────────────────────────────────────────────────
+
+// ValuationComparison fetches valuation comparison data for a symbol against
+// a set of peer symbols.
+//
+// Path: GET /v1/quote/compare/valuation
+//
+// comparisonSymbols is a list of peer symbols (e.g. ["MSFT.US", "GOOG.US"])
+// that are converted to counter_ids and serialized as a JSON array string in
+// the comparison_counter_ids query parameter.
+func (c *FundamentalContext) ValuationComparison(
+	ctx context.Context,
+	symbol string,
+	currency string,
+	comparisonSymbols []string,
+) (*ValuationComparisonResponse, error) {
+	counterIDs := make([]string, 0, len(comparisonSymbols))
+	for _, s := range comparisonSymbols {
+		counterIDs = append(counterIDs, symbolToCounterID(s))
+	}
+	counterIDsJSON, err := json.Marshal(counterIDs)
+	if err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("currency", currency)
+	q.Set("comparison_counter_ids", string(counterIDsJSON))
+	var resp jsontypes.ValuationComparisonResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/compare/valuation", q, &resp); err != nil {
+		return nil, err
+	}
+	return &ValuationComparisonResponse{Data: json.RawMessage(resp.Data)}, nil
+}
+
 // parseTimestampNumber converts a json.Number (int or quoted string) to int64 Unix seconds.
 func parseTimestampNumber(n json.Number) int64 {
 	s := n.String()
