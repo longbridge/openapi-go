@@ -25,8 +25,8 @@
   - `ValuationComparison` — GET `/v1/quote/compare/valuation`
 
 - **Go:** Two new `QuoteContext` methods:
-  - `ShortPositions(ctx, symbol, count)` — GET `/v1/quote/short-positions/hk` or `/us` (auto-detected from symbol suffix)
-  - `ShortTrades` — GET `/v1/quote/short-trades/hk` or `/us` (auto-detected)
+  - `ShortPositions(ctx, symbol, count)` — GET `/v1/quote/short-positions/hk` or `/v1/quote/short-positions/us` (auto-detected from symbol suffix): short interest / position data for HK or US securities.
+  - `ShortTrades` — GET `/v1/quote/short-trades/hk` or `/v1/quote/short-trades/us` (auto-detected by `.HK`/`.US` suffix): short trade records.
 
 - **Go:** Three new `MarketContext` methods:
   - `TopMovers` — POST `/v1/quote/market/stock-events`: top movers (stocks with unusual price movements) filtered by market codes, sort order, optional date, and limit.
