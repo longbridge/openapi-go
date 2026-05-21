@@ -1231,3 +1231,55 @@ type SnapshotReportedMetric struct {
 	// Year-over-year change.
 	Yoy string
 }
+
+// ── ShareholderTopResponse ────────────────────────────────────────
+
+// ShareholderTopResponse holds the raw data for the top shareholders list.
+// The Data field contains the JSON payload from GET /v1/quote/shareholders/top.
+type ShareholderTopResponse struct {
+	Data json.RawMessage
+}
+
+// ── ShareholderDetailResponse ─────────────────────────────────────
+
+// ShareholderDetailResponse holds the raw data for a single shareholder's
+// holding details from GET /v1/quote/shareholders/holding.
+type ShareholderDetailResponse struct {
+	Data json.RawMessage
+}
+
+// ── ValuationComparisonResponse ───────────────────────────────────
+
+// ValuationHistoryPoint is one historical valuation data point.
+type ValuationHistoryPoint struct {
+	// Date — RFC 3339 (converted from Unix timestamp)
+	Date string
+	Pe   string
+	Pb   string
+	Ps   string
+}
+
+// ValuationComparisonItem is one security in the valuation comparison.
+type ValuationComparisonItem struct {
+	// Symbol — converted from counter_id (e.g. "AAPL.US")
+	Symbol      string
+	Name        string
+	Currency    string
+	MarketValue string
+	PriceClose  string
+	Pe          string
+	Pb          string
+	Ps          string
+	Roe         string
+	Eps         string
+	Bps         string
+	Dps         string
+	DivYld      string
+	Assets      string
+	History     []*ValuationHistoryPoint
+}
+
+// ValuationComparisonResponse is the response for FundamentalContext.ValuationComparison.
+type ValuationComparisonResponse struct {
+	List []*ValuationComparisonItem
+}

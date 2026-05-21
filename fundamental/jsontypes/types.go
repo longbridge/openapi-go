@@ -612,11 +612,11 @@ type BusinessSegmentsHistory struct {
 
 // BusinessSegmentsHistoricalItem is one historical business segments snapshot.
 type BusinessSegmentsHistoricalItem struct {
-	Date      string                        `json:"date"`
-	Total     string                        `json:"total"`
-	Currency  string                        `json:"currency"`
-	Business  []BusinessSegmentHistoryItem  `json:"business"`
-	Regionals []BusinessSegmentHistoryItem  `json:"regionals"`
+	Date      string                       `json:"date"`
+	Total     string                       `json:"total"`
+	Currency  string                       `json:"currency"`
+	Business  []BusinessSegmentHistoryItem `json:"business"`
+	Regionals []BusinessSegmentHistoryItem `json:"regionals"`
 }
 
 // BusinessSegmentHistoryItem is one business/regional segment entry in a
@@ -700,28 +700,28 @@ type IndustryPeerNode struct {
 // FinancialReportSnapshot is the raw response for
 // GET /v1/quote/financials/earnings-snapshot.
 type FinancialReportSnapshot struct {
-	Name              string                    `json:"name"`
-	Ticker            string                    `json:"ticker"`
-	FpStart           string                    `json:"fp_start"`
-	FpEnd             string                    `json:"fp_end"`
-	Currency          string                    `json:"currency"`
-	ReportDesc        string                    `json:"report_desc"`
-	FoRevenue         *SnapshotForecastMetric   `json:"fo_revenue"`
-	FoEbit            *SnapshotForecastMetric   `json:"fo_ebit"`
-	FoEps             *SnapshotForecastMetric   `json:"fo_eps"`
-	FrRevenue         *SnapshotReportedMetric   `json:"fr_revenue"`
-	FrProfit          *SnapshotReportedMetric   `json:"fr_profit"`
-	FrOperateCash     *SnapshotReportedMetric   `json:"fr_operate_cash"`
-	FrInvestCash      *SnapshotReportedMetric   `json:"fr_invest_cash"`
-	FrFinanceCash     *SnapshotReportedMetric   `json:"fr_finance_cash"`
-	FrTotalAssets     *SnapshotReportedMetric   `json:"fr_total_assets"`
-	FrTotalLiability  *SnapshotReportedMetric   `json:"fr_total_liability"`
-	FrRoeTtm          string                    `json:"fr_roe_ttm"`
-	FrProfitMargin    string                    `json:"fr_profit_margin"`
-	FrProfitMarginTtm string                    `json:"fr_profit_margin_ttm"`
-	FrAssetTurnTtm    string                    `json:"fr_asset_turn_ttm"`
-	FrLeverageTtm     string                    `json:"fr_leverage_ttm"`
-	FrDebtAssetsRatio string                    `json:"fr_debt_assets_ratio"`
+	Name              string                  `json:"name"`
+	Ticker            string                  `json:"ticker"`
+	FpStart           string                  `json:"fp_start"`
+	FpEnd             string                  `json:"fp_end"`
+	Currency          string                  `json:"currency"`
+	ReportDesc        string                  `json:"report_desc"`
+	FoRevenue         *SnapshotForecastMetric `json:"fo_revenue"`
+	FoEbit            *SnapshotForecastMetric `json:"fo_ebit"`
+	FoEps             *SnapshotForecastMetric `json:"fo_eps"`
+	FrRevenue         *SnapshotReportedMetric `json:"fr_revenue"`
+	FrProfit          *SnapshotReportedMetric `json:"fr_profit"`
+	FrOperateCash     *SnapshotReportedMetric `json:"fr_operate_cash"`
+	FrInvestCash      *SnapshotReportedMetric `json:"fr_invest_cash"`
+	FrFinanceCash     *SnapshotReportedMetric `json:"fr_finance_cash"`
+	FrTotalAssets     *SnapshotReportedMetric `json:"fr_total_assets"`
+	FrTotalLiability  *SnapshotReportedMetric `json:"fr_total_liability"`
+	FrRoeTtm          string                  `json:"fr_roe_ttm"`
+	FrProfitMargin    string                  `json:"fr_profit_margin"`
+	FrProfitMarginTtm string                  `json:"fr_profit_margin_ttm"`
+	FrAssetTurnTtm    string                  `json:"fr_asset_turn_ttm"`
+	FrLeverageTtm     string                  `json:"fr_leverage_ttm"`
+	FrDebtAssetsRatio string                  `json:"fr_debt_assets_ratio"`
 }
 
 // SnapshotForecastMetric is a forecast metric in the financial report snapshot.
@@ -736,4 +736,25 @@ type SnapshotForecastMetric struct {
 type SnapshotReportedMetric struct {
 	Value string `json:"value"`
 	Yoy   string `json:"yoy"`
+}
+
+// ── shareholder_top ──────────────────────────────────────────────
+
+// ShareholderTopResponse is the raw response for GET /v1/quote/shareholders/top.
+type ShareholderTopResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// ── shareholder_detail ───────────────────────────────────────────
+
+// ShareholderDetailResponse is the raw response for GET /v1/quote/shareholders/holding.
+type ShareholderDetailResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// ── valuation_comparison ─────────────────────────────────────────
+
+// ValuationComparisonResponse is the raw response for GET /v1/quote/compare/valuation.
+type ValuationComparisonResponse struct {
+	Data json.RawMessage `json:"data"`
 }
