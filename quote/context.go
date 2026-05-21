@@ -542,12 +542,16 @@ func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count 
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	values.Set("count", fmt.Sprintf("%d", count))
-	var raw []map[string]json.RawMessage
-	if err := c.opts.httpClient.Get(ctx, path, values, &raw); err != nil {
+	// Response: {"counter_id": "ST/US/AAPL", "data": [{...}]}
+	var outer struct {
+		CounterID string                       `json:"counter_id"`
+		Data      []map[string]json.RawMessage `json:"data"`
+	}
+	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
 		return nil, err
 	}
-	items := make([]*ShortPositionsItem, 0, len(raw))
-	for _, r := range raw {
+	items := make([]*ShortPositionsItem, 0, len(outer.Data))
+	for _, r := range outer.Data {
 		items = append(items, &ShortPositionsItem{
 			Timestamp:           unixSecsToRFC3339(rawStr(r, "timestamp")),
 			Rate:                rawStr(r, "rate"),
@@ -702,12 +706,16 @@ func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uin
 	if strings.HasSuffix(strings.ToUpper(symbol), ".US") {
 		path = "/v1/quote/short-trades/us"
 	}
-	var raw []map[string]json.RawMessage
-	if err := c.opts.httpClient.Get(ctx, path, values, &raw); err != nil {
+	// Response: {"counter_id": "ST/HK/700", "data": [{...}]}
+	var outer struct {
+		CounterID string                       `json:"counter_id"`
+		Data      []map[string]json.RawMessage `json:"data"`
+	}
+	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
 		return nil, err
 	}
-	items := make([]*ShortTradesItem, 0, len(raw))
-	for _, r := range raw {
+	items := make([]*ShortTradesItem, 0, len(outer.Data))
+	for _, r := range outer.Data {
 		items = append(items, &ShortTradesItem{
 			Timestamp:   unixSecsToRFC3339(rawStr(r, "timestamp")),
 			Rate:        rawStr(r, "rate"),
