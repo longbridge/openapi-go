@@ -1,7 +1,6 @@
 package quote
 
 import (
-	"encoding/json"
 	"time"
 
 	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
@@ -710,27 +709,34 @@ func (m PinnedMode) String() string {
 	return "add"
 }
 
-// ShortPosition is a single short interest data point
-type ShortPosition struct {
-	// Settlement date (unix timestamp string)
+// ShortPositionsItem is one short-position record, unified for US and HK.
+// US-specific fields (CurrentSharesShort, AvgDailyShareVolume, DaysToCover)
+// are empty for HK records. HK-specific fields (Amount, Balance, Cost) are
+// empty for US records.
+type ShortPositionsItem struct {
+	// Timestamp — RFC 3339 (e.g. "2024-01-15T00:00:00Z")
 	Timestamp string
-	// Short interest as a ratio of float shares
+	// Rate — short ratio
 	Rate string
-	// Average daily share volume
-	AvgDailyShareVolume string
-	// Current shares short
-	CurrentSharesShort string
-	// Days to cover (short ratio)
-	DaysToCover string
-	// Closing price on the settlement date
+	// Close — closing price
 	Close string
+	// [US only] CurrentSharesShort — number of short shares outstanding
+	CurrentSharesShort string
+	// [US only] AvgDailyShareVolume — average daily share volume
+	AvgDailyShareVolume string
+	// [US only] DaysToCover — days-to-cover ratio
+	DaysToCover string
+	// [HK only] Amount — short sale amount (HKD)
+	Amount string
+	// [HK only] Balance — short position balance
+	Balance string
+	// [HK only] Cost — closing price (HK naming)
+	Cost string
 }
 
-// ShortPositionsResponse holds raw short interest/position data for US or HK.
-// Response shape differs by market: US returns a list under "list", HK returns
-// an array directly. Use json.Unmarshal on Data to parse.
+// ShortPositionsResponse is the response for QuoteContext.ShortPositions.
 type ShortPositionsResponse struct {
-	Data json.RawMessage
+	Data []*ShortPositionsItem
 }
 
 // OptionVolumeStats contains aggregated call/put volume for a security
@@ -775,8 +781,27 @@ func CandlestickRequestTradeSession(session CandlestickTradeSession) Candlestick
 	}
 }
 
-// ShortTradesResponse holds the raw data for short trade records
-// from GET /v1/quote/short-trades/hk or /v1/quote/short-trades/us.
+// ShortTradesItem is one short-trade record, unified for US and HK.
+type ShortTradesItem struct {
+	// Timestamp — RFC 3339
+	Timestamp string
+	// Rate — short ratio
+	Rate string
+	// Close — closing price
+	Close string
+	// [US only] NusAmount — NASDAQ short sale volume
+	NusAmount string
+	// [US only] NyAmount — NYSE short sale volume
+	NyAmount string
+	// [US only] TotalAmount — total trading volume
+	TotalAmount string
+	// [HK only] Amount — short sale turnover amount (HKD)
+	Amount string
+	// [HK only] Balance — short position balance
+	Balance string
+}
+
+// ShortTradesResponse is the response for QuoteContext.ShortTrades.
 type ShortTradesResponse struct {
-	Data json.RawMessage
+	Data []*ShortTradesItem
 }

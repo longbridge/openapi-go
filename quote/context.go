@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -531,24 +532,35 @@ func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*Fil
 //   - otherwise → GET /v1/quote/short-positions/us (FINRA bi-monthly data)
 //
 // count controls the number of records returned (1–100, default 20).
-// Response shape differs by market; raw JSON is returned via ShortPositionsResponse.Data.
 func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count uint32) (*ShortPositionsResponse, error) {
 	isHK := strings.HasSuffix(strings.ToUpper(symbol), ".HK")
 	path := "/v1/quote/short-positions/us"
 	if isHK {
 		path = "/v1/quote/short-positions/hk"
 	}
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
 	values := url.Values{}
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	values.Set("count", fmt.Sprintf("%d", count))
-	if err := c.opts.httpClient.Get(ctx, path, values, &resp); err != nil {
+	var raw []map[string]json.RawMessage
+	if err := c.opts.httpClient.Get(ctx, path, values, &raw); err != nil {
 		return nil, err
 	}
-	return &ShortPositionsResponse{Data: json.RawMessage(resp.Data)}, nil
+	items := make([]*ShortPositionsItem, 0, len(raw))
+	for _, r := range raw {
+		items = append(items, &ShortPositionsItem{
+			Timestamp:           unixSecsToRFC3339(rawStr(r, "timestamp")),
+			Rate:                rawStr(r, "rate"),
+			Close:               rawStr(r, "close"),
+			CurrentSharesShort:  rawStr(r, "current_shares_short"),
+			AvgDailyShareVolume: rawStr(r, "avg_daily_share_volume"),
+			DaysToCover:         rawStr(r, "days_to_cover"),
+			Amount:              rawStr(r, "amount"),
+			Balance:             rawStr(r, "balance"),
+			Cost:                rawStr(r, "cost"),
+		})
+	}
+	return &ShortPositionsResponse{Data: items}, nil
 }
 
 // OptionVolume returns aggregated call/put volume stats for a security.
@@ -681,9 +693,6 @@ func New(opt ...Option) (*QuoteContext, error) {
 //   - ".HK" → GET /v1/quote/short-trades/hk
 //   - ".US" → GET /v1/quote/short-trades/us
 func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uint32) (*ShortTradesResponse, error) {
-	var resp struct {
-		Data json.RawMessage `json:"data"`
-	}
 	values := url.Values{}
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
@@ -693,10 +702,24 @@ func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uin
 	if strings.HasSuffix(strings.ToUpper(symbol), ".US") {
 		path = "/v1/quote/short-trades/us"
 	}
-	if err := c.opts.httpClient.Get(ctx, path, values, &resp); err != nil {
+	var raw []map[string]json.RawMessage
+	if err := c.opts.httpClient.Get(ctx, path, values, &raw); err != nil {
 		return nil, err
 	}
-	return &ShortTradesResponse{Data: json.RawMessage(resp.Data)}, nil
+	items := make([]*ShortTradesItem, 0, len(raw))
+	for _, r := range raw {
+		items = append(items, &ShortTradesItem{
+			Timestamp:   unixSecsToRFC3339(rawStr(r, "timestamp")),
+			Rate:        rawStr(r, "rate"),
+			Close:       rawStr(r, "close"),
+			NusAmount:   rawStr(r, "nus_amount"),
+			NyAmount:    rawStr(r, "ny_amount"),
+			TotalAmount: rawStr(r, "total_amount"),
+			Amount:      rawStr(r, "amount"),
+			Balance:     rawStr(r, "balance"),
+		})
+	}
+	return &ShortTradesResponse{Data: items}, nil
 }
 
 // quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints
@@ -707,4 +730,29 @@ func quoteSymbolToCounterID(symbol string) string {
 		return symbol
 	}
 	return fmt.Sprintf("ST/%s/%s", strings.ToUpper(symbol[idx+1:]), symbol[:idx])
+}
+
+// rawStr extracts a string value from a map of raw JSON values.
+// If the value is a JSON string it is unquoted; otherwise the raw bytes are
+// returned with surrounding quotes stripped.
+func rawStr(m map[string]json.RawMessage, key string) string {
+	v, ok := m[key]
+	if !ok {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(v, &s); err == nil {
+		return s
+	}
+	return strings.Trim(string(v), `"`)
+}
+
+// unixSecsToRFC3339 converts a Unix-seconds string to an RFC 3339 timestamp.
+// If the string cannot be parsed it is returned unchanged.
+func unixSecsToRFC3339(s string) string {
+	ts, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return s
+	}
+	return time.Unix(ts, 0).UTC().Format(time.RFC3339)
 }

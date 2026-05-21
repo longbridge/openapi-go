@@ -1250,8 +1250,36 @@ type ShareholderDetailResponse struct {
 
 // ── ValuationComparisonResponse ───────────────────────────────────
 
-// ValuationComparisonResponse holds the raw valuation comparison data from
-// GET /v1/quote/compare/valuation.
+// ValuationHistoryPoint is one historical valuation data point.
+type ValuationHistoryPoint struct {
+	// Date — RFC 3339 (converted from Unix timestamp)
+	Date string
+	Pe   string
+	Pb   string
+	Ps   string
+}
+
+// ValuationComparisonItem is one security in the valuation comparison.
+type ValuationComparisonItem struct {
+	// Symbol — converted from counter_id (e.g. "AAPL.US")
+	Symbol      string
+	Name        string
+	Currency    string
+	MarketValue string
+	PriceClose  string
+	Pe          string
+	Pb          string
+	Ps          string
+	Roe         string
+	Eps         string
+	Bps         string
+	Dps         string
+	DivYld      string
+	Assets      string
+	History     []*ValuationHistoryPoint
+}
+
+// ValuationComparisonResponse is the response for FundamentalContext.ValuationComparison.
 type ValuationComparisonResponse struct {
-	Data json.RawMessage
+	List []*ValuationComparisonItem
 }

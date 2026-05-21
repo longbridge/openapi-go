@@ -584,7 +584,7 @@ func main() {
 	} else {
 		defer qctx.Close()
 		t.check("ShortPositions(AAPL.US)", func() error {
-			r, err := qctx.ShortPositions(ctx, "AAPL.US")
+			r, err := qctx.ShortPositions(ctx, "AAPL.US", 20)
 			if err != nil {
 				return err
 			}

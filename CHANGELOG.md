@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Go:** `ShortPositionsResponse.Data` changed from `json.RawMessage` to `[]*ShortPositionsItem` — typed struct with unified US+HK fields; `timestamp` converted to RFC 3339.
+- **Go:** `ShortTradesResponse.Data` changed from `json.RawMessage` to `[]*ShortTradesItem` — typed struct with unified US+HK fields; `timestamp` converted to RFC 3339.
+- **Go:** `RankListResponse` changed from `{Data json.RawMessage}` to `{Bmp bool, Lists []*RankListItem}` — `counter_id` converted to symbol.
+- **Go:** `TopMoversResponse` changed from `{Data json.RawMessage}` to `{Events []*TopMoversEvent, NextParams json.RawMessage}` — `counter_id` converted to symbol, `timestamp` converted to RFC 3339.
+- **Go:** `ValuationComparisonResponse` changed from `{Data json.RawMessage}` to `{List []*ValuationComparisonItem}` — `counter_id` converted to symbol, history `date` converted to RFC 3339.
+
 ### Added
 
 - **Go:** Six new `FundamentalContext` methods (merged from PR #91):
