@@ -263,15 +263,15 @@ func (m *MarketContext) Constituent(ctx context.Context, symbol string) (*IndexC
 	return out, nil
 }
 
-// StockEvents returns market stock events (e.g., earnings, dividends, IPOs).
+// TopMovers returns top movers (stocks with unusual price movements) across one or more markets.
 //
 // Path: POST /v1/quote/market/stock-events
 //
 // markets is a list of market codes (e.g., ["HK", "US"]).
 // sort controls the sort order (0 = ascending, 1 = descending).
 // date is an optional date filter in "YYYY-MM-DD" format; pass an empty string to omit.
-// limit controls the maximum number of events returned.
-func (m *MarketContext) StockEvents(ctx context.Context, markets []string, sort uint32, date string, limit uint32) (*StockEventsResponse, error) {
+// limit controls the maximum number of results returned.
+func (m *MarketContext) TopMovers(ctx context.Context, markets []string, sort uint32, date string, limit uint32) (*TopMoversResponse, error) {
 	body := map[string]interface{}{
 		"limit":   limit,
 		"sort":    sort,
@@ -284,7 +284,7 @@ func (m *MarketContext) StockEvents(ctx context.Context, markets []string, sort 
 	if err := m.httpClient.Post(ctx, "/v1/quote/market/stock-events", body, &resp); err != nil {
 		return nil, err
 	}
-	return &StockEventsResponse{Data: resp}, nil
+	return &TopMoversResponse{Data: resp}, nil
 }
 
 // RankCategories returns the available rank categories.

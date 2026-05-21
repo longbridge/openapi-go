@@ -317,9 +317,9 @@ type ConstituentStock struct {
 	TradeStatus int32
 }
 
-// StockEventsResponse holds the raw data for market stock events from
+// TopMoversResponse holds the raw data for market top movers from
 // POST /v1/quote/market/stock-events.
-type StockEventsResponse struct {
+type TopMoversResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 

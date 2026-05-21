@@ -29,9 +29,13 @@
   - `ShortTrades` — GET `/v1/quote/short-trades/hk` or `/us` (auto-detected)
 
 - **Go:** Three new `MarketContext` methods:
-  - `TopMovers` — POST `/v1/quote/market/stock-events`
-  - `RankCategories` — GET `/v1/quote/market/rank/categories`
-  - `RankList` — GET `/v1/quote/market/rank/list`
+  - `TopMovers` — POST `/v1/quote/market/stock-events`: top movers (stocks with unusual price movements) filtered by market codes, sort order, optional date, and limit.
+  - `RankCategories` — GET `/v1/quote/market/rank/categories`: available rank category keys.
+  - `RankList` — GET `/v1/quote/market/rank/list`: ranked stock list for a given rank key.
+
+### Breaking changes
+
+- **Go:** `MarketContext.StockEvents` renamed to `TopMovers`; `StockEventsResponse` renamed to `TopMoversResponse`.
 
 ## [v4.1.0] - 2026-05-14
 
