@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **Screener:** all endpoints migrated to `/v1/quote/ai/screener/*`; `ScreenerRecommendStrategies` and `ScreenerUserStrategies` now require a `market string` parameter; `ScreenerStrategy(id)` uses a path parameter instead of a query parameter
+
 ## [v4.2.0] - 2026-05-22
 
 ### Added

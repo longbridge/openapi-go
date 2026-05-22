@@ -61,10 +61,12 @@ func symbolToCounterID(symbol string) string {
 
 // ScreenerRecommendStrategies fetches the list of recommended screener strategies.
 //
-// Path: GET /v1/quote/screener/strategies/recommend
-func (c *ScreenerContext) ScreenerRecommendStrategies(ctx context.Context) (*RecommendStrategiesResponse, error) {
+// Path: GET /v1/quote/ai/screener/strategies/recommend
+func (c *ScreenerContext) ScreenerRecommendStrategies(ctx context.Context, market string) (*RecommendStrategiesResponse, error) {
+	q := url.Values{}
+	q.Set("market", market)
 	var resp json.RawMessage
-	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategies/recommend", url.Values{}, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/quote/ai/screener/strategies/recommend", q, &resp); err != nil {
 		return nil, err
 	}
 	return &RecommendStrategiesResponse{Data: resp}, nil
@@ -74,10 +76,12 @@ func (c *ScreenerContext) ScreenerRecommendStrategies(ctx context.Context) (*Rec
 
 // ScreenerUserStrategies fetches the current user's saved screener strategies.
 //
-// Path: GET /v1/quote/screener/strategies/mine
-func (c *ScreenerContext) ScreenerUserStrategies(ctx context.Context) (*UserStrategiesResponse, error) {
+// Path: GET /v1/quote/ai/screener/strategies/mine
+func (c *ScreenerContext) ScreenerUserStrategies(ctx context.Context, market string) (*UserStrategiesResponse, error) {
+	q := url.Values{}
+	q.Set("market", market)
 	var resp json.RawMessage
-	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategies/mine", url.Values{}, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/quote/ai/screener/strategies/mine", q, &resp); err != nil {
 		return nil, err
 	}
 	return &UserStrategiesResponse{Data: resp}, nil
@@ -87,12 +91,11 @@ func (c *ScreenerContext) ScreenerUserStrategies(ctx context.Context) (*UserStra
 
 // ScreenerStrategy fetches a single screener strategy by ID.
 //
-// Path: GET /v1/quote/screener/strategy
+// Path: GET /v1/quote/ai/screener/strategy/{id}
 func (c *ScreenerContext) ScreenerStrategy(ctx context.Context, id int64) (*StrategyResponse, error) {
-	q := url.Values{}
-	q.Set("id", fmt.Sprintf("%d", id))
+	path := fmt.Sprintf("/v1/quote/ai/screener/strategy/%d", id)
 	var resp json.RawMessage
-	if err := c.httpClient.Get(ctx, "/v1/quote/screener/strategy", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, path, url.Values{}, &resp); err != nil {
 		return nil, err
 	}
 	return &StrategyResponse{Data: resp}, nil
@@ -102,7 +105,7 @@ func (c *ScreenerContext) ScreenerStrategy(ctx context.Context, id int64) (*Stra
 
 // ScreenerSearch executes a screener search.
 //
-// Path: POST /v1/quote/screener/search
+// Path: POST /v1/quote/ai/screener/search
 //
 // market is the market code, e.g. "US" or "HK".
 // strategyID is optional; pass nil to search without a strategy filter.
@@ -117,7 +120,7 @@ func (c *ScreenerContext) ScreenerSearch(ctx context.Context, market string, str
 		body["strategy_id"] = *strategyID
 	}
 	var resp json.RawMessage
-	if err := c.httpClient.Post(ctx, "/v1/quote/screener/search", body, &resp); err != nil {
+	if err := c.httpClient.Post(ctx, "/v1/quote/ai/screener/search", body, &resp); err != nil {
 		return nil, err
 	}
 	return &ScreenerSearchResponse{Data: resp}, nil
@@ -127,10 +130,10 @@ func (c *ScreenerContext) ScreenerSearch(ctx context.Context, market string, str
 
 // ScreenerIndicators fetches the list of available screener indicators.
 //
-// Path: GET /v1/quote/screener/indicators
+// Path: GET /v1/quote/ai/screener/indicators
 func (c *ScreenerContext) ScreenerIndicators(ctx context.Context) (*ScreenerIndicatorsResponse, error) {
 	var resp json.RawMessage
-	if err := c.httpClient.Get(ctx, "/v1/quote/screener/indicators", url.Values{}, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/quote/ai/screener/indicators", url.Values{}, &resp); err != nil {
 		return nil, err
 	}
 	return &ScreenerIndicatorsResponse{Data: resp}, nil
