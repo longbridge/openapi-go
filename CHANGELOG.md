@@ -2,15 +2,48 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Go:** `ShortPositionsResponse.Data` changed from `json.RawMessage` to `[]*ShortPositionsItem` — typed struct with unified US+HK fields; `timestamp` converted to RFC 3339.
+- **Go:** `ShortTradesResponse.Data` changed from `json.RawMessage` to `[]*ShortTradesItem` — typed struct with unified US+HK fields; `timestamp` converted to RFC 3339.
+- **Go:** `RankListResponse` changed from `{Data json.RawMessage}` to `{Bmp bool, Lists []*RankListItem}` — `counter_id` converted to symbol.
+- **Go:** `TopMoversResponse` changed from `{Data json.RawMessage}` to `{Events []*TopMoversEvent, NextParams json.RawMessage}` — `counter_id` converted to symbol, `timestamp` converted to RFC 3339.
+- **Go:** `ValuationComparisonResponse` changed from `{Data json.RawMessage}` to `{List []*ValuationComparisonItem}` — `counter_id` converted to symbol, history `date` converted to RFC 3339.
+
 ### Added
 
-- **Go:** Six new `FundamentalContext` methods:
-  - `BusinessSegments` — GET `/v1/quote/fundamentals/business-segments`: latest business segment breakdown.
-  - `BusinessSegmentsHistory` — GET `/v1/quote/fundamentals/business-segments/history`: historical business and regional segment breakdowns with optional `report` and `cate` filters.
-  - `InstitutionRatingViews` — GET `/v1/quote/ratings/institutional`: historical rating distribution time-series (buy/over/hold/under/sell per date).
-  - `IndustryRank` — GET `/v1/quote/industry/rank`: industry leaderboard; exposes `IndustryRankIndicator` and `IndustryRankSortType` enum constants.
-  - `IndustryPeers` — GET `/v1/quote/industries/peers`: recursive industry peer chain; accepts both symbol-style (`AAPL.US`) and raw counter IDs (`BK/US/123`).
-  - `FinancialReportSnapshot` — GET `/v1/quote/financials/earnings-snapshot`: earnings snapshot with forecast and reported metrics.
+- **Go:** Six new `FundamentalContext` methods (merged from PR #91):
+  - `BusinessSegments` — GET `/v1/quote/fundamentals/business-segments`
+  - `BusinessSegmentsHistory` — GET `/v1/quote/fundamentals/business-segments/history`
+  - `InstitutionRatingViews` — GET `/v1/quote/ratings/institutional`
+  - `IndustryRank` — GET `/v1/quote/industry/rank`
+  - `IndustryPeers` — GET `/v1/quote/industries/peers`
+  - `FinancialReportSnapshot` — GET `/v1/quote/financials/earnings-snapshot`
+
+- **Go:** New `screener` package with `ScreenerContext` (5 methods):
+  - `ScreenerRecommendStrategies` — GET `/v1/quote/screener/strategies/recommend`
+  - `ScreenerUserStrategies` — GET `/v1/quote/screener/strategies/mine`
+  - `ScreenerStrategy` — GET `/v1/quote/screener/strategy`
+  - `ScreenerSearch` — POST `/v1/quote/screener/search`
+  - `ScreenerIndicators` — GET `/v1/quote/screener/indicators`
+
+- **Go:** Three new `FundamentalContext` methods:
+  - `ShareholderTop` — GET `/v1/quote/shareholders/top`
+  - `ShareholderDetail` — GET `/v1/quote/shareholders/holding`
+  - `ValuationComparison` — GET `/v1/quote/compare/valuation`
+
+- **Go:** Two new `QuoteContext` methods:
+  - `ShortPositions(ctx, symbol, count)` — GET `/v1/quote/short-positions/hk` or `/v1/quote/short-positions/us` (auto-detected from symbol suffix): short interest / position data for HK or US securities.
+  - `ShortTrades` — GET `/v1/quote/short-trades/hk` or `/v1/quote/short-trades/us` (auto-detected by `.HK`/`.US` suffix): short trade records.
+
+- **Go:** Three new `MarketContext` methods:
+  - `TopMovers` — POST `/v1/quote/market/stock-events`: top movers (stocks with unusual price movements) filtered by market codes, sort order, optional date, and limit.
+  - `RankCategories` — GET `/v1/quote/market/rank/categories`: available rank category keys.
+  - `RankList` — GET `/v1/quote/market/rank/list`: ranked stock list for a given rank key.
+
+### Breaking changes
+
+- **Go:** `MarketContext.StockEvents` renamed to `TopMovers`; `StockEventsResponse` renamed to `TopMoversResponse`.
 
 ## [v4.1.0] - 2026-05-14
 

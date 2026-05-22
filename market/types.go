@@ -1,10 +1,60 @@
 package market
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
+
+// RankListItem is one item in the popularity rank list.
+type RankListItem struct {
+	// Symbol — converted from counter_id (e.g. "MU.US")
+	Symbol string
+	// Code — ticker code (e.g. "MU")
+	Code string
+	Name         string
+	LastDone     string
+	// Chg — price change as decimal ratio (e.g. 0.0252 = +2.52%)
+	Chg          string
+	// Change — absolute price change
+	Change       string
+	Inflow       string
+	MarketCap    string
+	Industry     string
+	PrePostPrice string
+	PrePostChg   string
+	Amplitude    string
+	FiveDayChg   string
+	TurnoverRate string
+	VolumeRate   string
+	PbTtm        string
+}
+
+// TopMoversStock holds stock info for a top-movers event.
+type TopMoversStock struct {
+	// Symbol — converted from counter_id
+	Symbol   string
+	Code     string
+	Name     string
+	FullName string
+	Change   string
+	LastDone string
+	Market   string
+	Labels   []string
+	Logo     string
+}
+
+// TopMoversEvent is one top-movers event.
+type TopMoversEvent struct {
+	// Timestamp — RFC 3339
+	Timestamp   string
+	AlertReason string
+	AlertType   int64
+	Stock       TopMoversStock
+	// Post — associated news article (raw JSON, complex structure; nil when no news)
+	Post json.RawMessage
+}
 
 // MarketStatusResponse holds the current trading status for all markets.
 type MarketStatusResponse struct {
@@ -314,4 +364,23 @@ type ConstituentStock struct {
 	Chg *decimal.Decimal
 	// Raw trade status code
 	TradeStatus int32
+}
+
+// TopMoversResponse is the response for MarketContext.TopMovers.
+type TopMoversResponse struct {
+	Events []*TopMoversEvent
+	// NextParams — pagination cursor; pass to next call to get next page
+	NextParams json.RawMessage
+}
+
+// RankCategoriesResponse holds the raw data for rank categories from
+// GET /v1/quote/market/rank/categories.
+type RankCategoriesResponse struct {
+	Data json.RawMessage `json:"data"`
+}
+
+// RankListResponse is the response for MarketContext.RankList.
+type RankListResponse struct {
+	Bmp   bool
+	Lists []*RankListItem
 }

@@ -709,30 +709,34 @@ func (m PinnedMode) String() string {
 	return "add"
 }
 
-// ShortPosition is a single short interest data point
-type ShortPosition struct {
-	// Settlement date (unix timestamp string)
+// ShortPositionsItem is one short-position record, unified for US and HK.
+// US-specific fields (CurrentSharesShort, AvgDailyShareVolume, DaysToCover)
+// are empty for HK records. HK-specific fields (Amount, Balance, Cost) are
+// empty for US records.
+type ShortPositionsItem struct {
+	// Timestamp — RFC 3339 (e.g. "2024-01-15T00:00:00Z")
 	Timestamp string
-	// Short interest as a ratio of float shares
+	// Rate — short ratio
 	Rate string
-	// Average daily share volume
-	AvgDailyShareVolume string
-	// Current shares short
-	CurrentSharesShort string
-	// Days to cover (short ratio)
-	DaysToCover string
-	// Closing price on the settlement date
+	// Close — closing price
 	Close string
+	// [US only] CurrentSharesShort — number of short shares outstanding
+	CurrentSharesShort string
+	// [US only] AvgDailyShareVolume — average daily share volume
+	AvgDailyShareVolume string
+	// [US only] DaysToCover — days-to-cover ratio
+	DaysToCover string
+	// [HK only] Amount — short sale amount (HKD)
+	Amount string
+	// [HK only] Balance — short position balance
+	Balance string
+	// [HK only] Cost — closing price (HK naming)
+	Cost string
 }
 
-// ShortPositionStats contains short interest data for a security
-type ShortPositionStats struct {
-	// Security symbol
-	Symbol string
-	// Short interest data points
-	Data []*ShortPosition
-	// Number of data sources
-	Sources int32
+// ShortPositionsResponse is the response for QuoteContext.ShortPositions.
+type ShortPositionsResponse struct {
+	Data []*ShortPositionsItem
 }
 
 // OptionVolumeStats contains aggregated call/put volume for a security
@@ -775,4 +779,29 @@ func CandlestickRequestTradeSession(session CandlestickTradeSession) Candlestick
 	return func(req *quotev1.SecurityHistoryCandlestickRequest) {
 		req.TradeSession = int32(session)
 	}
+}
+
+// ShortTradesItem is one short-trade record, unified for US and HK.
+type ShortTradesItem struct {
+	// Timestamp — RFC 3339
+	Timestamp string
+	// Rate — short ratio
+	Rate string
+	// Close — closing price
+	Close string
+	// [US only] NusAmount — NASDAQ short sale volume
+	NusAmount string
+	// [US only] NyAmount — NYSE short sale volume
+	NyAmount string
+	// [US only] TotalAmount — total trading volume
+	TotalAmount string
+	// [HK only] Amount — short sale turnover amount (HKD)
+	Amount string
+	// [HK only] Balance — short position balance
+	Balance string
+}
+
+// ShortTradesResponse is the response for QuoteContext.ShortTrades.
+type ShortTradesResponse struct {
+	Data []*ShortTradesItem
 }

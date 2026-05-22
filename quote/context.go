@@ -2,8 +2,10 @@ package quote
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -523,33 +525,46 @@ func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*Fil
 	return
 }
 
-// ShortPositions returns short interest data for a US security.
-// Path: GET /v1/quote/short-positions/us
-func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string) (*ShortPositionStats, error) {
-	var resp jsontypes.ShortPositionStats
+// ShortPositions returns short interest / short position data for a US or HK security.
+//
+// Market is auto-detected from the symbol suffix:
+//   - ".HK" → GET /v1/quote/short-positions/hk (HKEX daily data)
+//   - otherwise → GET /v1/quote/short-positions/us (FINRA bi-monthly data)
+//
+// count controls the number of records returned (1–100, default 20).
+func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count uint32) (*ShortPositionsResponse, error) {
+	isHK := strings.HasSuffix(strings.ToUpper(symbol), ".HK")
+	path := "/v1/quote/short-positions/us"
+	if isHK {
+		path = "/v1/quote/short-positions/hk"
+	}
 	values := url.Values{}
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
-	values.Set("last_timestamp", "0")
-	values.Set("page_size", "100")
-	if err := c.opts.httpClient.Get(ctx, "/v1/quote/short-positions/us", values, &resp); err != nil {
+	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	values.Set("count", fmt.Sprintf("%d", count))
+	// Response: {"counter_id": "ST/US/AAPL", "data": [{...}]}
+	var outer struct {
+		CounterID string                       `json:"counter_id"`
+		Data      []map[string]json.RawMessage `json:"data"`
+	}
+	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
 		return nil, err
 	}
-	stats := &ShortPositionStats{
-		Symbol:  resp.Symbol,
-		Sources: resp.Sources,
-	}
-	stats.Data = make([]*ShortPosition, 0, len(resp.Data))
-	for _, d := range resp.Data {
-		stats.Data = append(stats.Data, &ShortPosition{
-			Timestamp:           d.Timestamp,
-			Rate:                d.Rate,
-			AvgDailyShareVolume: d.AvgDailyShareVolume,
-			CurrentSharesShort:  d.CurrentSharesShort,
-			DaysToCover:         d.DaysToCover,
-			Close:               d.Close,
+	items := make([]*ShortPositionsItem, 0, len(outer.Data))
+	for _, r := range outer.Data {
+		items = append(items, &ShortPositionsItem{
+			Timestamp:           unixSecsToRFC3339(rawStr(r, "timestamp")),
+			Rate:                rawStr(r, "rate"),
+			Close:               rawStr(r, "close"),
+			CurrentSharesShort:  rawStr(r, "current_shares_short"),
+			AvgDailyShareVolume: rawStr(r, "avg_daily_share_volume"),
+			DaysToCover:         rawStr(r, "days_to_cover"),
+			Amount:              rawStr(r, "amount"),
+			Balance:             rawStr(r, "balance"),
+			Cost:                rawStr(r, "cost"),
 		})
 	}
-	return stats, nil
+	return &ShortPositionsResponse{Data: items}, nil
 }
 
 // OptionVolume returns aggregated call/put volume stats for a security.
@@ -675,6 +690,46 @@ func New(opt ...Option) (*QuoteContext, error) {
 	return tc, nil
 }
 
+
+// ShortTrades returns short trade records for a HK or US security.
+//
+// The endpoint is automatically chosen based on the symbol suffix:
+//   - ".HK" → GET /v1/quote/short-trades/hk
+//   - ".US" → GET /v1/quote/short-trades/us
+func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uint32) (*ShortTradesResponse, error) {
+	values := url.Values{}
+	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	values.Set("page_size", fmt.Sprintf("%d", count))
+
+	path := "/v1/quote/short-trades/hk"
+	if strings.HasSuffix(strings.ToUpper(symbol), ".US") {
+		path = "/v1/quote/short-trades/us"
+	}
+	// Response: {"counter_id": "ST/HK/700", "data": [{...}]}
+	var outer struct {
+		CounterID string                       `json:"counter_id"`
+		Data      []map[string]json.RawMessage `json:"data"`
+	}
+	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
+		return nil, err
+	}
+	items := make([]*ShortTradesItem, 0, len(outer.Data))
+	for _, r := range outer.Data {
+		items = append(items, &ShortTradesItem{
+			Timestamp:   unixSecsToRFC3339(rawStr(r, "timestamp")),
+			Rate:        rawStr(r, "rate"),
+			Close:       rawStr(r, "close"),
+			NusAmount:   rawStr(r, "nus_amount"),
+			NyAmount:    rawStr(r, "ny_amount"),
+			TotalAmount: rawStr(r, "total_amount"),
+			Amount:      rawStr(r, "amount"),
+			Balance:     rawStr(r, "balance"),
+		})
+	}
+	return &ShortTradesResponse{Data: items}, nil
+}
+
 // quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints
 // that require the internal counter_id format.
 func quoteSymbolToCounterID(symbol string) string {
@@ -683,4 +738,29 @@ func quoteSymbolToCounterID(symbol string) string {
 		return symbol
 	}
 	return fmt.Sprintf("ST/%s/%s", strings.ToUpper(symbol[idx+1:]), symbol[:idx])
+}
+
+// rawStr extracts a string value from a map of raw JSON values.
+// If the value is a JSON string it is unquoted; otherwise the raw bytes are
+// returned with surrounding quotes stripped.
+func rawStr(m map[string]json.RawMessage, key string) string {
+	v, ok := m[key]
+	if !ok {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(v, &s); err == nil {
+		return s
+	}
+	return strings.Trim(string(v), `"`)
+}
+
+// unixSecsToRFC3339 converts a Unix-seconds string to an RFC 3339 timestamp.
+// If the string cannot be parsed it is returned unchanged.
+func unixSecsToRFC3339(s string) string {
+	ts, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return s
+	}
+	return time.Unix(ts, 0).UTC().Format(time.RFC3339)
 }

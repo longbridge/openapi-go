@@ -1109,6 +1109,141 @@ func convertStockRatings(j *jsontypes.StockRatings) *StockRatings {
 	}
 }
 
+// ─── ShareholderTop ───────────────────────────────────────────────────────────
+
+// ShareholderTop fetches the top shareholders list for a security.
+//
+// Path: GET /v1/quote/shareholders/top
+func (c *FundamentalContext) ShareholderTop(
+	ctx context.Context,
+	symbol string,
+) (*ShareholderTopResponse, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	var resp json.RawMessage
+	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/top", q, &resp); err != nil {
+		return nil, err
+	}
+	return &ShareholderTopResponse{Data: resp}, nil
+}
+
+// ─── ShareholderDetail ────────────────────────────────────────────────────────
+
+// ShareholderDetail fetches the holding detail for a specific shareholder.
+//
+// Path: GET /v1/quote/shareholders/holding
+func (c *FundamentalContext) ShareholderDetail(
+	ctx context.Context,
+	symbol string,
+	objectID int64,
+) (*ShareholderDetailResponse, error) {
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("object_id", strconv.FormatInt(objectID, 10))
+	var resp json.RawMessage
+	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/holding", q, &resp); err != nil {
+		return nil, err
+	}
+	return &ShareholderDetailResponse{Data: resp}, nil
+}
+
+// ─── ValuationComparison ──────────────────────────────────────────────────────
+
+// ValuationComparison fetches valuation comparison data for a symbol against
+// a set of peer symbols.
+//
+// Path: GET /v1/quote/compare/valuation
+//
+// comparisonSymbols is a list of peer symbols (e.g. ["MSFT.US", "GOOG.US"])
+// that are converted to counter_ids and serialized as a JSON array string in
+// the comparison_counter_ids query parameter.
+func (c *FundamentalContext) ValuationComparison(
+	ctx context.Context,
+	symbol string,
+	currency string,
+	comparisonSymbols []string,
+) (*ValuationComparisonResponse, error) {
+	counterIDs := make([]string, 0, len(comparisonSymbols))
+	for _, s := range comparisonSymbols {
+		counterIDs = append(counterIDs, symbolToCounterID(s))
+	}
+	counterIDsJSON, err := json.Marshal(counterIDs)
+	if err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("currency", currency)
+	q.Set("comparison_counter_ids", string(counterIDsJSON))
+	var raw struct {
+		List []struct {
+			CounterID   string `json:"counter_id"`
+			Name        string `json:"name"`
+			Currency    string `json:"currency"`
+			MarketValue string `json:"market_value"`
+			PriceClose  string `json:"price_close"`
+			Pe          string `json:"pe"`
+			Pb          string `json:"pb"`
+			Ps          string `json:"ps"`
+			Roe         string `json:"roe"`
+			Eps         string `json:"eps"`
+			Bps         string `json:"bps"`
+			Dps         string `json:"dps"`
+			DivYld      string `json:"div_yld"`
+			Assets      string `json:"assets"`
+			History     []struct {
+				Date string `json:"date"`
+				Pe   string `json:"pe"`
+				Pb   string `json:"pb"`
+				Ps   string `json:"ps"`
+			} `json:"history"`
+		} `json:"list"`
+	}
+	if err := c.httpClient.Get(ctx, "/v1/quote/compare/valuation", q, &raw); err != nil {
+		return nil, err
+	}
+	items := make([]*ValuationComparisonItem, 0, len(raw.List))
+	for _, it := range raw.List {
+		history := make([]*ValuationHistoryPoint, 0, len(it.History))
+		for _, h := range it.History {
+			history = append(history, &ValuationHistoryPoint{
+				Date: unixSecsToRFC3339(h.Date),
+				Pe:   h.Pe,
+				Pb:   h.Pb,
+				Ps:   h.Ps,
+			})
+		}
+		items = append(items, &ValuationComparisonItem{
+			Symbol:      counterIDToSymbol(it.CounterID),
+			Name:        it.Name,
+			Currency:    it.Currency,
+			MarketValue: it.MarketValue,
+			PriceClose:  it.PriceClose,
+			Pe:          it.Pe,
+			Pb:          it.Pb,
+			Ps:          it.Ps,
+			Roe:         it.Roe,
+			Eps:         it.Eps,
+			Bps:         it.Bps,
+			Dps:         it.Dps,
+			DivYld:      it.DivYld,
+			Assets:      it.Assets,
+			History:     history,
+		})
+	}
+	return &ValuationComparisonResponse{List: items}, nil
+}
+
+// unixSecsToRFC3339 converts a Unix-seconds string to an RFC 3339 timestamp.
+// If the string cannot be parsed it is returned unchanged.
+func unixSecsToRFC3339(s string) string {
+	ts, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return s
+	}
+	return time.Unix(ts, 0).UTC().Format(time.RFC3339)
+}
+
 // parseTimestampNumber converts a json.Number (int or quoted string) to int64 Unix seconds.
 func parseTimestampNumber(n json.Number) int64 {
 	s := n.String()
