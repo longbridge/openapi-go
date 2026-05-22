@@ -331,11 +331,39 @@ func (m *MarketContext) TopMovers(ctx context.Context, markets []string, sort ui
 //
 // Path: GET /v1/quote/market/rank/categories
 func (m *MarketContext) RankCategories(ctx context.Context) (*RankCategoriesResponse, error) {
-	var resp json.RawMessage
-	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/categories", url.Values{}, &resp); err != nil {
+	var raw map[string]interface{}
+	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/categories", url.Values{}, &raw); err != nil {
 		return nil, err
 	}
-	return &RankCategoriesResponse{Data: resp}, nil
+	// Strip "ib_" prefix from all key fields so callers get clean keys
+	// that can be passed back to RankList without the prefix.
+	if firstTags, ok := raw["first_tags"].([]interface{}); ok {
+		for _, t := range firstTags {
+			tag, ok := t.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if k, ok := tag["key"].(string); ok {
+				tag["key"] = strings.TrimPrefix(k, "ib_")
+			}
+			if subs, ok := tag["second_tags"].([]interface{}); ok {
+				for _, s := range subs {
+					sub, ok := s.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					if sk, ok := sub["key"].(string); ok {
+						sub["key"] = strings.TrimPrefix(sk, "ib_")
+					}
+				}
+			}
+		}
+	}
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &RankCategoriesResponse{Data: json.RawMessage(b)}, nil
 }
 
 // RankList returns the ranked stock list for a given rank key.
@@ -349,8 +377,13 @@ func (m *MarketContext) RankList(ctx context.Context, key string, needArticle bo
 	if needArticle {
 		needArticleStr = "true"
 	}
+	// Add "ib_" prefix if the caller passed a clean key (without it).
+	apiKey := key
+	if !strings.HasPrefix(key, "ib_") {
+		apiKey = "ib_" + key
+	}
 	params := url.Values{}
-	params.Set("key", key)
+	params.Set("key", apiKey)
 	params.Set("delay_bmp", "false")
 	params.Set("need_article", needArticleStr)
 	var raw struct {
