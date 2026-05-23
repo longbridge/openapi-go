@@ -1012,9 +1012,9 @@ func convertOperatingList(j *jsontypes.OperatingList) *OperatingList {
 			Keywords: item.Keywords,
 			WebURL:  item.WebURL,
 			Financial: OperatingFinancial{
-				Code:       item.Financial.Code,
-				CounterID:  item.Financial.CounterID,
-				Currency:   item.Financial.Currency,
+				Code:     item.Financial.Code,
+				Symbol:   counterIDToSymbol(item.Financial.CounterID),
+				Currency: item.Financial.Currency,
 				Name:       item.Financial.Name,
 				Region:     item.Financial.Region,
 				Report:     item.Financial.Report,
