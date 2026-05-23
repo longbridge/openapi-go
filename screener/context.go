@@ -174,7 +174,7 @@ func (c *ScreenerContext) ScreenerSearch(
 	ctx context.Context,
 	market string,
 	strategyID *int64,
-	conditions []string,
+	conditions []ScreenerCondition,
 	show []string,
 	page, size uint32,
 ) (*ScreenerSearchResponse, error) {
@@ -224,27 +224,22 @@ func (c *ScreenerContext) ScreenerSearch(
 			}
 		}
 	} else {
-		// Mode B: custom conditions ("KEY:MIN:MAX")
+		// Mode B: typed ScreenerCondition objects
 		effectiveMarket = market
 		for _, cond := range conditions {
-			parts := strings.SplitN(cond, ":", 3)
-			if len(parts) == 0 || parts[0] == "" {
+			if cond.Key == "" {
 				continue
 			}
-			key := parts[0]
-			min := ""
-			if len(parts) > 1 {
-				min = parts[1]
-			}
-			max := ""
-			if len(parts) > 2 {
-				max = parts[2]
+			apiKey := ensureFilterPrefix(cond.Key)
+			tv := map[string]interface{}{}
+			for k, v := range cond.TechValues {
+				tv[k] = v
 			}
 			filters = append(filters, map[string]interface{}{
-				"key":         key,
-				"min":         min,
-				"max":         max,
-				"tech_values": map[string]interface{}{},
+				"key":         apiKey,
+				"min":         cond.Min,
+				"max":         cond.Max,
+				"tech_values": tv,
 			})
 		}
 	}

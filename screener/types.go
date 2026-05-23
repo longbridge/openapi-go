@@ -34,3 +34,18 @@ type ScreenerSearchResponse struct {
 type ScreenerIndicatorsResponse struct {
 	Data json.RawMessage `json:"data"`
 }
+
+// ── ScreenerCondition ─────────────────────────────────────────────
+
+// ScreenerCondition is a filter condition for ScreenerSearch Mode B.
+type ScreenerCondition struct {
+	// Key is the indicator key without "filter_" prefix, e.g. "pettm", "roe", "macd_day".
+	Key string `json:"key"`
+	// Min is the lower bound (empty string = no lower bound).
+	Min string `json:"min"`
+	// Max is the upper bound (empty string = no upper bound).
+	Max string `json:"max"`
+	// TechValues holds technical indicator params (nil map for fundamental indicators).
+	// Example: {"category": "goldenfork", "period": "day"}
+	TechValues map[string]string `json:"tech_values,omitempty"`
+}
