@@ -137,10 +137,10 @@ func (o *OAuth) Build(ctx context.Context) error {
 	// No valid token: run authorization flow.
 	o.mu.Unlock()
 	tok, err := o.authorizeFlow(ctx)
+	o.mu.Lock()
 	if err != nil {
 		return err
 	}
-	o.mu.Lock()
 	o.token = tok
 	_ = saveTokenToPath(path, tok)
 	return nil

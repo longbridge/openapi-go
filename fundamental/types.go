@@ -833,8 +833,8 @@ type OperatingItem struct {
 type OperatingFinancial struct {
 	// Ticker code (may be empty).
 	Code string
-	// Raw counter ID (may be empty).
-	CounterID string
+	// Symbol in CODE.MARKET format (may be empty).
+	Symbol string
 	// Reporting currency.
 	Currency string
 	// Company name.

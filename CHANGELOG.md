@@ -1,5 +1,16 @@
 # Changelog
 
+## [v4.2.1] - 2026-05-23
+
+### Changed
+
+- `screener` package: endpoints migrated to `/v1/quote/ai/screener/*`; `ScreenerRecommendStrategies` / `ScreenerUserStrategies` now accept a `market` parameter; `ScreenerSearch` accepts typed `ScreenerCondition` objects (Mode B)
+
+### Fixed
+
+- `OperatingFinancial`: renamed `CounterID` → `Symbol` (converts `ST/US/AAPL` → `AAPL.US`)
+- `oauth`: fix panic (`sync: unlock of unlocked mutex`) when authorization flow fails
+
 ## [v4.2.0] - 2026-05-22
 
 ### Added
