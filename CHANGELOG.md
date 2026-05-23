@@ -1,13 +1,5 @@
 # Changelog
 
-## [Unreleased]
-
-### Changed
-
-- **Screener:** all endpoints migrated to `/v1/quote/ai/screener/*`; `ScreenerRecommendStrategies` and `ScreenerUserStrategies` now require a `market string` parameter; `ScreenerStrategy(id)` uses a path parameter instead of a query parameter
-- **Screener:** `ScreenerStrategy` and `ScreenerIndicators` now strip the `filter_` prefix from response keys before returning; `ScreenerIndicators` additionally builds `tech_values` from `tech_indicators`
-- **Screener:** `ScreenerSearch` gains `conditions []string` and `show []string` parameters; Mode A fetches the strategy via AI endpoint and derives `market` from the response; Mode B accepts `"KEY:MIN:MAX"` condition strings; response `items[].indicators[].key` values have `filter_` stripped; `page` is now 0-indexed and defaults to 0
-
 ## [v4.2.0] - 2026-05-22
 
 ### Added
