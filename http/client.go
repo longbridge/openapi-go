@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	nhttp "net/http"
+	"time"
 	"net/url"
 	"strings"
 
@@ -173,7 +174,6 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	signature(req, appSecret, bb)
 
 	log.Debugf("http call method:%v url:%v body:%v", req.Method, req.URL, string(bb))
-	req.Close = true
 	httpResp, err = c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -231,7 +231,12 @@ func New(opt ...Option) (*Client, error) {
 		return nil, errors.New("http url is empty")
 	}
 
-	cli := &nhttp.Client{Timeout: opts.Timeout}
+	cli := &nhttp.Client{
+		Timeout: opts.Timeout,
+		Transport: &nhttp.Transport{
+			IdleConnTimeout: 60 * time.Second,
+		},
+	}
 
 	if opts.Client != nil {
 		cli = opts.Client
