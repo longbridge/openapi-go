@@ -14,6 +14,7 @@ import (
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/config"
 	"github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 	"github.com/longbridge/openapi-go/internal/util"
 	"github.com/longbridge/openapi-go/longbridge"
 	"github.com/longbridge/openapi-go/quote/jsontypes"
@@ -596,7 +597,7 @@ func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, sta
 	result := make([]*DailyOptionVolume, 0, len(resp.Stats))
 	for _, s := range resp.Stats {
 		result = append(result, &DailyOptionVolume{
-			Symbol:                   s.Symbol,
+			Symbol:                   counter.IDToSymbol(s.Symbol),
 			Timestamp:                s.Timestamp,
 			TotalVolume:              s.TotalVolume,
 			TotalPutVolume:           s.TotalPutVolume,

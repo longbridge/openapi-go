@@ -20,6 +20,7 @@ import (
 	"github.com/longbridge/openapi-go/config"
 	"github.com/longbridge/openapi-go/fundamental/jsontypes"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // FundamentalContext is a client for the Longbridge Fundamental OpenAPI.
@@ -67,15 +68,7 @@ func symbolToCounterID(symbol string) string {
 	return fmt.Sprintf("ST/%s/%s", market, code)
 }
 
-// counterIDToSymbol converts a counter_id like "ST/US/TSLA" back to a symbol
-// "TSLA.US".
-func counterIDToSymbol(counterID string) string {
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return fmt.Sprintf("%s.%s", parts[2], parts[1])
-	}
-	return counterID
-}
+func counterIDToSymbol(counterID string) string { return counter.IDToSymbol(counterID) }
 
 // decimalFromString parses a decimal string; returns nil for empty strings or
 // unparseable values.
@@ -1465,7 +1458,7 @@ func convertIndustryRankResponse(j *jsontypes.IndustryRankResponse) *IndustryRan
 		for _, it := range g.Lists {
 			items = append(items, IndustryRankItem{
 				Name:          it.Name,
-				CounterID:     it.CounterID,
+				CounterID:     counter.IDToSymbol(it.CounterID),
 				Chg:           it.Chg,
 				LeadingName:   it.LeadingName,
 				LeadingTicker: it.LeadingTicker,
@@ -1491,7 +1484,7 @@ func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
 	}
 	return &IndustryPeerNode{
 		Name:      j.Name,
-		CounterID: j.CounterID,
+		CounterID: counter.IDToSymbol(j.CounterID),
 		StockNum:  j.StockNum,
 		Chg:       j.Chg,
 		YtdChg:    j.YtdChg,
