@@ -51,7 +51,7 @@ func NewFromEnv() (*CalendarContext, error) {
 // market is optional; pass nil or an empty string to retrieve all markets.
 //
 // The endpoint is paginated via NextDate. When the returned NextDate is
-// non-empty, pass it as start to fetch the next page.
+// non-empty, pass it as start (keeping the same end) to fetch the next page.
 //
 // Reference: GET /v1/quote/finance_calendar
 func (c *CalendarContext) FinanceCalendar(
