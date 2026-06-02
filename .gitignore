@@ -5,3 +5,5 @@
 **/*.env
 go.work
 go.work.sum
+test_new_apis
+cmd/test_new_apis

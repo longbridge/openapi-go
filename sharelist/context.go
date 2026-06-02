@@ -21,6 +21,7 @@ import (
 
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 	"github.com/longbridge/openapi-go/sharelist/jsontypes"
 )
 
@@ -199,15 +200,6 @@ func symbolsToCounterIDs(symbols []string) string {
 	return strings.Join(ids, ",")
 }
 
-// counterIDToSymbol converts a counter_id like "ST/US/TSLA" back to a symbol
-// "TSLA.US".
-func counterIDToSymbol(counterID string) string {
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return fmt.Sprintf("%s.%s", parts[2], parts[1])
-	}
-	return counterID
-}
 
 // --- internal converters ---
 
@@ -266,7 +258,7 @@ func convertSharelistInfo(j *jsontypes.SharelistInfo) (*SharelistInfo, error) {
 
 func convertSharelistStock(j *jsontypes.SharelistStock) SharelistStock {
 	return SharelistStock{
-		Symbol:                  counterIDToSymbol(j.CounterID),
+		Symbol:                  counter.IDToSymbol(j.CounterID),
 		Name:                    j.Name,
 		Market:                  j.Market,
 		Code:                    j.Code,

@@ -12,6 +12,7 @@ import (
 	"github.com/longbridge/openapi-go/calendar/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // CalendarContext is a client for the Longbridge Financial Calendar OpenAPI.
@@ -49,6 +50,9 @@ func NewFromEnv() (*CalendarContext, error) {
 // start and end are date strings in "YYYY-MM-DD" format.
 // market is optional; pass nil or an empty string to retrieve all markets.
 //
+// The endpoint is paginated via NextDate. When the returned NextDate is
+// non-empty, pass it as start (keeping the same end) to fetch the next page.
+//
 // Reference: GET /v1/quote/finance_calendar
 func (c *CalendarContext) FinanceCalendar(
 	ctx context.Context,
@@ -77,8 +81,9 @@ func (c *CalendarContext) FinanceCalendar(
 
 func convertCalendarEventsResponse(raw *jsontypes.CalendarEventsResponse) (*CalendarEventsResponse, error) {
 	resp := &CalendarEventsResponse{
-		Date: raw.Date,
-		List: make([]CalendarDateGroup, 0, len(raw.List)),
+		Date:     raw.Date,
+		NextDate: raw.NextDate,
+		List:     make([]CalendarDateGroup, 0, len(raw.List)),
 	}
 	for _, rg := range raw.List {
 		grp, err := convertCalendarDateGroup(&rg)
@@ -108,7 +113,7 @@ func convertCalendarDateGroup(raw *jsontypes.CalendarDateGroup) (*CalendarDateGr
 
 func convertCalendarEventInfo(raw *jsontypes.CalendarEventInfo) (*CalendarEventInfo, error) {
 	info := &CalendarEventInfo{
-		Symbol:              raw.Symbol,
+		Symbol:              counter.IDToSymbol(raw.Symbol),
 		Market:              raw.Market,
 		Content:             raw.Content,
 		CounterName:         raw.CounterName,
