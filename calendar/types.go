@@ -57,6 +57,8 @@ type CalendarEventsResponse struct {
 	Date string
 	// Per-day event groups
 	List []CalendarDateGroup
+	// Pagination cursor; pass as start to fetch the next page, empty when there are no more pages
+	NextDate string
 }
 
 // CalendarDateGroup holds all events for a single calendar date.
