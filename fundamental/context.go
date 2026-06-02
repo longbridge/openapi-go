@@ -1458,7 +1458,7 @@ func convertIndustryRankResponse(j *jsontypes.IndustryRankResponse) *IndustryRan
 		for _, it := range g.Lists {
 			items = append(items, IndustryRankItem{
 				Name:          it.Name,
-				CounterID:     counter.IDToSymbol(it.CounterID),
+				CounterID:     it.CounterID,
 				Chg:           it.Chg,
 				LeadingName:   it.LeadingName,
 				LeadingTicker: it.LeadingTicker,
@@ -1484,7 +1484,7 @@ func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
 	}
 	return &IndustryPeerNode{
 		Name:      j.Name,
-		CounterID: counter.IDToSymbol(j.CounterID),
+		CounterID: j.CounterID,
 		StockNum:  j.StockNum,
 		Chg:       j.Chg,
 		YtdChg:    j.YtdChg,
