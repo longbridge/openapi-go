@@ -49,6 +49,9 @@ func NewFromEnv() (*CalendarContext, error) {
 // start and end are date strings in "YYYY-MM-DD" format.
 // market is optional; pass nil or an empty string to retrieve all markets.
 //
+// The endpoint is paginated via next_date; this method follows the cursor
+// automatically and returns the complete merged result.
+//
 // Reference: GET /v1/quote/finance_calendar
 func (c *CalendarContext) FinanceCalendar(
 	ctx context.Context,
@@ -57,20 +60,61 @@ func (c *CalendarContext) FinanceCalendar(
 	end string,
 	market *string,
 ) (*CalendarEventsResponse, error) {
-	params := url.Values{}
-	params.Set("date", start)
-	params.Set("date_end", end)
-	params.Set("types[]", category.String())
-	if market != nil && *market != "" {
-		params.Set("markets[]", *market)
+	cursor := start
+	// seen deduplicates events across pages by ID.
+	seen := make(map[string]struct{})
+	var merged *CalendarEventsResponse
+
+	for {
+		params := url.Values{}
+		params.Set("date", cursor)
+		params.Set("date_end", end)
+		params.Set("types[]", category.String())
+		if market != nil && *market != "" {
+			params.Set("markets[]", *market)
+		}
+
+		var raw jsontypes.CalendarEventsResponse
+		if err := c.httpClient.Get(ctx, "/v1/quote/finance_calendar", params, &raw); err != nil {
+			return nil, fmt.Errorf("calendar: finance_calendar: %w", err)
+		}
+
+		page, err := convertCalendarEventsResponse(&raw)
+		if err != nil {
+			return nil, err
+		}
+
+		if merged == nil {
+			merged = &CalendarEventsResponse{Date: page.Date}
+		}
+
+		for _, grp := range page.List {
+			var deduped []CalendarEventInfo
+			for _, info := range grp.Infos {
+				if _, dup := seen[info.ID]; !dup {
+					seen[info.ID] = struct{}{}
+					deduped = append(deduped, info)
+				}
+			}
+			if len(deduped) > 0 {
+				merged.List = append(merged.List, CalendarDateGroup{
+					Date:  grp.Date,
+					Count: int32(len(deduped)),
+					Infos: deduped,
+				})
+			}
+		}
+
+		if raw.NextDate == "" {
+			break
+		}
+		cursor = raw.NextDate
 	}
 
-	var raw jsontypes.CalendarEventsResponse
-	if err := c.httpClient.Get(ctx, "/v1/quote/finance_calendar", params, &raw); err != nil {
-		return nil, fmt.Errorf("calendar: finance_calendar: %w", err)
+	if merged == nil {
+		merged = &CalendarEventsResponse{}
 	}
-
-	return convertCalendarEventsResponse(&raw)
+	return merged, nil
 }
 
 // --- internal converters ---

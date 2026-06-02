@@ -8,6 +8,8 @@ type CalendarEventsResponse struct {
 	Date string `json:"date"`
 	// Per-day event groups
 	List []CalendarDateGroup `json:"list"`
+	// Next page cursor; empty string means no more pages
+	NextDate string `json:"next_date"`
 }
 
 // CalendarDateGroup holds all events for a single calendar date.
