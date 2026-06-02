@@ -1,3 +1,9 @@
+.idea
+**/.DS_Store
+*.yaml
+*.toml
+**/*.env
+go.work
+go.work.sum
 test_new_apis
 cmd/test_new_apis
-.DS_Store
