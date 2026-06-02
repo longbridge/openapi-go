@@ -12,6 +12,7 @@ import (
 	"github.com/longbridge/openapi-go/calendar/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // CalendarContext is a client for the Longbridge Financial Calendar OpenAPI.
@@ -112,7 +113,7 @@ func convertCalendarDateGroup(raw *jsontypes.CalendarDateGroup) (*CalendarDateGr
 
 func convertCalendarEventInfo(raw *jsontypes.CalendarEventInfo) (*CalendarEventInfo, error) {
 	info := &CalendarEventInfo{
-		Symbol:              raw.Symbol,
+		Symbol:              counter.IDToSymbol(raw.Symbol),
 		Market:              raw.Market,
 		Content:             raw.Content,
 		CounterName:         raw.CounterName,
