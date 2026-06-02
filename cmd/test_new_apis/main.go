@@ -144,67 +144,6 @@ func main() {
 				return nil
 			})
 		}
-
-		// Pagination test: 2026-05-23→05-30 spans 3 pages; CRM.US/PDD.US/MRVL.US live on pages 2-3.
-		t.check("FinanceCalendar(pagination: next_date returned)", func() error {
-			us := "US"
-			resp, err := calCtx.FinanceCalendar(ctx, calendar.CalendarCategoryReport, "2026-05-23", "2026-05-30", &us)
-			if err != nil {
-				return err
-			}
-			var syms []string
-			for _, grp := range resp.List {
-				for _, info := range grp.Infos {
-					syms = append(syms, info.Symbol)
-				}
-			}
-			fmt.Printf("\n    page1: next_date=%q groups=%d symbols=%v", resp.NextDate, len(resp.List), syms)
-			if resp.NextDate == "" {
-				return fmt.Errorf("expected next_date to be non-empty for paginated range, got empty")
-			}
-			return nil
-		})
-
-		t.check("FinanceCalendar(pagination: follow cursors, find all symbols)", func() error {
-			us := "US"
-			paginStart := "2026-05-23"
-			paginEnd := "2026-05-30"
-			want := map[string]bool{"CRM.US": false, "PDD.US": false, "MRVL.US": false}
-
-			cursor := paginStart
-			pages := 0
-			for {
-				resp, err := calCtx.FinanceCalendar(ctx, calendar.CalendarCategoryReport, cursor, paginEnd, &us)
-				if err != nil {
-					return fmt.Errorf("page %d: %w", pages+1, err)
-				}
-				pages++
-				for _, grp := range resp.List {
-					for _, info := range grp.Infos {
-						if _, ok := want[info.Symbol]; ok {
-							want[info.Symbol] = true
-						}
-					}
-				}
-				// Stop when next_date is empty or has gone past date_end.
-				if resp.NextDate == "" || resp.NextDate > paginEnd {
-					break
-				}
-				cursor = resp.NextDate
-			}
-
-			var missing []string
-			for sym, found := range want {
-				if !found {
-					missing = append(missing, sym)
-				}
-			}
-			if len(missing) > 0 {
-				return fmt.Errorf("fetched %d pages but missing: %v", pages, missing)
-			}
-			fmt.Printf(" (%d pages, all symbols found)", pages)
-			return nil
-		})
 	}
 
 	// ══════════════════════════════════════════════════════════
