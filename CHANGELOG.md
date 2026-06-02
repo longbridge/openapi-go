@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.24.2] - 2026-06-02
+
+### Fixed
+
+- `calendar.CalendarEventsResponse`: expose `NextDate` cursor so callers can follow pagination (`/v1/quote/finance_calendar` returns results across multiple pages via `next_date`)
+- `calendar.CalendarEventInfo.Symbol`: convert raw `counter_id` (e.g. `ST/US/CRM`) to standard symbol format (`CRM.US`)
+- `quote.DailyOptionVolume.Symbol`: convert `underlying_counter_id` to symbol format
+
+### Changed
+
+- Add `internal/counter.IDToSymbol` as shared `counter_id` → symbol conversion helper; `sharelist` migrated to use it
+
 ## [v4.2.1] - 2026-05-23
 
 ### Changed
