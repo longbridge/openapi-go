@@ -13,6 +13,7 @@ import (
 
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/config"
+	counterpkg "github.com/longbridge/openapi-go/counter"
 	"github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/internal/counter"
 	"github.com/longbridge/openapi-go/internal/util"
@@ -729,6 +730,68 @@ func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uin
 		})
 	}
 	return &ShortTradesResponse{Data: items}, nil
+}
+
+// SymbolToCounterIds batch-converts symbols to counter IDs via the remote API.
+//
+// It returns a map of symbol → counter_id (e.g. "DRAM.US" → "ETF/US/DRAM").
+// Symbols the backend does not recognize are omitted from the result.
+//
+// Path: POST /v1/quote/symbol-to-counter-ids
+func (c *QuoteContext) SymbolToCounterIds(ctx context.Context, symbols []string) (map[string]string, error) {
+	body := map[string]interface{}{
+		"ticker_regions": symbols,
+	}
+	var resp struct {
+		List map[string]string `json:"list"`
+	}
+	if err := c.opts.httpClient.Post(ctx, "/v1/quote/symbol-to-counter-ids", body, &resp); err != nil {
+		return nil, err
+	}
+	if resp.List == nil {
+		resp.List = map[string]string{}
+	}
+	return resp.List, nil
+}
+
+// ResolveCounterIds resolves counter IDs for symbols, local-first with remote
+// fallback.
+//
+// Symbols found in the embedded ETF / index / warrant directory (or in the
+// local cache of previous remote resolutions) are resolved without network
+// access. The remaining symbols are resolved in one batch via
+// SymbolToCounterIds and the results are persisted to the local cache for
+// subsequent lookups. Symbols the backend does not recognize fall back to the
+// default "ST/" conversion (and are not cached).
+func (c *QuoteContext) ResolveCounterIds(ctx context.Context, symbols []string) (map[string]string, error) {
+	result := make(map[string]string, len(symbols))
+	var unknown []string
+	for _, symbol := range symbols {
+		if counterID, ok := counterpkg.LookupCounterID(symbol); ok {
+			result[symbol] = counterID
+		} else {
+			unknown = append(unknown, symbol)
+		}
+	}
+	if len(unknown) > 0 {
+		resolved, err := c.SymbolToCounterIds(ctx, unknown)
+		if err != nil {
+			return nil, err
+		}
+		cacheIDs := make([]string, 0, len(resolved))
+		for _, id := range resolved {
+			cacheIDs = append(cacheIDs, id)
+		}
+		counterpkg.CacheCounterIDs(cacheIDs)
+		for _, symbol := range unknown {
+			if counterID, ok := resolved[symbol]; ok {
+				result[symbol] = counterID
+			} else {
+				result[symbol] = counterpkg.SymbolToCounterID(symbol)
+			}
+		}
+	}
+	return result, nil
 }
 
 // quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints

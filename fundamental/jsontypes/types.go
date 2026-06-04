@@ -758,3 +758,40 @@ type ShareholderDetailResponse struct {
 type ValuationComparisonResponse struct {
 	Data json.RawMessage `json:"data"`
 }
+
+// ── etf_asset_allocation ─────────────────────────────────────────
+
+// AssetAllocationResponse is the raw response for
+// GET /v1/quote/etf-asset-allocation.
+type AssetAllocationResponse struct {
+	Info []AssetAllocationGroup `json:"info"`
+}
+
+// AssetAllocationGroup is one ETF asset allocation group (grouped by element
+// type).
+type AssetAllocationGroup struct {
+	ReportDate string                `json:"report_date"`
+	AssetType  int32                 `json:"asset_type"`
+	Lists      []AssetAllocationItem `json:"lists"`
+}
+
+// AssetAllocationItem is one element of an ETF asset allocation group.
+type AssetAllocationItem struct {
+	Name          string            `json:"name"`
+	Code          string            `json:"code"`
+	PositionRatio string            `json:"position_ratio"`
+	CounterID     string            `json:"counter_id"`
+	NameLocales   map[string]string `json:"name_locales_map"`
+	HoldingDetail *HoldingDetail    `json:"holding_detail"`
+}
+
+// HoldingDetail is the holding detail of an ETF asset allocation element
+// (holdings only).
+type HoldingDetail struct {
+	IndustryID      string `json:"industry_id"`
+	IndustryName    string `json:"industry_name"`
+	Index           string `json:"index"`
+	IndexName       string `json:"index_name"`
+	HoldingType     string `json:"holding_type"`
+	HoldingTypeName string `json:"holding_type_name"`
+}

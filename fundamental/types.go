@@ -1283,3 +1283,72 @@ type ValuationComparisonItem struct {
 type ValuationComparisonResponse struct {
 	List []*ValuationComparisonItem
 }
+
+// ── EtfAssetAllocation ────────────────────────────────────────────
+
+// ElementType identifies the kind of an ETF asset allocation group.
+type ElementType int32
+
+const (
+	// ElementTypeUnknown is an unknown / unrecognized element type.
+	ElementTypeUnknown ElementType = 0
+	// ElementTypeHoldings groups the ETF's individual holdings.
+	ElementTypeHoldings ElementType = 1
+	// ElementTypeRegional groups holdings by region.
+	ElementTypeRegional ElementType = 2
+	// ElementTypeAssetClass groups holdings by asset class.
+	ElementTypeAssetClass ElementType = 3
+	// ElementTypeIndustry groups holdings by industry.
+	ElementTypeIndustry ElementType = 4
+)
+
+// HoldingDetail is the holding detail of an ETF asset allocation element
+// (holdings only).
+type HoldingDetail struct {
+	// IndustryID is the industry ID.
+	IndustryID string
+	// IndustryName is the industry name.
+	IndustryName string
+	// Index is the index counter ID (e.g. "BK/US/CP99000").
+	Index string
+	// IndexName is the index name.
+	IndexName string
+	// HoldingType is the holding type (e.g. "E" for stock).
+	HoldingType string
+	// HoldingTypeName is the holding type name.
+	HoldingTypeName string
+}
+
+// AssetAllocationItem is one element of an ETF asset allocation group.
+type AssetAllocationItem struct {
+	// Name is the element name.
+	Name string
+	// Code is the security code (holdings only, e.g. "NVDA").
+	Code string
+	// PositionRatio is the position ratio (e.g. "0.0861114").
+	PositionRatio string
+	// Symbol is the security symbol (holdings only, e.g. "NVDA.US"), converted
+	// from the API's counter_id. Empty for non-holdings groups.
+	Symbol string
+	// NameLocales maps a locale to the localized name (e.g. "zh-CN" → "英伟达").
+	NameLocales map[string]string
+	// HoldingDetail is the holding detail (holdings only); nil otherwise.
+	HoldingDetail *HoldingDetail
+}
+
+// AssetAllocationGroup is one ETF asset allocation group (grouped by element
+// type).
+type AssetAllocationGroup struct {
+	// ReportDate is the report date (e.g. "20260601").
+	ReportDate string
+	// AssetType is the element type of this group.
+	AssetType ElementType
+	// Lists are the elements of this group.
+	Lists []*AssetAllocationItem
+}
+
+// AssetAllocationResponse is the response for FundamentalContext.EtfAssetAllocation.
+type AssetAllocationResponse struct {
+	// Info are the asset allocation groups.
+	Info []*AssetAllocationGroup
+}

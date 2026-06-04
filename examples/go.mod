@@ -7,6 +7,11 @@ require (
 	github.com/shopspring/decimal v1.3.1
 )
 
+// Use the local module so examples can reference features that are not yet
+// part of a published release (e.g. the counter package and
+// FundamentalContext.EtfAssetAllocation).
+replace github.com/longbridge/openapi-go => ../
+
 require (
 	github.com/Allenxuxu/ringbuffer v0.0.11 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect

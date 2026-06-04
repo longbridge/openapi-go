@@ -276,6 +276,83 @@ func main() {
 }
 ```
 
+## Fundamental API (ETF Asset Allocation)
+
+```golang
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/fundamental"
+)
+
+func main() {
+    cfg, err := config.NewFromEnv()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fctx, err := fundamental.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    resp, err := fctx.EtfAssetAllocation(context.Background(), "QQQ.US")
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, group := range resp.Info {
+        fmt.Printf("group: type=%d report_date=%s items=%d\n",
+            group.AssetType, group.ReportDate, len(group.Lists))
+        for _, item := range group.Lists {
+            fmt.Printf("  %s (%s) ratio=%s\n", item.Name, item.Symbol, item.PositionRatio)
+        }
+    }
+}
+```
+
+## Counter API (Symbol ↔ counter_id)
+
+```golang
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/longbridge/openapi-go/config"
+    "github.com/longbridge/openapi-go/counter"
+    "github.com/longbridge/openapi-go/quote"
+)
+
+func main() {
+    // Pure local conversion (no network), backed by an embedded directory:
+    fmt.Println(counter.SymbolToCounterID("QQQ.US")) // ETF/US/QQQ
+    fmt.Println(counter.SymbolToCounterID("700.HK"))  // ST/HK/700
+    fmt.Println(counter.CounterIDToSymbol("IX/HK/HSI")) // HSI.HK
+    fmt.Println(counter.IsETF("SPY.US"))                // true
+
+    // Batch resolution, local-first with a remote fallback (and caching):
+    cfg, err := config.NewFromEnv()
+    if err != nil {
+        log.Fatal(err)
+    }
+    qctx, err := quote.NewFromCfg(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer qctx.Close()
+    ids, err := qctx.ResolveCounterIds(context.Background(), []string{"TSLA.US", "QQQ.US"})
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(ids) // map[QQQ.US:ETF/US/QQQ TSLA.US:ST/US/TSLA]
+}
+```
+
 ## Trade API (Submit Order)
 
 ```golang

@@ -18,6 +18,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go/config"
+	counterpkg "github.com/longbridge/openapi-go/counter"
 	"github.com/longbridge/openapi-go/fundamental/jsontypes"
 	httplib "github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/internal/counter"
@@ -1225,6 +1226,69 @@ func (c *FundamentalContext) ValuationComparison(
 		})
 	}
 	return &ValuationComparisonResponse{List: items}, nil
+}
+
+// ─── EtfAssetAllocation ───────────────────────────────────────────────────
+
+// EtfAssetAllocation fetches the ETF asset allocation (holdings / regional /
+// asset class / industry) for an ETF symbol.
+//
+// The symbol is converted to its counter_id using the directory-aware
+// counter package (so e.g. "QQQ.US" maps to "ETF/US/QQQ").
+//
+// Path: GET /v1/quote/etf-asset-allocation
+func (c *FundamentalContext) EtfAssetAllocation(
+	ctx context.Context,
+	symbol string,
+) (*AssetAllocationResponse, error) {
+	q := url.Values{}
+	q.Set("counter_id", counterpkg.SymbolToCounterID(symbol))
+	var resp jsontypes.AssetAllocationResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/etf-asset-allocation", q, &resp); err != nil {
+		return nil, err
+	}
+	return convertAssetAllocationResponse(&resp), nil
+}
+
+func convertHoldingDetail(j *jsontypes.HoldingDetail) *HoldingDetail {
+	if j == nil {
+		return nil
+	}
+	return &HoldingDetail{
+		IndustryID:      j.IndustryID,
+		IndustryName:    j.IndustryName,
+		Index:           j.Index,
+		IndexName:       j.IndexName,
+		HoldingType:     j.HoldingType,
+		HoldingTypeName: j.HoldingTypeName,
+	}
+}
+
+func convertAssetAllocationResponse(j *jsontypes.AssetAllocationResponse) *AssetAllocationResponse {
+	groups := make([]*AssetAllocationGroup, 0, len(j.Info))
+	for _, g := range j.Info {
+		items := make([]*AssetAllocationItem, 0, len(g.Lists))
+		for _, item := range g.Lists {
+			var symbol string
+			if item.CounterID != "" {
+				symbol = counterIDToSymbol(item.CounterID)
+			}
+			items = append(items, &AssetAllocationItem{
+				Name:          item.Name,
+				Code:          item.Code,
+				PositionRatio: item.PositionRatio,
+				Symbol:        symbol,
+				NameLocales:   item.NameLocales,
+				HoldingDetail: convertHoldingDetail(item.HoldingDetail),
+			})
+		}
+		groups = append(groups, &AssetAllocationGroup{
+			ReportDate: g.ReportDate,
+			AssetType:  ElementType(g.AssetType),
+			Lists:      items,
+		})
+	}
+	return &AssetAllocationResponse{Info: groups}
 }
 
 // unixSecsToRFC3339 converts a Unix-seconds string to an RFC 3339 timestamp.
