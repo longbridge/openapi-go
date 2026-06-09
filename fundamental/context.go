@@ -1612,15 +1612,15 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 	}
 }
 
-// ─── EconomicIndicator ────────────────────────────────────────────────────
+// ─── Macrodata ────────────────────────────────────────────────────
 
-// EconomicIndicatorList fetches the list of available macroeconomic indicators.
+// MacrodataList fetches the list of available macroeconomic indicators.
 //
 // Pass offset and limit as nil to use the API defaults (offset=0, limit=100).
 // To fetch all ~619 indicators in one call pass limit=1000.
 //
 // Path: GET /v1/quote/macrodata
-func (c *FundamentalContext) EconomicIndicatorList(
+func (c *FundamentalContext) MacrodataList(
 	ctx context.Context,
 	offset *int32,
 	limit *int32,
@@ -1643,14 +1643,14 @@ func (c *FundamentalContext) EconomicIndicatorList(
 	return out, nil
 }
 
-// EconomicIndicator fetches historical data for a specific macroeconomic
+// Macrodata fetches historical data for a specific macroeconomic
 // indicator.
 //
 // startTime and endTime are Unix timestamps in seconds; pass nil to omit.
 // limit defaults to 100 (max 100) when nil.
 //
 // Path: GET /v1/quote/macrodata/{indicator_code}
-func (c *FundamentalContext) EconomicIndicator(
+func (c *FundamentalContext) Macrodata(
 	ctx context.Context,
 	indicatorCode string,
 	startTime *int64,
