@@ -1653,16 +1653,16 @@ func (c *FundamentalContext) MacrodataIndicators(
 func (c *FundamentalContext) Macrodata(
 	ctx context.Context,
 	indicatorCode string,
-	startTime *int64,
-	endTime *int64,
+	startTime *time.Time,
+	endTime *time.Time,
 	limit *int32,
 ) (*EconomicIndicatorResponse, error) {
 	q := url.Values{}
 	if startTime != nil {
-		q.Set("start_time", fmt.Sprintf("%d", *startTime))
+		q.Set("start_time", startTime.UTC().Format(time.RFC3339))
 	}
 	if endTime != nil {
-		q.Set("end_time", fmt.Sprintf("%d", *endTime))
+		q.Set("end_time", endTime.UTC().Format(time.RFC3339))
 	}
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
