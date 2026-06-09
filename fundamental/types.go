@@ -1377,8 +1377,8 @@ type EconomicIndicatorInfo struct {
 	Describe    MultiLanguageText
 	// Importance — higher is more important.
 	Importance int32
-	// StartDate is the start date of data coverage (unix timestamp string).
-	StartDate string
+	// StartDate is the start date of data coverage; nil if unset.
+	StartDate *time.Time
 }
 
 // EconomicIndicatorData is one historical data point for a macroeconomic
@@ -1386,12 +1386,12 @@ type EconomicIndicatorInfo struct {
 type EconomicIndicatorData struct {
 	// Period is the statistical period (e.g. "2024-Q1", "2024-03").
 	Period        string
-	ReleaseAt     string
+	ReleaseAt     *time.Time
 	ActualValue   string
 	PreviousValue string
 	ForecastValue string
 	RevisedValue  string
-	NextReleaseAt string
+	NextReleaseAt *time.Time
 	Unit          MultiLanguageText
 	UnitPrefix    MultiLanguageText
 }

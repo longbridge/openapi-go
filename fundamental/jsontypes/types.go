@@ -817,7 +817,7 @@ type EconomicIndicatorInfo struct {
 	Category         string            `json:"category"`
 	Describe         MultiLanguageText `json:"describe"`
 	Importance       int32             `json:"importance"`
-	StartDate        string            `json:"start_date"`
+	StartDate        json.Number       `json:"start_date"`
 }
 
 // EconomicIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
@@ -828,15 +828,15 @@ type EconomicIndicatorListResponse struct {
 // EconomicIndicatorData is one historical data point for a macroeconomic
 // indicator.
 type EconomicIndicatorData struct {
-	Period         string            `json:"period"`
-	ReleaseAt      string            `json:"release_at"`
-	ActualValue    string            `json:"actual_value"`
-	PreviousValue  string            `json:"previous_value"`
-	ForecastValue  string            `json:"forecast_value"`
-	RevisedValue   string            `json:"revised_value"`
-	NextReleaseAt  string            `json:"next_release_at"`
-	Unit           MultiLanguageText `json:"unit"`
-	UnitPrefix     MultiLanguageText `json:"unit_prefix"`
+	Period        string            `json:"period"`
+	ReleaseAt     json.Number       `json:"release_at"`
+	ActualValue   string            `json:"actual_value"`
+	PreviousValue string            `json:"previous_value"`
+	ForecastValue string            `json:"forecast_value"`
+	RevisedValue  string            `json:"revised_value"`
+	NextReleaseAt json.Number       `json:"next_release_at"`
+	Unit          MultiLanguageText `json:"unit"`
+	UnitPrefix    MultiLanguageText `json:"unit_prefix"`
 }
 
 // EconomicIndicatorResponse is the raw response for

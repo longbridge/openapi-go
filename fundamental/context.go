@@ -1690,6 +1690,15 @@ func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
 	}
 }
 
+func parseOptionalTimestamp(n json.Number) *time.Time {
+	v := parseTimestampNumber(n)
+	if v == 0 {
+		return nil
+	}
+	t := time.Unix(v, 0).UTC()
+	return &t
+}
+
 func convertEconomicIndicatorInfo(j *jsontypes.EconomicIndicatorInfo) EconomicIndicatorInfo {
 	return EconomicIndicatorInfo{
 		IndicatorCode:    j.IndicatorCode,
@@ -1701,19 +1710,19 @@ func convertEconomicIndicatorInfo(j *jsontypes.EconomicIndicatorInfo) EconomicIn
 		Category:         j.Category,
 		Describe:         convertMultiLanguageText(j.Describe),
 		Importance:       j.Importance,
-		StartDate:        j.StartDate,
+		StartDate:        parseOptionalTimestamp(j.StartDate),
 	}
 }
 
 func convertEconomicIndicatorData(j *jsontypes.EconomicIndicatorData) EconomicIndicatorData {
 	return EconomicIndicatorData{
 		Period:        j.Period,
-		ReleaseAt:     j.ReleaseAt,
+		ReleaseAt:     parseOptionalTimestamp(j.ReleaseAt),
 		ActualValue:   j.ActualValue,
 		PreviousValue: j.PreviousValue,
 		ForecastValue: j.ForecastValue,
 		RevisedValue:  j.RevisedValue,
-		NextReleaseAt: j.NextReleaseAt,
+		NextReleaseAt: parseOptionalTimestamp(j.NextReleaseAt),
 		Unit:          convertMultiLanguageText(j.Unit),
 		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
 	}
