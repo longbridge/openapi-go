@@ -1614,13 +1614,13 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 
 // ─── Macrodata ────────────────────────────────────────────────────
 
-// MacrodataList fetches the list of available macroeconomic indicators.
+// MacrodataIndicators fetches the list of available macroeconomic indicators.
 //
 // Pass offset and limit as nil to use the API defaults (offset=0, limit=100).
 // To fetch all ~619 indicators in one call pass limit=1000.
 //
 // Path: GET /v1/quote/macrodata
-func (c *FundamentalContext) MacrodataList(
+func (c *FundamentalContext) MacrodataIndicators(
 	ctx context.Context,
 	offset *int32,
 	limit *int32,
