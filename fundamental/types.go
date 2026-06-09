@@ -1352,3 +1352,52 @@ type AssetAllocationResponse struct {
 	// Info are the asset allocation groups.
 	Info []*AssetAllocationGroup
 }
+
+// ── economic_indicator ────────────────────────────────────────────────────
+
+// MultiLanguageText is localized text in simplified Chinese, traditional
+// Chinese, and English.
+type MultiLanguageText struct {
+	English            string
+	SimplifiedChinese  string
+	TraditionalChinese string
+}
+
+// EconomicIndicatorInfo is the metadata for one macroeconomic indicator.
+type EconomicIndicatorInfo struct {
+	// IndicatorCode is the external vendor code (input to EconomicIndicator).
+	IndicatorCode    string
+	SourceOrg        string
+	Country          string
+	Name             MultiLanguageText
+	AdjustmentFactor string
+	// Periodicity is the release periodicity (e.g. monthly / quarterly).
+	Periodicity string
+	Category    string
+	Describe    MultiLanguageText
+	// Importance — higher is more important.
+	Importance int32
+	// StartDate is the start date of data coverage (unix timestamp string).
+	StartDate string
+}
+
+// EconomicIndicatorData is one historical data point for a macroeconomic
+// indicator.
+type EconomicIndicatorData struct {
+	// Period is the statistical period (e.g. "2024-Q1", "2024-03").
+	Period        string
+	ReleaseAt     string
+	ActualValue   string
+	PreviousValue string
+	ForecastValue string
+	RevisedValue  string
+	NextReleaseAt string
+	Unit          MultiLanguageText
+	UnitPrefix    MultiLanguageText
+}
+
+// EconomicIndicatorResponse is the response for FundamentalContext.EconomicIndicator.
+type EconomicIndicatorResponse struct {
+	Info EconomicIndicatorInfo
+	Data []EconomicIndicatorData
+}

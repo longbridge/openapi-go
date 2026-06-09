@@ -1611,3 +1611,110 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 		FrDebtAssetsRatio: j.FrDebtAssetsRatio,
 	}
 }
+
+// ─── EconomicIndicator ────────────────────────────────────────────────────
+
+// EconomicIndicatorList fetches the list of available macroeconomic indicators.
+//
+// Pass offset and limit as nil to use the API defaults (offset=0, limit=100).
+// To fetch all ~619 indicators in one call pass limit=1000.
+//
+// Path: GET /v1/quote/macrodata
+func (c *FundamentalContext) EconomicIndicatorList(
+	ctx context.Context,
+	offset *int32,
+	limit *int32,
+) ([]EconomicIndicatorInfo, error) {
+	q := url.Values{}
+	if offset != nil {
+		q.Set("offset", fmt.Sprintf("%d", *offset))
+	}
+	if limit != nil {
+		q.Set("limit", fmt.Sprintf("%d", *limit))
+	}
+	var resp jsontypes.EconomicIndicatorListResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
+		return nil, err
+	}
+	out := make([]EconomicIndicatorInfo, 0, len(resp.Data))
+	for _, item := range resp.Data {
+		out = append(out, convertEconomicIndicatorInfo(&item))
+	}
+	return out, nil
+}
+
+// EconomicIndicator fetches historical data for a specific macroeconomic
+// indicator.
+//
+// startTime and endTime are Unix timestamps in seconds; pass nil to omit.
+// limit defaults to 100 (max 100) when nil.
+//
+// Path: GET /v1/quote/macrodata/{indicator_code}
+func (c *FundamentalContext) EconomicIndicator(
+	ctx context.Context,
+	indicatorCode string,
+	startTime *int64,
+	endTime *int64,
+	limit *int32,
+) (*EconomicIndicatorResponse, error) {
+	q := url.Values{}
+	if startTime != nil {
+		q.Set("start_time", fmt.Sprintf("%d", *startTime))
+	}
+	if endTime != nil {
+		q.Set("end_time", fmt.Sprintf("%d", *endTime))
+	}
+	if limit != nil {
+		q.Set("limit", fmt.Sprintf("%d", *limit))
+	}
+	var resp jsontypes.EconomicIndicatorResponse
+	path := "/v1/quote/macrodata/" + indicatorCode
+	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
+		return nil, err
+	}
+	data := make([]EconomicIndicatorData, 0, len(resp.Data))
+	for _, d := range resp.Data {
+		data = append(data, convertEconomicIndicatorData(&d))
+	}
+	return &EconomicIndicatorResponse{
+		Info: convertEconomicIndicatorInfo(&resp.Info),
+		Data: data,
+	}, nil
+}
+
+func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
+	return MultiLanguageText{
+		English:            j.English,
+		SimplifiedChinese:  j.SimplifiedChinese,
+		TraditionalChinese: j.TraditionalChinese,
+	}
+}
+
+func convertEconomicIndicatorInfo(j *jsontypes.EconomicIndicatorInfo) EconomicIndicatorInfo {
+	return EconomicIndicatorInfo{
+		IndicatorCode:    j.IndicatorCode,
+		SourceOrg:        j.SourceOrg,
+		Country:          j.Country,
+		Name:             convertMultiLanguageText(j.Name),
+		AdjustmentFactor: j.AdjustmentFactor,
+		Periodicity:      j.Periodicity,
+		Category:         j.Category,
+		Describe:         convertMultiLanguageText(j.Describe),
+		Importance:       j.Importance,
+		StartDate:        j.StartDate,
+	}
+}
+
+func convertEconomicIndicatorData(j *jsontypes.EconomicIndicatorData) EconomicIndicatorData {
+	return EconomicIndicatorData{
+		Period:        j.Period,
+		ReleaseAt:     j.ReleaseAt,
+		ActualValue:   j.ActualValue,
+		PreviousValue: j.PreviousValue,
+		ForecastValue: j.ForecastValue,
+		RevisedValue:  j.RevisedValue,
+		NextReleaseAt: j.NextReleaseAt,
+		Unit:          convertMultiLanguageText(j.Unit),
+		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
+	}
+}
