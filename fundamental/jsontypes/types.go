@@ -795,3 +795,53 @@ type HoldingDetail struct {
 	HoldingType     string `json:"holding_type"`
 	HoldingTypeName string `json:"holding_type_name"`
 }
+
+// ── economic_indicator ────────────────────────────────────────────────────
+
+// MultiLanguageText is localized text in simplified Chinese, traditional
+// Chinese, and English.
+type MultiLanguageText struct {
+	English             string `json:"english"`
+	SimplifiedChinese   string `json:"simplified_chinese"`
+	TraditionalChinese  string `json:"traditional_chinese"`
+}
+
+// MacrodataIndicator is the metadata for one macroeconomic indicator.
+type MacrodataIndicator struct {
+	IndicatorCode    string            `json:"indicator_code"`
+	SourceOrg        string            `json:"source_org"`
+	Country          string            `json:"country"`
+	Name             MultiLanguageText `json:"name"`
+	AdjustmentFactor string            `json:"adjustment_factor"`
+	Periodicity      string            `json:"periodicity"`
+	Category         string            `json:"category"`
+	Describe         MultiLanguageText `json:"describe"`
+	Importance       int32             `json:"importance"`
+	StartDate        string            `json:"start_date"`
+}
+
+// EconomicIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
+type EconomicIndicatorListResponse struct {
+	Data []MacrodataIndicator `json:"list"`
+}
+
+// Macrodata is one historical data point for a macroeconomic
+// indicator.
+type Macrodata struct {
+	Period        string            `json:"period"`
+	ReleaseAt     string            `json:"release_at"`
+	ActualValue   string            `json:"actual_value"`
+	PreviousValue string            `json:"previous_value"`
+	ForecastValue string            `json:"forecast_value"`
+	RevisedValue  string            `json:"revised_value"`
+	NextReleaseAt string            `json:"next_release_at"`
+	Unit          MultiLanguageText `json:"unit"`
+	UnitPrefix    MultiLanguageText `json:"unit_prefix"`
+}
+
+// MacrodataResponse is the raw response for
+// GET /v1/quote/macrodata/{indicator_code}.
+type MacrodataResponse struct {
+	Info MacrodataIndicator   `json:"info"`
+	Data []Macrodata `json:"data"`
+}

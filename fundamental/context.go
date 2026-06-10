@@ -1611,3 +1611,128 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 		FrDebtAssetsRatio: j.FrDebtAssetsRatio,
 	}
 }
+
+// ─── Macrodata ────────────────────────────────────────────────────
+
+// MacrodataIndicators fetches the list of available macroeconomic indicators.
+//
+// Pass offset and limit as nil to use the API defaults (offset=0, limit=100).
+// To fetch all ~619 indicators in one call pass limit=1000.
+//
+// Path: GET /v1/quote/macrodata
+func (c *FundamentalContext) MacrodataIndicators(
+	ctx context.Context,
+	offset *int32,
+	limit *int32,
+) ([]MacrodataIndicator, error) {
+	q := url.Values{}
+	if offset != nil {
+		q.Set("offset", fmt.Sprintf("%d", *offset))
+	}
+	if limit != nil {
+		q.Set("limit", fmt.Sprintf("%d", *limit))
+	}
+	var resp jsontypes.EconomicIndicatorListResponse
+	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
+		return nil, err
+	}
+	out := make([]MacrodataIndicator, 0, len(resp.Data))
+	for _, item := range resp.Data {
+		out = append(out, convertMacrodataIndicator(&item))
+	}
+	return out, nil
+}
+
+// Macrodata fetches historical data for a specific macroeconomic
+// indicator.
+//
+// startTime and endTime are Unix timestamps in seconds; pass nil to omit.
+// limit defaults to 100 (max 100) when nil.
+//
+// Path: GET /v1/quote/macrodata/{indicator_code}
+// Macrodata fetches historical data for a specific macroeconomic indicator.
+//
+// startDate and endDate are date strings in "YYYY-MM-DD" format.
+// startDate is sent as YYYY-MM-DDT00:00:00Z; endDate is sent as YYYY-MM-DDT23:59:59Z.
+//
+// Path: GET /v1/quote/macrodata/{indicator_code}
+func (c *FundamentalContext) Macrodata(
+	ctx context.Context,
+	indicatorCode string,
+	startDate *string,
+	endDate *string,
+	limit *int32,
+) (*MacrodataResponse, error) {
+	q := url.Values{}
+	if startDate != nil {
+		q.Set("start_time", *startDate+"T00:00:00Z")
+	}
+	if endDate != nil {
+		q.Set("end_time", *endDate+"T23:59:59Z")
+	}
+	if limit != nil {
+		q.Set("limit", fmt.Sprintf("%d", *limit))
+	}
+	var resp jsontypes.MacrodataResponse
+	path := "/v1/quote/macrodata/" + indicatorCode
+	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
+		return nil, err
+	}
+	data := make([]Macrodata, 0, len(resp.Data))
+	for _, d := range resp.Data {
+		data = append(data, convertMacrodata(&d))
+	}
+	return &MacrodataResponse{
+		Info: convertMacrodataIndicator(&resp.Info),
+		Data: data,
+	}, nil
+}
+
+func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
+	return MultiLanguageText{
+		English:            j.English,
+		SimplifiedChinese:  j.SimplifiedChinese,
+		TraditionalChinese: j.TraditionalChinese,
+	}
+}
+
+func parseOptionalRFC3339(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil
+	}
+	t = t.UTC()
+	return &t
+}
+
+func convertMacrodataIndicator(j *jsontypes.MacrodataIndicator) MacrodataIndicator {
+	return MacrodataIndicator{
+		IndicatorCode:    j.IndicatorCode,
+		SourceOrg:        j.SourceOrg,
+		Country:          j.Country,
+		Name:             convertMultiLanguageText(j.Name),
+		AdjustmentFactor: j.AdjustmentFactor,
+		Periodicity:      j.Periodicity,
+		Category:         j.Category,
+		Describe:         convertMultiLanguageText(j.Describe),
+		Importance:       j.Importance,
+		StartDate:        parseOptionalRFC3339(j.StartDate),
+	}
+}
+
+func convertMacrodata(j *jsontypes.Macrodata) Macrodata {
+	return Macrodata{
+		Period:        j.Period,
+		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
+		ActualValue:   j.ActualValue,
+		PreviousValue: j.PreviousValue,
+		ForecastValue: j.ForecastValue,
+		RevisedValue:  j.RevisedValue,
+		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
+		Unit:          convertMultiLanguageText(j.Unit),
+		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
+	}
+}
