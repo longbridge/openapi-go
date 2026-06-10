@@ -1624,7 +1624,7 @@ func (c *FundamentalContext) MacrodataIndicators(
 	ctx context.Context,
 	offset *int32,
 	limit *int32,
-) ([]EconomicIndicatorInfo, error) {
+) ([]MacrodataIndicatorInfo, error) {
 	q := url.Values{}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1636,9 +1636,9 @@ func (c *FundamentalContext) MacrodataIndicators(
 	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
 		return nil, err
 	}
-	out := make([]EconomicIndicatorInfo, 0, len(resp.Data))
+	out := make([]MacrodataIndicatorInfo, 0, len(resp.Data))
 	for _, item := range resp.Data {
-		out = append(out, convertEconomicIndicatorInfo(&item))
+		out = append(out, convertMacrodataIndicatorInfo(&item))
 	}
 	return out, nil
 }
@@ -1662,7 +1662,7 @@ func (c *FundamentalContext) Macrodata(
 	startDate *string,
 	endDate *string,
 	limit *int32,
-) (*EconomicIndicatorResponse, error) {
+) (*MacrodataResponse, error) {
 	q := url.Values{}
 	if startDate != nil {
 		q.Set("start_time", *startDate+"T00:00:00Z")
@@ -1673,17 +1673,17 @@ func (c *FundamentalContext) Macrodata(
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
-	var resp jsontypes.EconomicIndicatorResponse
+	var resp jsontypes.MacrodataResponse
 	path := "/v1/quote/macrodata/" + indicatorCode
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	data := make([]EconomicIndicatorData, 0, len(resp.Data))
+	data := make([]MacrodataRecord, 0, len(resp.Data))
 	for _, d := range resp.Data {
-		data = append(data, convertEconomicIndicatorData(&d))
+		data = append(data, convertMacrodataRecord(&d))
 	}
-	return &EconomicIndicatorResponse{
-		Info: convertEconomicIndicatorInfo(&resp.Info),
+	return &MacrodataResponse{
+		Info: convertMacrodataIndicatorInfo(&resp.Info),
 		Data: data,
 	}, nil
 }
@@ -1705,8 +1705,8 @@ func parseOptionalTimestamp(n json.Number) *time.Time {
 	return &t
 }
 
-func convertEconomicIndicatorInfo(j *jsontypes.EconomicIndicatorInfo) EconomicIndicatorInfo {
-	return EconomicIndicatorInfo{
+func convertMacrodataIndicatorInfo(j *jsontypes.MacrodataIndicatorInfo) MacrodataIndicatorInfo {
+	return MacrodataIndicatorInfo{
 		IndicatorCode:    j.IndicatorCode,
 		SourceOrg:        j.SourceOrg,
 		Country:          j.Country,
@@ -1720,8 +1720,8 @@ func convertEconomicIndicatorInfo(j *jsontypes.EconomicIndicatorInfo) EconomicIn
 	}
 }
 
-func convertEconomicIndicatorData(j *jsontypes.EconomicIndicatorData) EconomicIndicatorData {
-	return EconomicIndicatorData{
+func convertMacrodataRecord(j *jsontypes.MacrodataRecord) MacrodataRecord {
+	return MacrodataRecord{
 		Period:        j.Period,
 		ReleaseAt:     parseOptionalTimestamp(j.ReleaseAt),
 		ActualValue:   j.ActualValue,
