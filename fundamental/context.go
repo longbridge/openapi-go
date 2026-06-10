@@ -1650,19 +1650,25 @@ func (c *FundamentalContext) MacrodataIndicators(
 // limit defaults to 100 (max 100) when nil.
 //
 // Path: GET /v1/quote/macrodata/{indicator_code}
+// Macrodata fetches historical data for a specific macroeconomic indicator.
+//
+// startDate and endDate are date strings in "YYYY-MM-DD" format.
+// startDate is sent as YYYY-MM-DDT00:00:00Z; endDate is sent as YYYY-MM-DDT23:59:59Z.
+//
+// Path: GET /v1/quote/macrodata/{indicator_code}
 func (c *FundamentalContext) Macrodata(
 	ctx context.Context,
 	indicatorCode string,
-	startTime *time.Time,
-	endTime *time.Time,
+	startDate *string,
+	endDate *string,
 	limit *int32,
 ) (*EconomicIndicatorResponse, error) {
 	q := url.Values{}
-	if startTime != nil {
-		q.Set("start_time", startTime.UTC().Format(time.RFC3339))
+	if startDate != nil {
+		q.Set("start_time", *startDate+"T00:00:00Z")
 	}
-	if endTime != nil {
-		q.Set("end_time", endTime.UTC().Format(time.RFC3339))
+	if endDate != nil {
+		q.Set("end_time", *endDate+"T23:59:59Z")
 	}
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
