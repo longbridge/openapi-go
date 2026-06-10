@@ -1628,7 +1628,7 @@ func (c *FundamentalContext) MacrodataIndicators(
 ) (*MacrodataIndicatorListResponse, error) {
 	q := url.Values{}
 	if country != nil {
-		q.Set("country", string(*country))
+		q.Set("country", macrodataCountryToAPIValue(*country))
 	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1736,5 +1736,24 @@ func convertMacrodata(j *jsontypes.Macrodata) Macrodata {
 		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
 		Unit:          convertMultiLanguageText(j.Unit),
 		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
+	}
+}
+
+func macrodataCountryToAPIValue(c MacrodataCountry) string {
+	switch c {
+	case MacrodataCountryHK:
+		return "Hong Kong SAR China"
+	case MacrodataCountryCN:
+		return "China (Mainland)"
+	case MacrodataCountryUS:
+		return "United States"
+	case MacrodataCountryEU:
+		return "Euro Zone"
+	case MacrodataCountryJP:
+		return "Japan"
+	case MacrodataCountrySG:
+		return "Singapore"
+	default:
+		return string(c)
 	}
 }
