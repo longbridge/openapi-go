@@ -1,25 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [v0.25.0] - 2026-06-10
 
 ### Added
 
 - New public `counter` package for symbol ↔ `counter_id` conversion, backed by
-  an embedded ETF / index / warrant directory:
-  - `SymbolToCounterID` / `IndexSymbolToCounterID` / `CounterIDToSymbol`.
-  - `IsETF` reports whether a symbol resolves to an ETF.
-  - `LookupCounterID` resolves locally only (embedded directory + on-disk cache
-    + leading-dot index notation).
-  - `CacheCounterIDs` persists remotely resolved entries to
-    `$LONGBRIDGE_CACHE_DIR/counter-ids.csv` (default
-    `~/.longbridge/cache/counter-ids.csv`), one `counter_id` per line in
-    lexicographic order.
-- `QuoteContext.SymbolToCounterIds` – batch convert symbols to counter IDs via
-  `POST /v1/quote/symbol-to-counter-ids`.
-- `QuoteContext.ResolveCounterIds` – local-first counter ID resolution with a
-  single batched remote fallback and automatic caching of confirmed entries.
-- `FundamentalContext.EtfAssetAllocation` – ETF asset allocation (holdings /
-  regional / asset class / industry) via `GET /v1/quote/etf-asset-allocation`.
+  an embedded ETF (7250) / index (648) / warrant (17693) directory:
+  - `SymbolToCounterID` / `IndexSymbolToCounterID` / `CounterIDToSymbol`
+  - `IsETF` reports whether a symbol resolves to an ETF
+  - `LookupCounterID` resolves locally only (embedded directory + on-disk cache + leading-dot index notation)
+  - `CacheCounterIDs` persists remotely resolved entries to `$LONGBRIDGE_CACHE_DIR/counter-ids.csv` (default `~/.longbridge/cache/counter-ids.csv`)
+- `QuoteContext.SymbolToCounterIds` — batch convert symbols to counter IDs via `POST /v1/quote/symbol-to-counter-ids`
+- `QuoteContext.ResolveCounterIds` — local-first counter ID resolution with batched remote fallback and automatic caching
+- `FundamentalContext.EtfAssetAllocation` — ETF asset allocation (holdings / regional / asset class / industry) via `GET /v1/quote/etf-asset-allocation`
+- `FundamentalContext.MacrodataIndicators` — list macroeconomic indicators via `GET /v1/quote/macrodata`
+- `FundamentalContext.Macrodata` — historical data for a specific indicator via `GET /v1/quote/macrodata/{indicator_code}`; `startDate` / `endDate` accept `"YYYY-MM-DD"` strings
+- New types: `MultiLanguageText`, `MacrodataIndicator`, `Macrodata`, `MacrodataResponse`
 
 ## [v0.24.2] - 2026-06-02
 
