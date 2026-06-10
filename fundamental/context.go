@@ -1616,16 +1616,20 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 
 // MacrodataIndicators fetches the list of available macroeconomic indicators.
 //
-// Pass offset and limit as nil to use the API defaults (offset=0, limit=100).
-// To fetch all ~619 indicators in one call pass limit=1000.
+// Pass country to filter by country code (e.g. MacrodataCountryUS).
+// Pass nil for all countries.
 //
 // Path: GET /v1/quote/macrodata
 func (c *FundamentalContext) MacrodataIndicators(
 	ctx context.Context,
+	country *MacrodataCountry,
 	offset *int32,
 	limit *int32,
-) ([]MacrodataIndicator, error) {
+) (*MacrodataIndicatorListResponse, error) {
 	q := url.Values{}
+	if country != nil {
+		q.Set("country", string(*country))
+	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
 	}
@@ -1640,16 +1644,9 @@ func (c *FundamentalContext) MacrodataIndicators(
 	for _, item := range resp.Data {
 		out = append(out, convertMacrodataIndicator(&item))
 	}
-	return out, nil
+	return &MacrodataIndicatorListResponse{Data: out, Count: resp.Count}, nil
 }
 
-// Macrodata fetches historical data for a specific macroeconomic
-// indicator.
-//
-// startTime and endTime are Unix timestamps in seconds; pass nil to omit.
-// limit defaults to 100 (max 100) when nil.
-//
-// Path: GET /v1/quote/macrodata/{indicator_code}
 // Macrodata fetches historical data for a specific macroeconomic indicator.
 //
 // startDate and endDate are date strings in "YYYY-MM-DD" format.
@@ -1661,6 +1658,7 @@ func (c *FundamentalContext) Macrodata(
 	indicatorCode string,
 	startDate *string,
 	endDate *string,
+	offset *int32,
 	limit *int32,
 ) (*MacrodataResponse, error) {
 	q := url.Values{}
@@ -1669,6 +1667,9 @@ func (c *FundamentalContext) Macrodata(
 	}
 	if endDate != nil {
 		q.Set("end_time", *endDate+"T23:59:59Z")
+	}
+	if offset != nil {
+		q.Set("offset", fmt.Sprintf("%d", *offset))
 	}
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
@@ -1683,8 +1684,9 @@ func (c *FundamentalContext) Macrodata(
 		data = append(data, convertMacrodata(&d))
 	}
 	return &MacrodataResponse{
-		Info: convertMacrodataIndicator(&resp.Info),
-		Data: data,
+		Info:  convertMacrodataIndicator(&resp.Info),
+		Data:  data,
+		Count: resp.Count,
 	}, nil
 }
 

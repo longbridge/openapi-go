@@ -1363,9 +1363,46 @@ type MultiLanguageText struct {
 	TraditionalChinese string
 }
 
+// MacrodataCountry is a country code for filtering macroeconomic indicators.
+type MacrodataCountry string
+
+const (
+	MacrodataCountryUS MacrodataCountry = "US" // United States
+	MacrodataCountryCN MacrodataCountry = "CN" // China
+	MacrodataCountryEU MacrodataCountry = "EU" // Euro Zone
+	MacrodataCountryJP MacrodataCountry = "JP" // Japan
+	MacrodataCountryUK MacrodataCountry = "UK" // United Kingdom
+	MacrodataCountryDE MacrodataCountry = "DE" // Germany
+	MacrodataCountryFR MacrodataCountry = "FR" // France
+	MacrodataCountryAU MacrodataCountry = "AU" // Australia
+	MacrodataCountryCA MacrodataCountry = "CA" // Canada
+	MacrodataCountryKR MacrodataCountry = "KR" // South Korea
+	MacrodataCountryIN MacrodataCountry = "IN" // India
+	MacrodataCountryBR MacrodataCountry = "BR" // Brazil
+	MacrodataCountryHK MacrodataCountry = "HK" // Hong Kong
+	MacrodataCountrySG MacrodataCountry = "SG" // Singapore
+)
+
+// MacrodataImportance is the importance level of a macroeconomic indicator.
+type MacrodataImportance int32
+
+const (
+	MacrodataImportanceLow    MacrodataImportance = 1
+	MacrodataImportanceMedium MacrodataImportance = 2
+	MacrodataImportanceHigh   MacrodataImportance = 3
+)
+
+// MacrodataIndicatorListResponse is the response for FundamentalContext.MacrodataIndicators.
+type MacrodataIndicatorListResponse struct {
+	// Data is the list of indicators.
+	Data []MacrodataIndicator
+	// Count is the total number of indicators matching the query.
+	Count int32
+}
+
 // MacrodataIndicator is the metadata for one macroeconomic indicator.
 type MacrodataIndicator struct {
-	// IndicatorCode is the external vendor code (input to EconomicIndicator).
+	// IndicatorCode is the external vendor code (input to Macrodata).
 	IndicatorCode    string
 	SourceOrg        string
 	Country          string
@@ -1375,14 +1412,13 @@ type MacrodataIndicator struct {
 	Periodicity string
 	Category    string
 	Describe    MultiLanguageText
-	// Importance — higher is more important.
+	// Importance: 1=Low, 2=Medium, 3=High.
 	Importance int32
 	// StartDate is the start date of data coverage; nil if unset.
 	StartDate *time.Time
 }
 
-// Macrodata is one historical data point for a macroeconomic
-// indicator.
+// Macrodata is one historical data point for a macroeconomic indicator.
 type Macrodata struct {
 	// Period is the statistical period (e.g. "2024-Q1", "2024-03").
 	Period        string
@@ -1396,8 +1432,10 @@ type Macrodata struct {
 	UnitPrefix    MultiLanguageText
 }
 
-// MacrodataResponse is the response for FundamentalContext.EconomicIndicator.
+// MacrodataResponse is the response for FundamentalContext.Macrodata.
 type MacrodataResponse struct {
-	Info MacrodataIndicator
-	Data []Macrodata
+	Info  MacrodataIndicator
+	Data  []Macrodata
+	// Count is the total number of historical data points.
+	Count int32
 }

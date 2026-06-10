@@ -822,7 +822,8 @@ type MacrodataIndicator struct {
 
 // MacrodataIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
 type MacrodataIndicatorListResponse struct {
-	Data []MacrodataIndicator `json:"list"`
+	Data  []MacrodataIndicator `json:"list"`
+	Count int32                `json:"count"`
 }
 
 // Macrodata is one historical data point for a macroeconomic
@@ -842,6 +843,7 @@ type Macrodata struct {
 // MacrodataResponse is the raw response for
 // GET /v1/quote/macrodata/{indicator_code}.
 type MacrodataResponse struct {
-	Info MacrodataIndicator   `json:"info"`
-	Data []Macrodata `json:"data"`
+	Info  MacrodataIndicator `json:"info"`
+	Data  []Macrodata        `json:"data"`
+	Count int32              `json:"count"`
 }
