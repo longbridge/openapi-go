@@ -1696,12 +1696,15 @@ func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
 	}
 }
 
-func parseOptionalTimestamp(n json.Number) *time.Time {
-	v := parseTimestampNumber(n)
-	if v == 0 {
+func parseOptionalRFC3339(s string) *time.Time {
+	if s == "" {
 		return nil
 	}
-	t := time.Unix(v, 0).UTC()
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil
+	}
+	t = t.UTC()
 	return &t
 }
 
@@ -1716,19 +1719,19 @@ func convertMacrodataIndicator(j *jsontypes.MacrodataIndicator) MacrodataIndicat
 		Category:         j.Category,
 		Describe:         convertMultiLanguageText(j.Describe),
 		Importance:       j.Importance,
-		StartDate:        parseOptionalTimestamp(j.StartDate),
+		StartDate:        parseOptionalRFC3339(j.StartDate),
 	}
 }
 
 func convertMacrodata(j *jsontypes.Macrodata) Macrodata {
 	return Macrodata{
 		Period:        j.Period,
-		ReleaseAt:     parseOptionalTimestamp(j.ReleaseAt),
+		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
 		ActualValue:   j.ActualValue,
 		PreviousValue: j.PreviousValue,
 		ForecastValue: j.ForecastValue,
 		RevisedValue:  j.RevisedValue,
-		NextReleaseAt: parseOptionalTimestamp(j.NextReleaseAt),
+		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
 		Unit:          convertMultiLanguageText(j.Unit),
 		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
 	}
