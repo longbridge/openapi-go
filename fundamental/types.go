@@ -1367,19 +1367,11 @@ type MultiLanguageText struct {
 type MacrodataCountry string
 
 const (
+	MacrodataCountryHK MacrodataCountry = "HK" // Hong Kong SAR China
+	MacrodataCountryCN MacrodataCountry = "CN" // China (Mainland)
 	MacrodataCountryUS MacrodataCountry = "US" // United States
-	MacrodataCountryCN MacrodataCountry = "CN" // China
 	MacrodataCountryEU MacrodataCountry = "EU" // Euro Zone
 	MacrodataCountryJP MacrodataCountry = "JP" // Japan
-	MacrodataCountryUK MacrodataCountry = "UK" // United Kingdom
-	MacrodataCountryDE MacrodataCountry = "DE" // Germany
-	MacrodataCountryFR MacrodataCountry = "FR" // France
-	MacrodataCountryAU MacrodataCountry = "AU" // Australia
-	MacrodataCountryCA MacrodataCountry = "CA" // Canada
-	MacrodataCountryKR MacrodataCountry = "KR" // South Korea
-	MacrodataCountryIN MacrodataCountry = "IN" // India
-	MacrodataCountryBR MacrodataCountry = "BR" // Brazil
-	MacrodataCountryHK MacrodataCountry = "HK" // Hong Kong
 	MacrodataCountrySG MacrodataCountry = "SG" // Singapore
 )
 
