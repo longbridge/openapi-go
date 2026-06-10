@@ -820,8 +820,8 @@ type MacrodataIndicator struct {
 	StartDate        string            `json:"start_date"`
 }
 
-// EconomicIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
-type EconomicIndicatorListResponse struct {
+// MacrodataIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
+type MacrodataIndicatorListResponse struct {
 	Data []MacrodataIndicator `json:"list"`
 }
 

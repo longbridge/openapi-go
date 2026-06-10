@@ -1632,7 +1632,7 @@ func (c *FundamentalContext) MacrodataIndicators(
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
-	var resp jsontypes.EconomicIndicatorListResponse
+	var resp jsontypes.MacrodataIndicatorListResponse
 	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
 		return nil, err
 	}
