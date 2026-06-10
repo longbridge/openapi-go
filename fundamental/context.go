@@ -1624,7 +1624,7 @@ func (c *FundamentalContext) MacrodataIndicators(
 	ctx context.Context,
 	offset *int32,
 	limit *int32,
-) ([]MacrodataIndicatorInfo, error) {
+) ([]MacrodataIndicator, error) {
 	q := url.Values{}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1636,9 +1636,9 @@ func (c *FundamentalContext) MacrodataIndicators(
 	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
 		return nil, err
 	}
-	out := make([]MacrodataIndicatorInfo, 0, len(resp.Data))
+	out := make([]MacrodataIndicator, 0, len(resp.Data))
 	for _, item := range resp.Data {
-		out = append(out, convertMacrodataIndicatorInfo(&item))
+		out = append(out, convertMacrodataIndicator(&item))
 	}
 	return out, nil
 }
@@ -1678,12 +1678,12 @@ func (c *FundamentalContext) Macrodata(
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	data := make([]MacrodataRecord, 0, len(resp.Data))
+	data := make([]Macrodata, 0, len(resp.Data))
 	for _, d := range resp.Data {
-		data = append(data, convertMacrodataRecord(&d))
+		data = append(data, convertMacrodata(&d))
 	}
 	return &MacrodataResponse{
-		Info: convertMacrodataIndicatorInfo(&resp.Info),
+		Info: convertMacrodataIndicator(&resp.Info),
 		Data: data,
 	}, nil
 }
@@ -1705,8 +1705,8 @@ func parseOptionalTimestamp(n json.Number) *time.Time {
 	return &t
 }
 
-func convertMacrodataIndicatorInfo(j *jsontypes.MacrodataIndicatorInfo) MacrodataIndicatorInfo {
-	return MacrodataIndicatorInfo{
+func convertMacrodataIndicator(j *jsontypes.MacrodataIndicator) MacrodataIndicator {
+	return MacrodataIndicator{
 		IndicatorCode:    j.IndicatorCode,
 		SourceOrg:        j.SourceOrg,
 		Country:          j.Country,
@@ -1720,8 +1720,8 @@ func convertMacrodataIndicatorInfo(j *jsontypes.MacrodataIndicatorInfo) Macrodat
 	}
 }
 
-func convertMacrodataRecord(j *jsontypes.MacrodataRecord) MacrodataRecord {
-	return MacrodataRecord{
+func convertMacrodata(j *jsontypes.Macrodata) Macrodata {
+	return Macrodata{
 		Period:        j.Period,
 		ReleaseAt:     parseOptionalTimestamp(j.ReleaseAt),
 		ActualValue:   j.ActualValue,

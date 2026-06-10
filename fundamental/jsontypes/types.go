@@ -806,8 +806,8 @@ type MultiLanguageText struct {
 	TraditionalChinese  string `json:"traditional_chinese"`
 }
 
-// MacrodataIndicatorInfo is the metadata for one macroeconomic indicator.
-type MacrodataIndicatorInfo struct {
+// MacrodataIndicator is the metadata for one macroeconomic indicator.
+type MacrodataIndicator struct {
 	IndicatorCode    string            `json:"indicator_code"`
 	SourceOrg        string            `json:"source_org"`
 	Country          string            `json:"country"`
@@ -822,12 +822,12 @@ type MacrodataIndicatorInfo struct {
 
 // EconomicIndicatorListResponse is the raw response for GET /v1/quote/macrodata.
 type EconomicIndicatorListResponse struct {
-	Data []MacrodataIndicatorInfo `json:"data"`
+	Data []MacrodataIndicator `json:"data"`
 }
 
-// MacrodataRecord is one historical data point for a macroeconomic
+// Macrodata is one historical data point for a macroeconomic
 // indicator.
-type MacrodataRecord struct {
+type Macrodata struct {
 	Period        string            `json:"period"`
 	ReleaseAt     json.Number       `json:"release_at"`
 	ActualValue   string            `json:"actual_value"`
@@ -842,6 +842,6 @@ type MacrodataRecord struct {
 // MacrodataResponse is the raw response for
 // GET /v1/quote/macrodata/{indicator_code}.
 type MacrodataResponse struct {
-	Info MacrodataIndicatorInfo   `json:"info"`
-	Data []MacrodataRecord `json:"data"`
+	Info MacrodataIndicator   `json:"info"`
+	Data []Macrodata `json:"data"`
 }
