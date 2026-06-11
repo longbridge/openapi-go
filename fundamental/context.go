@@ -1612,7 +1612,7 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 	}
 }
 
-// ─── Macrodata ────────────────────────────────────────────────────
+// ─── Macroeconomic ────────────────────────────────────────────────────
 
 // MacroeconomicIndicators fetches the list of available macroeconomic indicators.
 //
@@ -1647,13 +1647,13 @@ func (c *FundamentalContext) MacroeconomicIndicators(
 	return &MacroeconomicIndicatorListResponse{Data: out, Count: resp.Count}, nil
 }
 
-// Macrodata fetches historical data for a specific macroeconomic indicator.
+// Macroeconomic fetches historical data for a specific macroeconomic indicator.
 //
 // startDate and endDate are date strings in "YYYY-MM-DD" format.
 // startDate is sent as YYYY-MM-DDT00:00:00Z; endDate is sent as YYYY-MM-DDT23:59:59Z.
 //
 // Path: GET /v1/quote/macrodata/{indicator_code}
-func (c *FundamentalContext) Macrodata(
+func (c *FundamentalContext) Macroeconomic(
 	ctx context.Context,
 	indicatorCode string,
 	startDate *string,
@@ -1679,7 +1679,7 @@ func (c *FundamentalContext) Macrodata(
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	data := make([]Macrodata, 0, len(resp.Data))
+	data := make([]Macroeconomic, 0, len(resp.Data))
 	for _, d := range resp.Data {
 		data = append(data, convertMacrodata(&d))
 	}
@@ -1725,8 +1725,8 @@ func convertMacroeconomicIndicator(j *jsontypes.MacroeconomicIndicator) Macroeco
 	}
 }
 
-func convertMacrodata(j *jsontypes.Macrodata) Macrodata {
-	return Macrodata{
+func convertMacrodata(j *jsontypes.Macroeconomic) Macroeconomic {
+	return Macroeconomic{
 		Period:        j.Period,
 		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
 		ActualValue:   j.ActualValue,

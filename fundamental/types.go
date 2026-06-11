@@ -1394,7 +1394,7 @@ type MacroeconomicIndicatorListResponse struct {
 
 // MacroeconomicIndicator is the metadata for one macroeconomic indicator.
 type MacroeconomicIndicator struct {
-	// IndicatorCode is the external vendor code (input to Macrodata).
+	// IndicatorCode is the external vendor code (input to Macroeconomic).
 	IndicatorCode    string
 	SourceOrg        string
 	Country          string
@@ -1410,8 +1410,8 @@ type MacroeconomicIndicator struct {
 	StartDate *time.Time
 }
 
-// Macrodata is one historical data point for a macroeconomic indicator.
-type Macrodata struct {
+// Macroeconomic is one historical data point for a macroeconomic indicator.
+type Macroeconomic struct {
 	// Period is the statistical period (e.g. "2024-Q1", "2024-03").
 	Period        string
 	ReleaseAt     *time.Time
@@ -1424,10 +1424,10 @@ type Macrodata struct {
 	UnitPrefix    MultiLanguageText
 }
 
-// MacroeconomicResponse is the response for FundamentalContext.Macrodata.
+// MacroeconomicResponse is the response for FundamentalContext.Macroeconomic.
 type MacroeconomicResponse struct {
 	Info  MacroeconomicIndicator
-	Data  []Macrodata
+	Data  []Macroeconomic
 	// Count is the total number of historical data points.
 	Count int32
 }

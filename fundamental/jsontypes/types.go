@@ -826,9 +826,9 @@ type MacroeconomicIndicatorListResponse struct {
 	Count int32                `json:"count"`
 }
 
-// Macrodata is one historical data point for a macroeconomic
+// Macroeconomic is one historical data point for a macroeconomic
 // indicator.
-type Macrodata struct {
+type Macroeconomic struct {
 	Period        string            `json:"period"`
 	ReleaseAt     string            `json:"release_at"`
 	ActualValue   string            `json:"actual_value"`
@@ -844,6 +844,6 @@ type Macrodata struct {
 // GET /v1/quote/macrodata/{indicator_code}.
 type MacroeconomicResponse struct {
 	Info  MacroeconomicIndicator `json:"info"`
-	Data  []Macrodata        `json:"data"`
+	Data  []Macroeconomic        `json:"data"`
 	Count int32              `json:"count"`
 }
