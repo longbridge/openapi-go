@@ -1363,37 +1363,37 @@ type MultiLanguageText struct {
 	TraditionalChinese string
 }
 
-// MacrodataCountry is a country code for filtering macroeconomic indicators.
-type MacrodataCountry string
+// MacroeconomicCountry is a country code for filtering macroeconomic indicators.
+type MacroeconomicCountry string
 
 const (
-	MacrodataCountryHK MacrodataCountry = "HK" // Hong Kong SAR China
-	MacrodataCountryCN MacrodataCountry = "CN" // China (Mainland)
-	MacrodataCountryUS MacrodataCountry = "US" // United States
-	MacrodataCountryEU MacrodataCountry = "EU" // Euro Zone
-	MacrodataCountryJP MacrodataCountry = "JP" // Japan
-	MacrodataCountrySG MacrodataCountry = "SG" // Singapore
+	MacroeconomicCountryHK MacroeconomicCountry = "HK" // Hong Kong SAR China
+	MacroeconomicCountryCN MacroeconomicCountry = "CN" // China (Mainland)
+	MacroeconomicCountryUS MacroeconomicCountry = "US" // United States
+	MacroeconomicCountryEU MacroeconomicCountry = "EU" // Euro Zone
+	MacroeconomicCountryJP MacroeconomicCountry = "JP" // Japan
+	MacroeconomicCountrySG MacroeconomicCountry = "SG" // Singapore
 )
 
-// MacrodataImportance is the importance level of a macroeconomic indicator.
-type MacrodataImportance int32
+// MacroeconomicImportance is the importance level of a macroeconomic indicator.
+type MacroeconomicImportance int32
 
 const (
-	MacrodataImportanceLow    MacrodataImportance = 1
-	MacrodataImportanceMedium MacrodataImportance = 2
-	MacrodataImportanceHigh   MacrodataImportance = 3
+	MacroeconomicImportanceLow    MacroeconomicImportance = 1
+	MacroeconomicImportanceMedium MacroeconomicImportance = 2
+	MacroeconomicImportanceHigh   MacroeconomicImportance = 3
 )
 
-// MacrodataIndicatorListResponse is the response for FundamentalContext.MacrodataIndicators.
-type MacrodataIndicatorListResponse struct {
+// MacroeconomicIndicatorListResponse is the response for FundamentalContext.MacroeconomicIndicators.
+type MacroeconomicIndicatorListResponse struct {
 	// Data is the list of indicators.
-	Data []MacrodataIndicator
+	Data []MacroeconomicIndicator
 	// Count is the total number of indicators matching the query.
 	Count int32
 }
 
-// MacrodataIndicator is the metadata for one macroeconomic indicator.
-type MacrodataIndicator struct {
+// MacroeconomicIndicator is the metadata for one macroeconomic indicator.
+type MacroeconomicIndicator struct {
 	// IndicatorCode is the external vendor code (input to Macrodata).
 	IndicatorCode    string
 	SourceOrg        string
@@ -1424,9 +1424,9 @@ type Macrodata struct {
 	UnitPrefix    MultiLanguageText
 }
 
-// MacrodataResponse is the response for FundamentalContext.Macrodata.
-type MacrodataResponse struct {
-	Info  MacrodataIndicator
+// MacroeconomicResponse is the response for FundamentalContext.Macrodata.
+type MacroeconomicResponse struct {
+	Info  MacroeconomicIndicator
 	Data  []Macrodata
 	// Count is the total number of historical data points.
 	Count int32
