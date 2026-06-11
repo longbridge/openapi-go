@@ -13,9 +13,9 @@
 - `QuoteContext.SymbolToCounterIds` — batch convert symbols to counter IDs via `POST /v1/quote/symbol-to-counter-ids`
 - `QuoteContext.ResolveCounterIds` — local-first counter ID resolution with batched remote fallback and automatic caching
 - `FundamentalContext.EtfAssetAllocation` — ETF asset allocation (holdings / regional / asset class / industry) via `GET /v1/quote/etf-asset-allocation`
-- `FundamentalContext.MacrodataIndicators` — list macroeconomic indicators via `GET /v1/quote/macrodata`
-- `FundamentalContext.Macrodata` — historical data for a specific indicator via `GET /v1/quote/macrodata/{indicator_code}`; `startDate` / `endDate` accept `"YYYY-MM-DD"` strings
-- New types: `MultiLanguageText`, `MacrodataIndicator`, `Macrodata`, `MacrodataResponse`
+- `FundamentalContext.MacroeconomicIndicators(country, offset, limit)` — list macroeconomic indicators via `GET /v1/quote/macrodata`; filter by `MacroeconomicCountry` (HK/CN/US/EU/JP/SG); response includes `Count`
+- `FundamentalContext.Macroeconomic(indicatorCode, startDate, endDate, offset, limit)` — historical data for a specific indicator via `GET /v1/quote/macrodata/{indicator_code}`; `startDate` / `endDate` accept `"YYYY-MM-DD"` strings; response includes `Count`
+- New types: `MultiLanguageText`, `MacroeconomicCountry`, `MacroeconomicImportance`, `MacroeconomicIndicator`, `MacroeconomicIndicatorListResponse`, `Macroeconomic`, `MacroeconomicResponse`
 
 ## [v0.24.2] - 2026-06-02
 
