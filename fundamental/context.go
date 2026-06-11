@@ -1628,7 +1628,7 @@ func (c *FundamentalContext) MacroeconomicIndicators(
 ) (*MacroeconomicIndicatorListResponse, error) {
 	q := url.Values{}
 	if country != nil {
-		q.Set("country", macrodataCountryToAPIValue(*country))
+		q.Set("country", macroeconomicCountryToAPIValue(*country))
 	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1739,7 +1739,7 @@ func convertMacrodata(j *jsontypes.Macroeconomic) Macroeconomic {
 	}
 }
 
-func macrodataCountryToAPIValue(c MacroeconomicCountry) string {
+func macroeconomicCountryToAPIValue(c MacroeconomicCountry) string {
 	switch c {
 	case MacroeconomicCountryHK:
 		return "Hong Kong SAR China"
