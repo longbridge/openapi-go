@@ -1681,7 +1681,7 @@ func (c *FundamentalContext) Macroeconomic(
 	}
 	data := make([]Macroeconomic, 0, len(resp.Data))
 	for _, d := range resp.Data {
-		data = append(data, convertMacrodata(&d))
+		data = append(data, convertMacroeconomic(&d))
 	}
 	return &MacroeconomicResponse{
 		Info:  convertMacroeconomicIndicator(&resp.Info),
@@ -1725,7 +1725,7 @@ func convertMacroeconomicIndicator(j *jsontypes.MacroeconomicIndicator) Macroeco
 	}
 }
 
-func convertMacrodata(j *jsontypes.Macroeconomic) Macroeconomic {
+func convertMacroeconomic(j *jsontypes.Macroeconomic) Macroeconomic {
 	return Macroeconomic{
 		Period:        j.Period,
 		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
