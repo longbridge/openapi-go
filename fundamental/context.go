@@ -1727,14 +1727,23 @@ func (c *FundamentalContext) MacroeconomicV2(
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	detail := resp.Indicator
+	// Support both new format (indicator) and old format (indicator_data_list)
+	var detail jsontypes.V2MacroeconomicDetail
+	if resp.Indicator.IndicatorID != 0 {
+		detail = resp.Indicator
+	} else if len(resp.IndicatorDataList) > 0 {
+		detail = resp.IndicatorDataList[0]
+	}
 	data := make([]Macroeconomic, 0, len(detail.IndicatorData))
 	for _, d := range detail.IndicatorData {
 		var releaseAt *time.Time
 		if d.PublishedTime != "" {
-			if t, err := time.Parse("2006-01-02T15:04:05", d.PublishedTime); err == nil {
-				ut := t.UTC()
-				releaseAt = &ut
+			for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z", "2006-01-02T15:04:05"} {
+				if t, err := time.Parse(layout, d.PublishedTime); err == nil {
+					ut := t.UTC()
+					releaseAt = &ut
+					break
+				}
 			}
 		}
 		data = append(data, Macroeconomic{

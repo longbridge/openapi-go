@@ -882,8 +882,10 @@ type V2MacroeconomicDetail struct {
 	IndicatorData []V2IndicatorDataDetail `json:"indicator_data"`
 }
 
-// V2MacroeconomicResponse is the response for GET /v2/quote/macrodata/:id (GetMacroIndicatorHistoryResp).
+// V2MacroeconomicResponse is the response for GET /v2/quote/macrodata/:id.
+// Supports both new format (indicator) and old format (indicator_data_list).
 type V2MacroeconomicResponse struct {
-	Indicator V2MacroeconomicDetail `json:"indicator"`
-	Total     int32                 `json:"total"`
+	Indicator         V2MacroeconomicDetail   `json:"indicator"`
+	IndicatorDataList []V2MacroeconomicDetail `json:"indicator_data_list"`
+	Total             int32                   `json:"total"`
 }
