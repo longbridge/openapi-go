@@ -1665,9 +1665,9 @@ func (c *FundamentalContext) MacroeconomicIndicatorsV2(
 		out = append(out, MacroeconomicIndicator{
 			IndicatorCode: fmt.Sprintf("%d", item.IndicatorID),
 			Country:       item.Market,
-			Name:          MultiLanguageText{English: item.IndicatorName},
+			Name:          item.IndicatorName,
 			Periodicity:   item.Frequence,
-			Describe:      MultiLanguageText{English: item.Description},
+			Describe:      item.Description,
 			Importance:    item.Importance,
 		})
 	}
@@ -1760,8 +1760,8 @@ func (c *FundamentalContext) MacroeconomicV2(
 		Info: MacroeconomicIndicator{
 			IndicatorCode: fmt.Sprintf("%d", detail.IndicatorID),
 			Country:       detail.Market,
-			Name:          MultiLanguageText{English: detail.IndicatorName},
-			Describe:      MultiLanguageText{English: detail.Description},
+			Name:          detail.IndicatorName,
+			Describe:      detail.Description,
 		},
 		Data:  data,
 		Count: count,
@@ -1793,11 +1793,11 @@ func convertMacroeconomicIndicator(j *jsontypes.MacroeconomicIndicator) Macroeco
 		IndicatorCode:    j.IndicatorCode,
 		SourceOrg:        j.SourceOrg,
 		Country:          j.Country,
-		Name:             convertMultiLanguageText(j.Name),
+		Name:             j.Name.English,
 		AdjustmentFactor: j.AdjustmentFactor,
 		Periodicity:      j.Periodicity,
 		Category:         j.Category,
-		Describe:         convertMultiLanguageText(j.Describe),
+		Describe:         j.Describe.English,
 		Importance:       j.Importance,
 		StartDate:        parseOptionalRFC3339(j.StartDate),
 	}
