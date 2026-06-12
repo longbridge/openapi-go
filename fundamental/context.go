@@ -1727,11 +1727,7 @@ func (c *FundamentalContext) MacroeconomicV2(
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	// Take first item (single-indicator query)
-	if len(resp.IndicatorDataList) == 0 {
-		return &MacroeconomicResponse{}, nil
-	}
-	detail := resp.IndicatorDataList[0]
+	detail := resp.Indicator
 	data := make([]Macroeconomic, 0, len(detail.IndicatorData))
 	for _, d := range detail.IndicatorData {
 		var releaseAt *time.Time
