@@ -1666,7 +1666,7 @@ func (c *FundamentalContext) MacroeconomicIndicatorsV2(
 			IndicatorCode: fmt.Sprintf("%d", item.IndicatorID),
 			Country:       item.Market,
 			Name:          MultiLanguageText{English: item.IndicatorName},
-			Periodicity:   item.Periodicity,
+			Periodicity:   item.Frequence,
 			Describe:      MultiLanguageText{English: item.Description},
 			Importance:    item.Importance,
 		})

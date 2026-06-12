@@ -855,9 +855,10 @@ type V2MacroeconomicIndicator struct {
 	IndicatorID   int32  `json:"indicator_id"`
 	IndicatorName string `json:"indicator_name"`
 	Market        string `json:"market"`
-	Periodicity   string `json:"periodicity"`
-	Description   string `json:"description"`
 	Importance    int32  `json:"importance"`
+	Description   string `json:"description"`
+	// Frequence: day/week/month/quarter/half_year/year
+	Frequence string `json:"frequence"`
 }
 
 // V2MacroeconomicIndicatorListResponse is the response for GET /v2/quote/macrodata.
