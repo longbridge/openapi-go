@@ -1648,7 +1648,11 @@ func (c *FundamentalContext) MacroeconomicIndicators(
 	for _, item := range resp.IndicatorList {
 		out = append(out, convertV2MacroeconomicIndicator(&item))
 	}
-	return &MacroeconomicIndicatorListResponse{Data: out, Count: resp.Total}, nil
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(out))
+	}
+	return &MacroeconomicIndicatorListResponse{Data: out, Count: count}, nil
 }
 
 // Macroeconomic fetches historical data for a specific macroeconomic indicator.
@@ -1669,10 +1673,10 @@ func (c *FundamentalContext) Macroeconomic(
 	q := url.Values{}
 	q.Set("sort", "desc")
 	if startDate != nil {
-		q.Set("start_time", *startDate+"T00:00:00Z")
+		q.Set("start_date", *startDate)
 	}
 	if endDate != nil {
-		q.Set("end_time", *endDate+"T23:59:59Z")
+		q.Set("end_date", *endDate)
 	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1689,10 +1693,14 @@ func (c *FundamentalContext) Macroeconomic(
 	for _, d := range resp.Indicator.IndicatorData {
 		data = append(data, convertV2Macroeconomic(&d, resp.Indicator.Unit))
 	}
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(data))
+	}
 	return &MacroeconomicResponse{
 		Info:  convertV2MacroeconomicDetail(&resp.Indicator),
 		Data:  data,
-		Count: resp.Total,
+		Count: count,
 	}, nil
 }
 
