@@ -1650,6 +1650,12 @@ func (c *FundamentalContext) MacroeconomicIndicatorsV2(
 	if keyword != nil && *keyword != "" {
 		q.Set("keyword", *keyword)
 	}
+	if offset != nil {
+		q.Set("offset", fmt.Sprintf("%d", *offset))
+	}
+	if limit != nil {
+		q.Set("limit", fmt.Sprintf("%d", *limit))
+	}
 	var resp jsontypes.V2MacroeconomicIndicatorListResponse
 	if err := c.httpClient.Get(ctx, "/v2/quote/macrodata", q, &resp); err != nil {
 		return nil, err
@@ -1662,7 +1668,11 @@ func (c *FundamentalContext) MacroeconomicIndicatorsV2(
 			Name:          MultiLanguageText{English: item.IndicatorName},
 		})
 	}
-	return &MacroeconomicIndicatorListResponse{Data: out, Count: int32(len(out))}, nil
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(out))
+	}
+	return &MacroeconomicIndicatorListResponse{Data: out, Count: count}, nil
 }
 
 // Macroeconomic fetches historical data for a specific macroeconomic indicator.
@@ -1703,6 +1713,9 @@ func (c *FundamentalContext) MacroeconomicV2(
 	if endDate != nil {
 		q.Set("end_date", *endDate)
 	}
+	if offset != nil {
+		q.Set("offset", fmt.Sprintf("%d", *offset))
+	}
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
@@ -1737,7 +1750,10 @@ func (c *FundamentalContext) MacroeconomicV2(
 			Unit:          MultiLanguageText{English: detail.Unit},
 		})
 	}
-	count := int32(len(data))
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(data))
+	}
 	return &MacroeconomicResponse{
 		Info: MacroeconomicIndicator{
 			IndicatorCode: fmt.Sprintf("%d", detail.IndicatorID),

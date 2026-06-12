@@ -860,6 +860,7 @@ type V2MacroeconomicIndicator struct {
 // V2MacroeconomicIndicatorListResponse is the response for GET /v2/quote/macrodata.
 type V2MacroeconomicIndicatorListResponse struct {
 	IndicatorList []V2MacroeconomicIndicator `json:"indicator_list"`
+	Total         int32                      `json:"total"`
 }
 
 // V2IndicatorDataDetail is one data point from GET /v2/quote/macrodata/:id.
@@ -884,4 +885,5 @@ type V2MacroeconomicDetail struct {
 // V2MacroeconomicResponse is the response for GET /v2/quote/macrodata/:id.
 type V2MacroeconomicResponse struct {
 	IndicatorDataList []V2MacroeconomicDetail `json:"indicator_data_list"`
+	Total             int32                   `json:"total"`
 }
