@@ -1617,16 +1617,17 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 // MacroeconomicIndicators fetches the list of available macroeconomic indicators.
 //
 // Pass country to filter by country code (e.g. MacroeconomicCountryUS), nil for all.
-// offset and limit are kept for backward compatibility but ignored by v2.
+// keyword optionally fuzzy-filters by name (case-insensitive), pass nil to skip.
 //
 // Path: GET /v2/quote/macrodata
 func (c *FundamentalContext) MacroeconomicIndicators(
 	ctx context.Context,
 	country *MacroeconomicCountry,
+	keyword *string,
 	offset *int32,
 	limit *int32,
 ) (*MacroeconomicIndicatorListResponse, error) {
-	return c.MacroeconomicIndicatorsV2(ctx, country, nil, offset, limit)
+	return c.MacroeconomicIndicatorsV2(ctx, country, keyword, offset, limit)
 }
 
 // MacroeconomicIndicatorsV2 fetches macroeconomic indicators with optional keyword filter.
