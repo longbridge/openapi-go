@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.25.1] - 2026-06-13
+
+### Added
+
+- `FundamentalContext.MacroeconomicIndicators` gains `keyword` parameter for fuzzy name filtering
+- `FundamentalContext.Macroeconomic` switches to `GET /v2/quote/macrodata/{id}`, defaults to `sort=desc`
+- `MacroeconomicIndicators` returns `Periodicity`, `Describe`, `Importance` from v2 API
+
+### Changed
+
+- `MacroeconomicIndicator.Name` / `.Describe`: `MultiLanguageText` → `string`
+- `Macroeconomic.Unit` / `.UnitPrefix`: `MultiLanguageText` → `string`
+
 ## [v0.25.0] - 2026-06-10
 
 ### Added
