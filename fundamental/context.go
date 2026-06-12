@@ -1768,14 +1768,6 @@ func (c *FundamentalContext) MacroeconomicV2(
 	}, nil
 }
 
-func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
-	return MultiLanguageText{
-		English:            j.English,
-		SimplifiedChinese:  j.SimplifiedChinese,
-		TraditionalChinese: j.TraditionalChinese,
-	}
-}
-
 func parseOptionalRFC3339(s string) *time.Time {
 	if s == "" {
 		return nil
@@ -1788,50 +1780,3 @@ func parseOptionalRFC3339(s string) *time.Time {
 	return &t
 }
 
-func convertMacroeconomicIndicator(j *jsontypes.MacroeconomicIndicator) MacroeconomicIndicator {
-	return MacroeconomicIndicator{
-		IndicatorCode:    j.IndicatorCode,
-		SourceOrg:        j.SourceOrg,
-		Country:          j.Country,
-		Name:             j.Name.English,
-		AdjustmentFactor: j.AdjustmentFactor,
-		Periodicity:      j.Periodicity,
-		Category:         j.Category,
-		Describe:         j.Describe.English,
-		Importance:       j.Importance,
-		StartDate:        parseOptionalRFC3339(j.StartDate),
-	}
-}
-
-func convertMacroeconomic(j *jsontypes.Macroeconomic) Macroeconomic {
-	return Macroeconomic{
-		Period:        j.Period,
-		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
-		ActualValue:   j.ActualValue,
-		PreviousValue: j.PreviousValue,
-		ForecastValue: j.ForecastValue,
-		RevisedValue:  j.RevisedValue,
-		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
-		Unit:          j.Unit.English,
-		UnitPrefix:    j.UnitPrefix.English,
-	}
-}
-
-func macroeconomicCountryToAPIValue(c MacroeconomicCountry) string {
-	switch c {
-	case MacroeconomicCountryHK:
-		return "Hong Kong SAR China"
-	case MacroeconomicCountryCN:
-		return "China (Mainland)"
-	case MacroeconomicCountryUS:
-		return "United States"
-	case MacroeconomicCountryEU:
-		return "Euro Zone"
-	case MacroeconomicCountryJP:
-		return "Japan"
-	case MacroeconomicCountrySG:
-		return "Singapore"
-	default:
-		return string(c)
-	}
-}
