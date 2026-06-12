@@ -1727,13 +1727,7 @@ func (c *FundamentalContext) MacroeconomicV2(
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	// Support both new format (indicator) and old format (indicator_data_list)
-	var detail jsontypes.V2MacroeconomicDetail
-	if resp.Indicator.IndicatorID != 0 {
-		detail = resp.Indicator
-	} else if len(resp.IndicatorDataList) > 0 {
-		detail = resp.IndicatorDataList[0]
-	}
+	detail := resp.Indicator
 	data := make([]Macroeconomic, 0, len(detail.IndicatorData))
 	for _, d := range detail.IndicatorData {
 		var releaseAt *time.Time
