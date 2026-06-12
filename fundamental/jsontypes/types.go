@@ -845,5 +845,43 @@ type Macroeconomic struct {
 type MacroeconomicResponse struct {
 	Info  MacroeconomicIndicator `json:"info"`
 	Data  []Macroeconomic        `json:"data"`
-	Count int32              `json:"count"`
+	Count int32                  `json:"count"`
+}
+
+// ── v2 wire types ─────────────────────────────────────────────────
+
+// V2MacroeconomicIndicator is one indicator from GET /v2/quote/macrodata.
+type V2MacroeconomicIndicator struct {
+	IndicatorID   int32  `json:"indicator_id"`
+	IndicatorName string `json:"indicator_name"`
+	Market        string `json:"market"`
+}
+
+// V2MacroeconomicIndicatorListResponse is the response for GET /v2/quote/macrodata.
+type V2MacroeconomicIndicatorListResponse struct {
+	IndicatorList []V2MacroeconomicIndicator `json:"indicator_list"`
+}
+
+// V2IndicatorDataDetail is one data point from GET /v2/quote/macrodata/:id.
+type V2IndicatorDataDetail struct {
+	ActualData      string `json:"actual_data"`
+	PreviousData    string `json:"previous_data"`
+	EstimatedData   string `json:"estimated_data"`
+	PublishedTime   string `json:"published_time"`
+	ObservationDate string `json:"observation_date"`
+}
+
+// V2MacroeconomicDetail is one indicator with data from GET /v2/quote/macrodata/:id.
+type V2MacroeconomicDetail struct {
+	IndicatorID   int32                   `json:"indicator_id"`
+	IndicatorName string                  `json:"indicator_name"`
+	Unit          string                  `json:"unit"`
+	Description   string                  `json:"description"`
+	Market        string                  `json:"market"`
+	IndicatorData []V2IndicatorDataDetail `json:"indicator_data"`
+}
+
+// V2MacroeconomicResponse is the response for GET /v2/quote/macrodata/:id.
+type V2MacroeconomicResponse struct {
+	IndicatorDataList []V2MacroeconomicDetail `json:"indicator_data_list"`
 }
