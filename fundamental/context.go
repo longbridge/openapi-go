@@ -1722,8 +1722,10 @@ func (c *FundamentalContext) MacroeconomicV2(
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
-	if sort != nil {
+	if sort != nil && *sort != "" {
 		q.Set("sort", *sort)
+	} else {
+		q.Set("sort", "desc")
 	}
 	var resp jsontypes.V2MacroeconomicResponse
 	path := "/v2/quote/macrodata/" + indicatorCode
