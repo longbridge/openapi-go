@@ -1749,7 +1749,7 @@ func (c *FundamentalContext) MacroeconomicV2(
 			ActualValue:   d.ActualData,
 			PreviousValue: d.PreviousData,
 			ForecastValue: d.EstimatedData,
-			Unit:          MultiLanguageText{English: detail.Unit},
+			Unit:          detail.Unit,
 		})
 	}
 	count := resp.Total
@@ -1812,8 +1812,8 @@ func convertMacroeconomic(j *jsontypes.Macroeconomic) Macroeconomic {
 		ForecastValue: j.ForecastValue,
 		RevisedValue:  j.RevisedValue,
 		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
-		Unit:          convertMultiLanguageText(j.Unit),
-		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
+		Unit:          j.Unit.English,
+		UnitPrefix:    j.UnitPrefix.English,
 	}
 }
 

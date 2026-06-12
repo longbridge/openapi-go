@@ -1420,8 +1420,8 @@ type Macroeconomic struct {
 	ForecastValue string
 	RevisedValue  string
 	NextReleaseAt *time.Time
-	Unit          MultiLanguageText
-	UnitPrefix    MultiLanguageText
+	Unit       string
+	UnitPrefix string
 }
 
 // MacroeconomicResponse is the response for FundamentalContext.Macroeconomic.
