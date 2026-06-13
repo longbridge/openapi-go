@@ -1616,19 +1616,23 @@ func convertFinancialReportSnapshot(j *jsontypes.FinancialReportSnapshot) *Finan
 
 // MacroeconomicIndicators fetches the list of available macroeconomic indicators.
 //
-// Pass country to filter by country code (e.g. MacroeconomicCountryUS).
-// Pass nil for all countries.
+// Pass country to filter by country code (e.g. MacroeconomicCountryUS); nil for all.
+// Pass keyword for fuzzy name filtering; nil for no filter.
 //
-// Path: GET /v1/quote/macrodata
+// Path: GET /v2/quote/macrodata
 func (c *FundamentalContext) MacroeconomicIndicators(
 	ctx context.Context,
 	country *MacroeconomicCountry,
+	keyword *string,
 	offset *int32,
 	limit *int32,
 ) (*MacroeconomicIndicatorListResponse, error) {
 	q := url.Values{}
 	if country != nil {
-		q.Set("country", macroeconomicCountryToAPIValue(*country))
+		q.Set("market", string(*country))
+	}
+	if keyword != nil {
+		q.Set("keyword", *keyword)
 	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1636,23 +1640,28 @@ func (c *FundamentalContext) MacroeconomicIndicators(
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
-	var resp jsontypes.MacroeconomicIndicatorListResponse
-	if err := c.httpClient.Get(ctx, "/v1/quote/macrodata", q, &resp); err != nil {
+	var resp jsontypes.V2MacroeconomicIndicatorListResponse
+	if err := c.httpClient.Get(ctx, "/v2/quote/macrodata", q, &resp); err != nil {
 		return nil, err
 	}
-	out := make([]MacroeconomicIndicator, 0, len(resp.Data))
-	for _, item := range resp.Data {
-		out = append(out, convertMacroeconomicIndicator(&item))
+	out := make([]MacroeconomicIndicator, 0, len(resp.IndicatorList))
+	for _, item := range resp.IndicatorList {
+		out = append(out, convertV2MacroeconomicIndicator(&item))
 	}
-	return &MacroeconomicIndicatorListResponse{Data: out, Count: resp.Count}, nil
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(out))
+	}
+	return &MacroeconomicIndicatorListResponse{Data: out, Count: count}, nil
 }
 
 // Macroeconomic fetches historical data for a specific macroeconomic indicator.
 //
+// indicatorCode is the IndicatorCode returned by MacroeconomicIndicators.
 // startDate and endDate are date strings in "YYYY-MM-DD" format.
-// startDate is sent as YYYY-MM-DDT00:00:00Z; endDate is sent as YYYY-MM-DDT23:59:59Z.
+// Results are sorted descending (newest first) by default.
 //
-// Path: GET /v1/quote/macrodata/{indicator_code}
+// Path: GET /v2/quote/macrodata/{indicator_id}
 func (c *FundamentalContext) Macroeconomic(
 	ctx context.Context,
 	indicatorCode string,
@@ -1662,11 +1671,12 @@ func (c *FundamentalContext) Macroeconomic(
 	limit *int32,
 ) (*MacroeconomicResponse, error) {
 	q := url.Values{}
+	q.Set("sort", "desc")
 	if startDate != nil {
-		q.Set("start_time", *startDate+"T00:00:00Z")
+		q.Set("start_date", *startDate)
 	}
 	if endDate != nil {
-		q.Set("end_time", *endDate+"T23:59:59Z")
+		q.Set("end_date", *endDate)
 	}
 	if offset != nil {
 		q.Set("offset", fmt.Sprintf("%d", *offset))
@@ -1674,28 +1684,24 @@ func (c *FundamentalContext) Macroeconomic(
 	if limit != nil {
 		q.Set("limit", fmt.Sprintf("%d", *limit))
 	}
-	var resp jsontypes.MacroeconomicResponse
-	path := "/v1/quote/macrodata/" + indicatorCode
+	var resp jsontypes.V2MacroeconomicResponse
+	path := "/v2/quote/macrodata/" + indicatorCode
 	if err := c.httpClient.Get(ctx, path, q, &resp); err != nil {
 		return nil, err
 	}
-	data := make([]Macroeconomic, 0, len(resp.Data))
-	for _, d := range resp.Data {
-		data = append(data, convertMacroeconomic(&d))
+	data := make([]Macroeconomic, 0, len(resp.Indicator.IndicatorData))
+	for _, d := range resp.Indicator.IndicatorData {
+		data = append(data, convertV2Macroeconomic(&d, resp.Indicator.Unit))
+	}
+	count := resp.Total
+	if count == 0 {
+		count = int32(len(data))
 	}
 	return &MacroeconomicResponse{
-		Info:  convertMacroeconomicIndicator(&resp.Info),
+		Info:  convertV2MacroeconomicDetail(&resp.Indicator),
 		Data:  data,
-		Count: resp.Count,
+		Count: count,
 	}, nil
-}
-
-func convertMultiLanguageText(j jsontypes.MultiLanguageText) MultiLanguageText {
-	return MultiLanguageText{
-		English:            j.English,
-		SimplifiedChinese:  j.SimplifiedChinese,
-		TraditionalChinese: j.TraditionalChinese,
-	}
 }
 
 func parseOptionalRFC3339(s string) *time.Time {
@@ -1710,50 +1716,33 @@ func parseOptionalRFC3339(s string) *time.Time {
 	return &t
 }
 
-func convertMacroeconomicIndicator(j *jsontypes.MacroeconomicIndicator) MacroeconomicIndicator {
+func convertV2MacroeconomicIndicator(j *jsontypes.V2MacroeconomicIndicator) MacroeconomicIndicator {
 	return MacroeconomicIndicator{
-		IndicatorCode:    j.IndicatorCode,
-		SourceOrg:        j.SourceOrg,
-		Country:          j.Country,
-		Name:             convertMultiLanguageText(j.Name),
-		AdjustmentFactor: j.AdjustmentFactor,
-		Periodicity:      j.Periodicity,
-		Category:         j.Category,
-		Describe:         convertMultiLanguageText(j.Describe),
-		Importance:       j.Importance,
-		StartDate:        parseOptionalRFC3339(j.StartDate),
+		IndicatorCode: strconv.FormatInt(int64(j.IndicatorID), 10),
+		Country:       j.Market,
+		Name:          j.IndicatorName,
+		Describe:      j.Description,
+		Importance:    j.Importance,
+		Periodicity:   j.Frequence,
 	}
 }
 
-func convertMacroeconomic(j *jsontypes.Macroeconomic) Macroeconomic {
+func convertV2MacroeconomicDetail(j *jsontypes.V2MacroeconomicDetail) MacroeconomicIndicator {
+	return MacroeconomicIndicator{
+		IndicatorCode: strconv.FormatInt(int64(j.IndicatorID), 10),
+		Country:       j.Market,
+		Name:          j.IndicatorName,
+		Describe:      j.Description,
+	}
+}
+
+func convertV2Macroeconomic(j *jsontypes.V2IndicatorDataDetail, unit string) Macroeconomic {
 	return Macroeconomic{
-		Period:        j.Period,
-		ReleaseAt:     parseOptionalRFC3339(j.ReleaseAt),
-		ActualValue:   j.ActualValue,
-		PreviousValue: j.PreviousValue,
-		ForecastValue: j.ForecastValue,
-		RevisedValue:  j.RevisedValue,
-		NextReleaseAt: parseOptionalRFC3339(j.NextReleaseAt),
-		Unit:          convertMultiLanguageText(j.Unit),
-		UnitPrefix:    convertMultiLanguageText(j.UnitPrefix),
-	}
-}
-
-func macroeconomicCountryToAPIValue(c MacroeconomicCountry) string {
-	switch c {
-	case MacroeconomicCountryHK:
-		return "Hong Kong SAR China"
-	case MacroeconomicCountryCN:
-		return "China (Mainland)"
-	case MacroeconomicCountryUS:
-		return "United States"
-	case MacroeconomicCountryEU:
-		return "Euro Zone"
-	case MacroeconomicCountryJP:
-		return "Japan"
-	case MacroeconomicCountrySG:
-		return "Singapore"
-	default:
-		return string(c)
+		Period:        j.ObservationDate,
+		ReleaseAt:     parseOptionalRFC3339(j.PublishedTime),
+		ActualValue:   j.ActualData,
+		PreviousValue: j.PreviousData,
+		ForecastValue: j.EstimatedData,
+		Unit:          unit,
 	}
 }

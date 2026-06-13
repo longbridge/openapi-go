@@ -1398,12 +1398,12 @@ type MacroeconomicIndicator struct {
 	IndicatorCode    string
 	SourceOrg        string
 	Country          string
-	Name             MultiLanguageText
+	Name             string
 	AdjustmentFactor string
 	// Periodicity is the release periodicity (e.g. monthly / quarterly).
 	Periodicity string
 	Category    string
-	Describe    MultiLanguageText
+	Describe    string
 	// Importance: 1=Low, 2=Medium, 3=High.
 	Importance int32
 	// StartDate is the start date of data coverage; nil if unset.
@@ -1420,8 +1420,8 @@ type Macroeconomic struct {
 	ForecastValue string
 	RevisedValue  string
 	NextReleaseAt *time.Time
-	Unit          MultiLanguageText
-	UnitPrefix    MultiLanguageText
+	Unit       string
+	UnitPrefix string
 }
 
 // MacroeconomicResponse is the response for FundamentalContext.Macroeconomic.

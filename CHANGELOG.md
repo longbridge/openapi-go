@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.25.1] - 2026-06-13
+
+### Added
+
+- **All languages:** `macroeconomic_indicators` gains `keyword` parameter for fuzzy name filtering
+- **All languages:** `macroeconomic` switches to `GET /v2/quote/macrodata/{id}`, defaults to `sort=desc`
+
+### Changed
+
+- `MacroeconomicIndicator.name` / `.describe`: `MultiLanguageText` → `string`
+- `Macroeconomic.unit` / `.unit_prefix`: `MultiLanguageText` → `string`
+
 ## [v0.25.0] - 2026-06-10
 
 ### Added
