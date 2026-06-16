@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `market.TradeStatus` models `/v1/quote/market-status` trade status codes,
+  including display names, labels, normalization helpers, and status code `2001`.
+
+### Changed
+
+- `market.MarketTimeItem.TradeStatus` and `DelayTradeStatus` now use
+  `market.TradeStatus` instead of raw `int32` values.
+
 ## [v0.25.1] - 2026-06-13
 
 ### Added

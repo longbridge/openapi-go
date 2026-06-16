@@ -16,8 +16,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go/config"
-	"github.com/longbridge/openapi-go/market/jsontypes"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/market/jsontypes"
 )
 
 // MarketContext is a client for the Longbridge Market OpenAPI.
@@ -63,9 +63,9 @@ func (m *MarketContext) MarketStatus(ctx context.Context) (*MarketStatusResponse
 	for _, item := range resp.MarketTime {
 		out.MarketTime = append(out.MarketTime, MarketTimeItem{
 			Market:           item.Market,
-			TradeStatus:      item.TradeStatus,
+			TradeStatus:      TradeStatusFromCode(item.TradeStatus),
 			Timestamp:        parseTimestampString(item.Timestamp),
-			DelayTradeStatus: item.DelayTradeStatus,
+			DelayTradeStatus: TradeStatusFromCode(item.DelayTradeStatus),
 			DelayTimestamp:   parseTimestampString(item.DelayTimestamp),
 			SubStatus:        item.SubStatus,
 			DelaySubStatus:   item.DelaySubStatus,
