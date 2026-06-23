@@ -883,6 +883,9 @@ type V2MacroeconomicDetail struct {
 	Unit          string                  `json:"unit"`
 	Description   string                  `json:"description"`
 	Market        string                  `json:"market"`
+	// Frequence: day/week/month/quarter/half_year/year
+	Frequence     string                  `json:"frequence"`
+	Importance    int32                   `json:"importance"`
 	IndicatorData []V2IndicatorDataDetail `json:"indicator_data"`
 }
 

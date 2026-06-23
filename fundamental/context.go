@@ -1733,6 +1733,8 @@ func convertV2MacroeconomicDetail(j *jsontypes.V2MacroeconomicDetail) Macroecono
 		Country:       j.Market,
 		Name:          j.IndicatorName,
 		Describe:      j.Description,
+		Periodicity:   j.Frequence,
+		Importance:    j.Importance,
 	}
 }
 
