@@ -13,9 +13,8 @@ type AlertList struct {
 
 // AlertSymbolGroup holds all alert items for a single security.
 type AlertSymbolGroup struct {
-	// Symbol is the security identifier (e.g. "700.HK").
-	// The API returns a counter_id; the Go layer stores it as the symbol string.
-	Symbol     string           `json:"symbol"`
+	// Symbol is the security identifier (e.g. "700.HK"), decoded from counter_id.
+	Symbol     string           `json:"counter_id"`
 	Code       string           `json:"code"`
 	Market     string           `json:"market"`
 	Name       string           `json:"name"`
