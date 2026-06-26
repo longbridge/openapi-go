@@ -13,6 +13,7 @@ import (
 	"github.com/longbridge/openapi-go/alert/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // AlertContext is a client for the Longbridge Price Alert OpenAPI.
@@ -131,7 +132,7 @@ func convertAlertList(j *jsontypes.AlertList) *AlertList {
 
 func convertAlertSymbolGroup(j *jsontypes.AlertSymbolGroup) *AlertSymbolGroup {
 	g := &AlertSymbolGroup{
-		Symbol:     j.Symbol,
+		Symbol:     counter.IDToSymbol(j.Symbol),
 		Code:       j.Code,
 		Market:     j.Market,
 		Name:       j.Name,

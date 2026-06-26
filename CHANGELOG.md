@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v0.25.2] - 2026-06-26
 
 ### Added
 
@@ -11,6 +11,11 @@
 
 - `market.MarketTimeItem.TradeStatus` and `DelayTradeStatus` now use
   `market.TradeStatus` instead of raw `int32` values.
+
+### Fixed
+
+- `AlertContext.List`: `AlertSymbolGroup.Symbol` was always empty because the JSON tag was `"symbol"` but the API returns `"counter_id"` (e.g. `ST/HK/700`). Fixed by changing the tag to `json:"counter_id"` and converting via `counter.IDToSymbol()` so callers receive the standard symbol format (e.g. `700.HK`).
+- `FundamentalContext.Macroeconomic`: `Info.Periodicity` and `Info.Importance` were always zero/empty. Fixed by adding `frequence` and `importance` fields to the v2 wire type `V2MacroeconomicDetail`.
 
 ## [v0.25.1] - 2026-06-13
 
