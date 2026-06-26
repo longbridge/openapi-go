@@ -2,6 +2,16 @@
 
 ## [v0.25.2] - 2026-06-26
 
+### Added
+
+- `market.TradeStatus` models `/v1/quote/market-status` trade status codes,
+  including display names, labels, normalization helpers, and status code `2001`.
+
+### Changed
+
+- `market.MarketTimeItem.TradeStatus` and `DelayTradeStatus` now use
+  `market.TradeStatus` instead of raw `int32` values.
+
 ### Fixed
 
 - `AlertContext.List`: `AlertSymbolGroup.Symbol` was always empty because the JSON tag was `"symbol"` but the API returns `"counter_id"` (e.g. `ST/HK/700`). Fixed by changing the tag to `json:"counter_id"` and converting via `counter.IDToSymbol()` so callers receive the standard symbol format (e.g. `700.HK`).

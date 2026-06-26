@@ -11,8 +11,10 @@ type MarketStatusResponse struct {
 // MarketTimeItem is the raw JSON representation of one market's trading status.
 type MarketTimeItem struct {
 	Market           string `json:"market"`
+	// Raw market trade status code. See market.TradeStatus for the code table.
 	TradeStatus      int32  `json:"trade_status"`
 	Timestamp        string `json:"timestamp"`
+	// Raw delayed market trade status code.
 	DelayTradeStatus int32  `json:"delay_trade_status"`
 	DelayTimestamp   string `json:"delay_timestamp"`
 	SubStatus        int32  `json:"sub_status"`

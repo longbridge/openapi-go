@@ -66,14 +66,12 @@ type MarketStatusResponse struct {
 type MarketTimeItem struct {
 	// Market code, e.g. "HK", "US", "CN"
 	Market string
-	// Raw trade status code:
-	//   101=PreOpen, 102/103/105=Trading, 104=LunchBreak,
-	//   106=PostTrading, 108=Closed, 201=PreMarket, 204=PostMarket
-	TradeStatus int32
+	// Market trade status. See TradeStatus for the code table.
+	TradeStatus TradeStatus
 	// Current market time
 	Timestamp time.Time
-	// Delayed-quote trade status code
-	DelayTradeStatus int32
+	// Delayed-quote market trade status. See TradeStatus for the code table.
+	DelayTradeStatus TradeStatus
 	// Delayed-quote market time
 	DelayTimestamp time.Time
 	// Sub-status code
