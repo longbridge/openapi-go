@@ -32,9 +32,9 @@ var (
 	cnQuoteUrl = "wss://openapi-quote.longbridge.cn"
 	cnTradeUrl = "wss://openapi-trade.longbridge.cn"
 
-	stagingHttpUrl  = "https://openapi.longbridge.xyz"
-	stagingQuoteUrl = "wss://openapi-quote.longbridge.xyz"
-	stagingTradeUrl = "wss://openapi-trade.longbridge.xyz"
+	stagingHttpUrl  = "https://openapi-global.longbridge.xyz"
+	stagingQuoteUrl = "wss://openapi-global-quote.longbridge.xyz"
+	stagingTradeUrl = "wss://openapi-global-trade.longbridge.xyz"
 )
 
 // IsStaging returns true when LONGBRIDGE_ENV is set to "staging".
