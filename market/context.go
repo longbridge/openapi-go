@@ -439,16 +439,14 @@ func symbolToCounterID(symbol string) string {
 	return strings.Replace(symbol, ".", "_", 1)
 }
 
-// indexSymbolToCounterID converts an index symbol like "HSI.HK" to a counter ID like "IX/HK/HSI".
+// indexSymbolToCounterID converts an index symbol like "HSI.HK" to a counter ID like "IX_HSI_HK".
 // This mirrors the Rust index_symbol_to_counter_id utility.
 func indexSymbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
+	parts := strings.SplitN(symbol, ".", 2)
+	if len(parts) == 2 {
+		return fmt.Sprintf("IX_%s_%s", parts[0], parts[1])
 	}
-	code := symbol[:idx]
-	market := strings.ToUpper(symbol[idx+1:])
-	return fmt.Sprintf("IX/%s/%s", market, code)
+	return symbol
 }
 
 // counterIDToSymbol converts a counter ID back to a symbol.
