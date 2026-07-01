@@ -46,16 +46,17 @@ func TestDcRegionAsStr(t *testing.T) {
 }
 
 func TestStripRegionPrefix(t *testing.T) {
+	// Region prefixes are kept as-is; only "Bearer " is stripped.
 	tests := []struct {
 		input string
 		want  string
 	}{
-		{"us_eyJabc", "eyJabc"},
-		{"ap_eyJabc", "eyJabc"},
-		{"hk_eyJabc", "hk_eyJabc"}, // unknown prefix — pass through
+		{"us_m_eyJabc", "us_m_eyJabc"},
+		{"hk_m_eyJabc", "hk_m_eyJabc"},
+		{"ap_m_eyJabc", "ap_m_eyJabc"},
 		{"eyJabc", "eyJabc"},
-		{"Bearer us_eyJabc", "eyJabc"},
-		{"Bearer ap_eyJabc", "eyJabc"},
+		{"Bearer us_m_eyJabc", "us_m_eyJabc"},
+		{"Bearer hk_m_eyJabc", "hk_m_eyJabc"},
 		{"Bearer eyJabc", "eyJabc"},
 	}
 	for _, tc := range tests {

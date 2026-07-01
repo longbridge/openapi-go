@@ -50,20 +50,12 @@ func (r dcRegion) asStr() string {
 	return "ap"
 }
 
-// stripRegionPrefix removes the "us_" or "ap_" prefix (and any leading "Bearer ")
-// from a credential, returning the bare token to transmit.
+// stripRegionPrefix strips any leading "Bearer " from a credential.
 //
-// The prefix is region metadata used by dcRegionFromCredential to derive the
-// routing header — it is not part of the verifiable credential. The gateway
-// verifies the bare token and routes by the x-dc-region header, so the prefix
-// must be removed before sending.
+// Region prefixes (hk_m_, us_m_, ap_m_, …) are routing metadata consumed by
+// dcRegionFromCredential to derive the x-dc-region header. The gateway
+// accepts the full prefixed token and routes by the header, so no region
+// prefix is stripped — only "Bearer " is removed.
 func stripRegionPrefix(credential string) string {
-	credential = strings.TrimPrefix(credential, "Bearer ")
-	if s := strings.TrimPrefix(credential, "us_"); s != credential {
-		return s
-	}
-	if s := strings.TrimPrefix(credential, "ap_"); s != credential {
-		return s
-	}
-	return credential
+	return strings.TrimPrefix(credential, "Bearer ")
 }
