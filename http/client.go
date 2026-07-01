@@ -134,20 +134,30 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	appKey := c.opts.AppKey
 	accessToken := c.opts.AccessToken
 	appSecret := c.opts.AppSecret
+	var region dcRegion
 	if c.opts.OAuthClient != nil {
 		token, err := c.opts.OAuthClient.AccessToken(ctx)
 		if err != nil {
 			return err
 		}
+		// Derive DC region from the token prefix ("us_" → US, otherwise AP),
+		// then strip the prefix so only the bare token is sent to the gateway.
+		region = dcRegionFromCredential(token)
 		appKey = c.opts.OAuthClient.ClientID()
-		accessToken = "Bearer " + token
+		accessToken = "Bearer " + stripRegionPrefix(token)
 		appSecret = ""
+	} else {
+		// API-key auth: any of the three credentials may carry the region prefix.
+		region = dcRegionFromCredentials(appKey, appSecret, accessToken)
+		accessToken = stripRegionPrefix(accessToken)
+		appKey = stripRegionPrefix(appKey)
 	}
 
 	// set headers
 	req.Header.Add("accept-language", string(c.opts.Language))
 	req.Header.Add("x-api-key", appKey)
 	req.Header.Add("authorization", accessToken)
+	req.Header.Add(dcRegionHeader, region.asStr())
 	for k, v := range c.opts.ExtraHeaders {
 		req.Header.Set(k, v)
 	}
