@@ -6,18 +6,16 @@ import (
 	"net/url"
 )
 
-// CompanyOverview returns the US company summary for the given counter_id.
-//
-// counterID format: "ST/US/AAPL"
+// CompanyOverview returns the US company summary for the given symbol (e.g. "AAPL.US").
 //
 // Path: GET /v1/stock-info/company-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) CompanyOverview(ctx context.Context, counterID string) (*USCompanyOverview, error) {
+func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string) (*USCompanyOverview, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/company-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp USCompanyOverview
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/company-overview", q, &resp); err != nil {
 		return nil, err
@@ -25,16 +23,16 @@ func (c *FundamentalContext) CompanyOverview(ctx context.Context, counterID stri
 	return &resp, nil
 }
 
-// ValuationOverview returns the US valuation snapshot (PE/PB/PS) for the given counter_id.
+// ValuationOverview returns the US valuation snapshot (PE/PB/PS) for the given symbol (e.g. "AAPL.US").
 //
 // Path: GET /v1/stock-info/valuation-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) ValuationOverview(ctx context.Context, counterID string) (*ValuationOverview, error) {
+func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol string) (*ValuationOverview, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/valuation-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp ValuationOverview
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/valuation-overview", q, &resp); err != nil {
 		return nil, err
@@ -43,18 +41,18 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, counterID st
 }
 
 // FinancialOverview returns the US financial overview (revenue, net income, EPS, cash flow)
-// for the given counter_id and report period.
+// for the given symbol (e.g. "AAPL.US") and report period.
 //
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/finn-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) FinancialOverview(ctx context.Context, counterID, report string) (FinancialOverview, error) {
+func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, report string) (FinancialOverview, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/finn-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp FinancialOverview
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/finn-overview", q, &resp); err != nil {
@@ -63,20 +61,20 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, counterID, r
 	return resp, nil
 }
 
-// FinancialStatementV3 returns the US financial statement detail (IS/BS/CF) for a given
-// counter_id, statement kind, and report period.
+// FinancialStatementV3 returns the US financial statement detail (IS/BS/CF) for the given
+// symbol (e.g. "AAPL.US"), statement kind, and report period.
 //
 // kind: "IS" (income statement), "BS" (balance sheet), "CF" (cash flow)
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/us/quote/financials/statements
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, counterID, kind, report string) (*FinancialStatement, error) {
+func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, symbol, kind, report string) (*FinancialStatement, error) {
 	if err := c.httpClient.CheckRegion("/v1/us/quote/financials/statements", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("kind", kind)
 	q.Set("report", report)
 	var resp FinancialStatement
@@ -87,18 +85,18 @@ func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, counterID
 }
 
 // KeyFinancialMetrics returns key financial ratios (ROE, gross/net margin, debt ratio) for
-// the given counter_id and report period.
+// the given symbol (e.g. "AAPL.US") and report period.
 //
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/fin-keyfactor
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, counterID, report string) (KeyFinancialMetrics, error) {
+func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, report string) (KeyFinancialMetrics, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-keyfactor", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp KeyFinancialMetrics
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-keyfactor", q, &resp); err != nil {
@@ -108,18 +106,18 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, counterID,
 }
 
 // AnalystConsensus returns analyst consensus estimates (EPS and revenue forecasts) for
-// the given counter_id and report period.
+// the given symbol (e.g. "AAPL.US") and report period.
 //
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/fin-consensus
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) AnalystConsensus(ctx context.Context, counterID, report string) (AnalystConsensus, error) {
+func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, report string) (AnalystConsensus, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-consensus", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp AnalystConsensus
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-consensus", q, &resp); err != nil {
@@ -128,18 +126,16 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, counterID, re
 	return resp, nil
 }
 
-// ETFDividendInfo returns dividend history for a US ETF.
-//
-// counterID format: "ST/US/SPY"
+// ETFDividendInfo returns dividend history for a US ETF (e.g. "SPY.US").
 //
 // Path: GET /v1/stock-info/etf-dividend-info
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, counterID string) (*ETFDividendInfo, error) {
+func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string) (*ETFDividendInfo, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-dividend-info", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp ETFDividendInfo
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/etf-dividend-info", q, &resp); err != nil {
 		return nil, err
@@ -147,18 +143,16 @@ func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, counterID stri
 	return &resp, nil
 }
 
-// CompanyDividends returns historical dividend payments for a US stock.
-//
-// counterID format: "ST/US/AAPL"
+// CompanyDividends returns historical dividend payments for a US stock (e.g. "AAPL.US").
 //
 // Path: GET /v1/stock-info/company-dividends
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) CompanyDividends(ctx context.Context, counterID string) (*USCompanyDividends, error) {
+func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string) (*USCompanyDividends, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/company-dividends", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp USCompanyDividends
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/company-dividends", q, &resp); err != nil {
 		return nil, err
@@ -166,19 +160,18 @@ func (c *FundamentalContext) CompanyDividends(ctx context.Context, counterID str
 	return &resp, nil
 }
 
-// ETFFiles returns the document list (prospectus, annual report, etc.) for a US ETF.
+// ETFFiles returns the document list (prospectus, annual report, etc.) for a US ETF (e.g. "SPY.US").
 //
-// counterID format: "ST/US/SPY"
-// size: number of files to return; pass nil for all (defaults to 0 = all on the server).
+// size: number of files to return; pass nil for all.
 //
 // Path: GET /v1/stock-info/etf-files
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) ETFFiles(ctx context.Context, counterID string, size *int32) (*ETFFilesResponse, error) {
+func (c *FundamentalContext) ETFFiles(ctx context.Context, symbol string, size *int32) (*ETFFilesResponse, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-files", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", symbolToCounterID(symbol))
 	if size != nil {
 		q.Set("size", fmt.Sprintf("%d", *size))
 	}

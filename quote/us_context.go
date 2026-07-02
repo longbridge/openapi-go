@@ -21,18 +21,16 @@ type CryptoOverview struct {
 	Profile            interface{} `json:"profile"`
 }
 
-// CryptoOverview returns market overview data for a cryptocurrency.
-//
-// counterID is the crypto counter_id, e.g. "CY/US/BTC".
+// CryptoOverview returns market overview data for a cryptocurrency (e.g. "BTC.US").
 //
 // Path: GET /v1/gemini/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *QuoteContext) CryptoOverview(ctx context.Context, counterID string) (*CryptoOverview, error) {
+func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*CryptoOverview, error) {
 	if err := c.opts.httpClient.CheckRegion("/v1/gemini/crypto-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", counterID)
+	q.Set("counter_id", quoteSymbolToCounterID(symbol))
 	var resp CryptoOverview
 	if err := c.opts.httpClient.Get(ctx, "/v1/gemini/crypto-overview", q, &resp); err != nil {
 		return nil, err
