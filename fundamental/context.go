@@ -59,15 +59,7 @@ func NewFromEnv() (*FundamentalContext, error) {
 
 // symbolToCounterID converts a symbol like "TSLA.US" to a counter_id like
 // "ST/US/TSLA". All symbols are treated as equities (ST prefix).
-func symbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
-	}
-	code := symbol[:idx]
-	market := strings.ToUpper(symbol[idx+1:])
-	return fmt.Sprintf("ST/%s/%s", market, code)
-}
+func symbolToCounterID(symbol string) string { return counter.SymbolToID(symbol) }
 
 func counterIDToSymbol(counterID string) string { return counter.IDToSymbol(counterID) }
 

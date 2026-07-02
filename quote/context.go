@@ -798,14 +798,10 @@ func (c *QuoteContext) ResolveCounterIds(ctx context.Context, symbols []string) 
 	return result, nil
 }
 
-// quoteSymbolToCounterID converts "AAPL.US" → "ST/US/AAPL" for endpoints
-// that require the internal counter_id format.
+// quoteSymbolToCounterID converts a user-facing symbol to its internal counter_id,
+// resolving ETF/index/warrant prefixes (e.g. "SPY.US" → "ETF/US/SPY").
 func quoteSymbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
-	}
-	return fmt.Sprintf("ST/%s/%s", strings.ToUpper(symbol[idx+1:]), symbol[:idx])
+	return counter.SymbolToID(symbol)
 }
 
 // rawStr extracts a string value from a map of raw JSON values.
