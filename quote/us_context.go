@@ -22,28 +22,23 @@ type CryptoOverview struct {
 	Profile            interface{} `json:"profile"`
 }
 
-// cryptoSymbolToCounterID converts a user-facing crypto symbol to the
-// internal VA/{EXCHANGE}/{PAIR} counter_id format.
+// cryptoSymbolToCounterID converts a crypto symbol in PAIR.EXCHANGE format
+// to the internal VA/{EXCHANGE}/{PAIR} counter_id.
 //
-// Supported input formats:
-//   - "BTCUSD.HAS"  → "VA/HAS/BTCUSD"  ({PAIR}.{EXCHANGE})
-//   - "BTCUSD"      → "VA/HAS/BTCUSD"  (default exchange HAS)
-//   - "BTC/USD"     → "VA/HAS/BTCUSD"  (slash removed, default exchange HAS)
+// Example: "BTCUSD.HAS" → "VA/HAS/BTCUSD"
 func cryptoSymbolToCounterID(symbol string) string {
-	// Handle PAIR.EXCHANGE format (e.g. "BTCUSD.HAS")
 	if idx := strings.LastIndex(symbol, "."); idx > 0 {
 		pair := symbol[:idx]
-		exchange := symbol[idx+1:]
-		return "VA/" + strings.ToUpper(exchange) + "/" + strings.ReplaceAll(pair, "/", "")
+		exchange := strings.ToUpper(symbol[idx+1:])
+		return "VA/" + exchange + "/" + pair
 	}
-	// Plain pair with optional slash (e.g. "BTCUSD" or "BTC/USD")
-	return "VA/HAS/" + strings.ReplaceAll(symbol, "/", "")
+	// No exchange suffix — pass through as-is for forward compatibility.
+	return symbol
 }
 
 // CryptoOverview returns market overview data for a cryptocurrency.
 //
-// symbol accepts "BTCUSD" or "BTC/USD" format; it is converted to the
-// internal VA/HAS/BTCUSDT counter_id automatically.
+// symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.HAS" → VA/HAS/BTCUSD.
 //
 // Path: GET /v1/gemini/us/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
