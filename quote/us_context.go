@@ -3,6 +3,7 @@ package quote
 import (
 	"context"
 	"net/url"
+	"strings"
 )
 
 // CryptoOverview holds the market overview for a single cryptocurrency.
@@ -21,7 +22,19 @@ type CryptoOverview struct {
 	Profile            interface{} `json:"profile"`
 }
 
-// CryptoOverview returns market overview data for a cryptocurrency (e.g. "BTC.US").
+// cryptoSymbolToCounterID converts a user-facing crypto trading pair to the
+// internal VA/HAS/... counter_id format.
+//
+// Accepts: "BTCUSD" or "BTC/USD" → "VA/HAS/BTCUSD"
+// Rule: remove "/" separator and prepend "VA/HAS/".
+func cryptoSymbolToCounterID(symbol string) string {
+	return "VA/HAS/" + strings.ReplaceAll(symbol, "/", "")
+}
+
+// CryptoOverview returns market overview data for a cryptocurrency.
+//
+// symbol accepts "BTCUSD" or "BTC/USD" format; it is converted to the
+// internal VA/HAS/BTCUSDT counter_id automatically.
 //
 // Path: GET /v1/gemini/us/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
@@ -30,7 +43,7 @@ func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*Cryp
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", quoteSymbolToCounterID(symbol))
+	q.Set("counter_id", cryptoSymbolToCounterID(symbol))
 	var resp CryptoOverview
 	if err := c.opts.httpClient.Get(ctx, "/v1/gemini/us/crypto-overview", q, &resp); err != nil {
 		return nil, err
