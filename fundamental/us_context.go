@@ -2,14 +2,9 @@ package fundamental
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 )
-
-// ErrUSOnly is kept as a sentinel for callers using errors.Is; the actual
-// returned error is *http.RegionRestrictedError with the same meaning.
-var ErrUSOnly = errors.New("longbridge: this API is only available for US accounts")
 
 // CompanyOverview returns the US company summary for the given counter_id.
 //
