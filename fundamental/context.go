@@ -478,6 +478,10 @@ func (c *FundamentalContext) Operating(
 	ctx context.Context,
 	symbol string,
 ) (*OperatingList, error) {
+	// Operating reports are served only by the AP data center.
+	if err := c.httpClient.CheckRegion("/v1/quote/operatings", "AP"); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.OperatingList

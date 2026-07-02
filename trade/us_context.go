@@ -10,10 +10,10 @@ import (
 // QueryUSOrders queries the paginated US order list.
 //
 // Path: POST /v1/orders/query
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequest) (*QueryUSOrdersResponse, error) {
-	if !c.opts.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.opts.httpClient.CheckRegion("/v1/orders/query", "US"); err != nil {
+		return nil, err
 	}
 	var resp QueryUSOrdersResponse
 	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", req, &resp); err != nil {
@@ -27,10 +27,11 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequ
 // included in the response.
 //
 // Path: GET /v3/orders/{order_id}
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string, isAttached bool) (*USOrderDetailResponse, error) {
-	if !c.opts.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	path := fmt.Sprintf("/v3/orders/%s", orderID)
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("order_id_str", orderID)
@@ -38,12 +39,10 @@ func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string, isAtta
 		q.Set("is_attached", "true")
 	}
 	var raw json.RawMessage
-	if err := c.opts.httpClient.Get(ctx, fmt.Sprintf("/v3/orders/%s", orderID), q, &raw); err != nil {
+	if err := c.opts.httpClient.Get(ctx, path, q, &raw); err != nil {
 		return nil, err
 	}
 	var out USOrderDetailResponse
-	// Unmarshal the full raw response into the map for callers who need raw fields,
-	// and separately parse attached_orders.
 	if err := json.Unmarshal(raw, &out.Raw); err != nil {
 		return nil, err
 	}
@@ -63,10 +62,10 @@ func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string, isAtta
 // option, multi-leg, and crypto positions together with purchasing power.
 //
 // Path: GET /v1/us/assets/overview
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, error) {
-	if !c.opts.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/overview", "US"); err != nil {
+		return nil, err
 	}
 	var resp USAssetOverview
 	if err := c.opts.httpClient.Get(ctx, "/v1/us/assets/overview", nil, &resp); err != nil {
@@ -82,10 +81,10 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 // pass nil for all categories.
 //
 // Path: GET /v1/us/assets/pl/realized
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USRealizedPL(ctx context.Context, currency string, category *string) (*USRealizedPL, error) {
-	if !c.opts.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/pl/realized", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("currency", currency)

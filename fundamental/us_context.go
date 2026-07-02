@@ -7,18 +7,19 @@ import (
 	"net/url"
 )
 
-// ErrUSOnly is returned when a US-only API is called with a non-US token.
-var ErrUSOnly = errors.New("longbridge: this API is only available for US accounts (us_ token required)")
+// ErrUSOnly is kept as a sentinel for callers using errors.Is; the actual
+// returned error is *http.RegionRestrictedError with the same meaning.
+var ErrUSOnly = errors.New("longbridge: this API is only available for US accounts")
 
 // CompanyOverview returns the US company summary for the given counter_id.
 //
 // counterID format: "ST/US/AAPL"
 //
 // Path: GET /v1/stock-info/company-overview
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyOverview(ctx context.Context, counterID string) (*USCompanyOverview, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/company-overview", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -32,10 +33,10 @@ func (c *FundamentalContext) CompanyOverview(ctx context.Context, counterID stri
 // ValuationOverview returns the US valuation snapshot (PE/PB/PS) for the given counter_id.
 //
 // Path: GET /v1/stock-info/valuation-overview
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ValuationOverview(ctx context.Context, counterID string) (*ValuationOverview, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/valuation-overview", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -52,10 +53,10 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, counterID st
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/finn-overview
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) FinancialOverview(ctx context.Context, counterID, report string) (FinancialOverview, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/finn-overview", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -74,10 +75,10 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, counterID, r
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/us/quote/financials/statements
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, counterID, kind, report string) (*FinancialStatement, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/us/quote/financials/statements", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -96,10 +97,10 @@ func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, counterID
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/fin-keyfactor
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, counterID, report string) (KeyFinancialMetrics, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-keyfactor", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -117,10 +118,10 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, counterID,
 // report: "annual" or "quarterly"
 //
 // Path: GET /v1/stock-info/fin-consensus
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) AnalystConsensus(ctx context.Context, counterID, report string) (AnalystConsensus, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-consensus", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -137,10 +138,10 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, counterID, re
 // counterID format: "ST/US/SPY"
 //
 // Path: GET /v1/stock-info/etf-dividend-info
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, counterID string) (*ETFDividendInfo, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-dividend-info", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -156,10 +157,10 @@ func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, counterID stri
 // counterID format: "ST/US/AAPL"
 //
 // Path: GET /v1/stock-info/company-dividends
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyDividends(ctx context.Context, counterID string) (*USCompanyDividends, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/company-dividends", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)
@@ -176,10 +177,10 @@ func (c *FundamentalContext) CompanyDividends(ctx context.Context, counterID str
 // size: number of files to return; pass nil for all (defaults to 0 = all on the server).
 //
 // Path: GET /v1/stock-info/etf-files
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFFiles(ctx context.Context, counterID string, size *int32) (*ETFFilesResponse, error) {
-	if !c.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-files", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)

@@ -138,10 +138,19 @@ func convertPlan(j *jsontypes.DcaPlan) *DcaPlan {
 	}
 }
 
+// checkAP returns an error when the client's credentials are for the US data center.
+// All DCA APIs are served exclusively by the AP data center.
+func (d *DCAContext) checkAP(path string) error {
+	return d.httpClient.CheckRegion(path, "AP")
+}
+
 // List returns the caller's DCA plans, optionally filtered by status and/or symbol.
 //
 // Path: GET /v1/dailycoins/query
 func (d *DCAContext) List(ctx context.Context, status *DCAStatus, symbol *string) (*DcaList, error) {
+	if err := d.checkAP("/v1/dailycoins/query"); err != nil {
+		return nil, err
+	}
 	params := url.Values{}
 	params.Set("page", "1")
 	params.Set("limit", "100")
@@ -177,6 +186,9 @@ type CreateOptions struct {
 //
 // Path: POST /v1/dailycoins/create
 func (d *DCAContext) Create(ctx context.Context, symbol string, amount string, frequency DCAFrequency, opts *CreateOptions) (*DcaCreateResult, error) {
+	if err := d.checkAP("/v1/dailycoins/create"); err != nil {
+		return nil, err
+	}
 	if opts == nil {
 		opts = &CreateOptions{}
 	}
@@ -218,6 +230,9 @@ type UpdateOptions struct {
 //
 // Path: POST /v1/dailycoins/update
 func (d *DCAContext) Update(ctx context.Context, planID string, opts *UpdateOptions) (*DcaCreateResult, error) {
+	if err := d.checkAP("/v1/dailycoins/update"); err != nil {
+		return nil, err
+	}
 	body := map[string]interface{}{
 		"plan_id": planID,
 	}
@@ -254,6 +269,9 @@ func (d *DCAContext) Update(ctx context.Context, planID string, opts *UpdateOpti
 //
 // Path: POST /v1/dailycoins/toggle
 func (d *DCAContext) Pause(ctx context.Context, planID string) error {
+	if err := d.checkAP("/v1/dailycoins/toggle"); err != nil {
+		return err
+	}
 	body := map[string]interface{}{
 		"plan_id": planID,
 		"status":  "Suspended",
@@ -265,6 +283,9 @@ func (d *DCAContext) Pause(ctx context.Context, planID string) error {
 //
 // Path: POST /v1/dailycoins/toggle
 func (d *DCAContext) Resume(ctx context.Context, planID string) error {
+	if err := d.checkAP("/v1/dailycoins/toggle"); err != nil {
+		return err
+	}
 	body := map[string]interface{}{
 		"plan_id": planID,
 		"status":  "Active",
@@ -276,6 +297,9 @@ func (d *DCAContext) Resume(ctx context.Context, planID string) error {
 //
 // Path: POST /v1/dailycoins/toggle
 func (d *DCAContext) Stop(ctx context.Context, planID string) error {
+	if err := d.checkAP("/v1/dailycoins/toggle"); err != nil {
+		return err
+	}
 	body := map[string]interface{}{
 		"plan_id": planID,
 		"status":  "Finished",
@@ -287,6 +311,9 @@ func (d *DCAContext) Stop(ctx context.Context, planID string) error {
 //
 // Path: GET /v1/dailycoins/query-records
 func (d *DCAContext) History(ctx context.Context, planID string, page int, limit int) (*DcaHistoryResponse, error) {
+	if err := d.checkAP("/v1/dailycoins/query-records"); err != nil {
+		return nil, err
+	}
 	params := url.Values{}
 	params.Set("plan_id", planID)
 	params.Set("page", fmt.Sprintf("%d", page))
@@ -321,6 +348,9 @@ func (d *DCAContext) History(ctx context.Context, planID string, page int, limit
 //
 // Path: GET /v1/dailycoins/statistic
 func (d *DCAContext) Stats(ctx context.Context, symbol *string) (*DcaStats, error) {
+	if err := d.checkAP("/v1/dailycoins/statistic"); err != nil {
+		return nil, err
+	}
 	params := url.Values{}
 	if symbol != nil {
 		params.Set("counter_id", symbolToCounterID(*symbol))
@@ -349,6 +379,9 @@ func (d *DCAContext) Stats(ctx context.Context, symbol *string) (*DcaStats, erro
 //
 // Path: POST /v1/dailycoins/batch-check-support
 func (d *DCAContext) CheckSupport(ctx context.Context, symbols []string) ([]*DcaSupportInfo, error) {
+	if err := d.checkAP("/v1/dailycoins/batch-check-support"); err != nil {
+		return nil, err
+	}
 	counterIDs := make([]string, len(symbols))
 	for i, s := range symbols {
 		counterIDs[i] = symbolToCounterID(s)
@@ -381,6 +414,9 @@ type CalcDateOptions struct {
 //
 // Path: POST /v1/dailycoins/calc-trd-date
 func (d *DCAContext) CalcDate(ctx context.Context, symbol string, frequency DCAFrequency, opts *CalcDateOptions) (*DcaCalcDateResult, error) {
+	if err := d.checkAP("/v1/dailycoins/calc-trd-date"); err != nil {
+		return nil, err
+	}
 	body := map[string]interface{}{
 		"counter_id":       symbolToCounterID(symbol),
 		"invest_frequency": frequency.String(),
@@ -410,6 +446,9 @@ func (d *DCAContext) CalcDate(ctx context.Context, symbol string, frequency DCAF
 //
 // Path: POST /v1/dailycoins/update-alter-hours
 func (d *DCAContext) SetReminder(ctx context.Context, hours string) error {
+	if err := d.checkAP("/v1/dailycoins/update-alter-hours"); err != nil {
+		return err
+	}
 	body := map[string]interface{}{
 		"alter_hours": hours,
 	}

@@ -1,10 +1,5 @@
 package trade
 
-import "errors"
-
-// ErrUSOnly is returned when a US-only API is called with a non-US token.
-var ErrUSOnly = errors.New("longbridge: this API is only available for US accounts (us_ token required)")
-
 // QueryUSOrdersRequest is the request body for QueryUSOrders.
 type QueryUSOrdersRequest struct {
 	AccountChannel string   `json:"account_channel"`

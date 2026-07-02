@@ -163,6 +163,10 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 //	qctx, err := quote.NewFromEnv()
 //	brokers, err := qctx.Brokers(context.Background(), "AAPL.HK")
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
+	// Broker queue via WebSocket is served only by the AP data center.
+	if err = c.opts.httpClient.CheckRegion("quote/brokers (WebSocket)", "AP"); err != nil {
+		return
+	}
 	return c.core.Brokers(ctx, symbol)
 }
 

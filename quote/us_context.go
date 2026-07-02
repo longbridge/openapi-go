@@ -2,12 +2,8 @@ package quote
 
 import (
 	"context"
-	"errors"
 	"net/url"
 )
-
-// ErrUSOnly is returned when a US-only API is called with a non-US token.
-var ErrUSOnly = errors.New("longbridge: this API is only available for US accounts (us_ token required)")
 
 // CryptoOverview holds the market overview for a single cryptocurrency.
 type CryptoOverview struct {
@@ -30,10 +26,10 @@ type CryptoOverview struct {
 // counterID is the crypto counter_id, e.g. "CY/US/BTC".
 //
 // Path: GET /v1/gemini/crypto-overview
-// US token required; returns ErrUSOnly for non-US credentials.
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *QuoteContext) CryptoOverview(ctx context.Context, counterID string) (*CryptoOverview, error) {
-	if !c.opts.httpClient.IsUS() {
-		return nil, ErrUSOnly
+	if err := c.opts.httpClient.CheckRegion("/v1/gemini/crypto-overview", "US"); err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counterID)

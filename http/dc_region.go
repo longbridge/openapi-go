@@ -1,6 +1,9 @@
 package http
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // dcRegionHeader is the HTTP header that selects the data center serving a request.
 // An absent header is treated as the AP (Asia-Pacific) data center by the API gateway.
@@ -48,6 +51,37 @@ func (r dcRegion) asStr() string {
 		return "us"
 	}
 	return "ap"
+}
+
+// display returns the human-readable uppercase name of the region ("US" or "AP").
+func (r dcRegion) display() string {
+	if r == dcRegionUs {
+		return "US"
+	}
+	return "AP"
+}
+
+// allows reports whether this region satisfies a restriction to required.
+func (r dcRegion) allows(required dcRegion) bool {
+	return r == required
+}
+
+// RegionRestrictedError is returned when an API is called from the wrong data center.
+// It mirrors the Rust SDK's HttpClientError::DcRegionRestricted.
+type RegionRestrictedError struct {
+	// Path is the API path or WebSocket command that was called.
+	Path string
+	// Required is the data center the API requires ("US" or "AP").
+	Required string
+	// Current is the data center of the current session ("US" or "AP").
+	Current string
+}
+
+func (e *RegionRestrictedError) Error() string {
+	return fmt.Sprintf(
+		"this API (%s) is only available in the %s data center and is not supported for your %s-region account",
+		e.Path, e.Required, e.Current,
+	)
 }
 
 // stripRegionPrefix strips any leading "Bearer " from a credential.

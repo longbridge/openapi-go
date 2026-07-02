@@ -60,14 +60,36 @@ func WithBody(v interface{}) RequestOption {
 	}
 }
 
-// IsUS reports whether the configured credentials belong to the US data center.
-// Returns true when any credential carries the "us_" prefix.
-func (c *Client) IsUS() bool {
+// region returns the data center region derived from the client's credentials.
+func (c *Client) region() dcRegion {
 	if c.opts.OAuthClient != nil {
-		// For OAuth, we cannot inspect the token synchronously; skip.
-		return false
+		// OAuth token inspection is async; cannot determine synchronously.
+		// Default to AP (the gateway default) so AP-only guards don't fire.
+		return dcRegionAp
 	}
-	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken) == dcRegionUs
+	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken)
+}
+
+// IsUS reports whether the configured credentials belong to the US data center.
+func (c *Client) IsUS() bool {
+	return c.region() == dcRegionUs
+}
+
+// CheckRegion verifies that the current session's region matches required.
+// Returns *RegionRestrictedError if it does not; nil otherwise.
+// required must be "US" or "AP".
+func (c *Client) CheckRegion(path, required string) error {
+	var req dcRegion
+	if required == "US" {
+		req = dcRegionUs
+	} else {
+		req = dcRegionAp
+	}
+	cur := c.region()
+	if cur.allows(req) {
+		return nil
+	}
+	return &RegionRestrictedError{Path: path, Required: req.display(), Current: cur.display()}
 }
 
 // Get sends Get request with queryParams
