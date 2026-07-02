@@ -68,12 +68,18 @@ func IDToSymbol(counterID string) string {
 	return code + "." + market
 }
 
+// cryptoExchanges is the set of known crypto exchange identifiers used as
+// symbol suffixes (e.g. "BTCUSD.HAS" → "VA/HAS/BTCUSD").
+var cryptoExchanges = map[string]bool{
+	"HAS": true,
+}
+
 // SymbolToID converts a user-facing symbol to its internal counter_id.
 //
 // Conversions:
 //   - "TSLA.US"     → "ST/US/TSLA"    (stock)
 //   - "SPY.US"      → "ETF/US/SPY"    (ETF, from embedded list)
-//   - "BTCUSD.HAS"  → "VA/HAS/BTCUSD" (crypto: PAIR.EXCHANGE format)
+//   - "BTCUSD.HAS"  → "VA/HAS/BTCUSD" (crypto: suffix is a known exchange)
 //
 // Stocks default to "ST/{MARKET}/{CODE}"; ETF/index/warrant are resolved via
 // embedded CSV lists.
@@ -85,13 +91,8 @@ func SymbolToID(symbol string) string {
 	code := symbol[:idx]
 	market := strings.ToUpper(symbol[idx+1:])
 
-	// Crypto: all-uppercase exchange codes that are NOT standard market suffixes
-	// (US, HK, CN, SH, SZ) → VA/{EXCHANGE}/{PAIR}
-	switch market {
-	case "US", "HK", "CN", "SH", "SZ", "A", "B":
-		// Standard market suffix — continue to stock/ETF resolution below.
-	default:
-		// Non-standard suffix treated as exchange identifier for crypto.
+	// Known crypto exchange suffix → VA/{EXCHANGE}/{PAIR}
+	if cryptoExchanges[market] {
 		return "VA/" + market + "/" + code
 	}
 
