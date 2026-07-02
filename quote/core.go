@@ -649,7 +649,9 @@ func (c *core) CalcIndex(ctx context.Context, symbols []string, indexes []CalcIn
 func (c *core) RealtimeQuote(ctx context.Context, symbols []string) (quotes []*Quote, err error) {
 	quotes = make([]*Quote, 0, len(symbols))
 	for _, symbol := range symbols {
-		quotes = append(quotes, c.store.GetQuote(symbol))
+		if q := c.store.GetQuote(symbol); q != nil {
+			quotes = append(quotes, q)
+		}
 	}
 	return
 }
