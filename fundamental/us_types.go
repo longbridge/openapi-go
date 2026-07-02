@@ -4,7 +4,7 @@ package fundamental
 type RankTag struct {
 	Name     string `json:"name"`
 	Chg      string `json:"chg"`
-	RankType string `json:"rank_type"`
+	RankType interface{} `json:"rank_type"` // server returns number or string
 }
 
 // USCompanyOverview is the US company summary snapshot.
