@@ -22,12 +22,21 @@ type CryptoOverview struct {
 	Profile            interface{} `json:"profile"`
 }
 
-// cryptoSymbolToCounterID converts a user-facing crypto trading pair to the
-// internal VA/HAS/... counter_id format.
+// cryptoSymbolToCounterID converts a user-facing crypto symbol to the
+// internal VA/{EXCHANGE}/{PAIR} counter_id format.
 //
-// Accepts: "BTCUSD" or "BTC/USD" → "VA/HAS/BTCUSD"
-// Rule: remove "/" separator and prepend "VA/HAS/".
+// Supported input formats:
+//   - "BTCUSD.HAS"  → "VA/HAS/BTCUSD"  ({PAIR}.{EXCHANGE})
+//   - "BTCUSD"      → "VA/HAS/BTCUSD"  (default exchange HAS)
+//   - "BTC/USD"     → "VA/HAS/BTCUSD"  (slash removed, default exchange HAS)
 func cryptoSymbolToCounterID(symbol string) string {
+	// Handle PAIR.EXCHANGE format (e.g. "BTCUSD.HAS")
+	if idx := strings.LastIndex(symbol, "."); idx > 0 {
+		pair := symbol[:idx]
+		exchange := symbol[idx+1:]
+		return "VA/" + strings.ToUpper(exchange) + "/" + strings.ReplaceAll(pair, "/", "")
+	}
+	// Plain pair with optional slash (e.g. "BTCUSD" or "BTC/USD")
 	return "VA/HAS/" + strings.ReplaceAll(symbol, "/", "")
 }
 
