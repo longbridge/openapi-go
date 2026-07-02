@@ -47,19 +47,36 @@ func getSpecial() map[string]string {
 	return specialIDs
 }
 
-// IDToSymbol converts a slash-format counter_id like "ST/US/TSLA" to a symbol
-// like "TSLA.US". Returns the input unchanged if it is not in the expected format.
+// IDToSymbol converts a slash-format counter_id to a user-facing symbol.
+//
+// Conversions:
+//   - "ST/US/TSLA"    → "TSLA.US"
+//   - "ETF/US/SPY"    → "SPY.US"
+//   - "VA/HAS/BTCUSD" → "BTCUSD.HAS"  (crypto: PAIR.EXCHANGE)
+//
+// Returns the input unchanged if it is not in the expected format.
 func IDToSymbol(counterID string) string {
 	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return parts[2] + "." + parts[1]
+	if len(parts) != 3 {
+		return counterID
 	}
-	return counterID
+	prefix, market, code := parts[0], parts[1], parts[2]
+	// Crypto (VA prefix): return PAIR.EXCHANGE format
+	if strings.EqualFold(prefix, "VA") {
+		return code + "." + strings.ToUpper(market)
+	}
+	return code + "." + market
 }
 
-// SymbolToID converts a user-facing symbol like "TSLA.US" to its counter_id.
-// ETF, index, and warrant symbols are resolved to their correct prefix
-// (e.g. "SPY.US" → "ETF/US/SPY"); ordinary stocks default to "ST/{MARKET}/{CODE}".
+// SymbolToID converts a user-facing symbol to its internal counter_id.
+//
+// Conversions:
+//   - "TSLA.US"     → "ST/US/TSLA"    (stock)
+//   - "SPY.US"      → "ETF/US/SPY"    (ETF, from embedded list)
+//   - "BTCUSD.HAS"  → "VA/HAS/BTCUSD" (crypto: PAIR.EXCHANGE format)
+//
+// Stocks default to "ST/{MARKET}/{CODE}"; ETF/index/warrant are resolved via
+// embedded CSV lists.
 func SymbolToID(symbol string) string {
 	idx := strings.LastIndex(symbol, ".")
 	if idx < 0 {
@@ -68,7 +85,17 @@ func SymbolToID(symbol string) string {
 	code := symbol[:idx]
 	market := strings.ToUpper(symbol[idx+1:])
 
-	// Check special prefixes first (ETF, index, warrant).
+	// Crypto: all-uppercase exchange codes that are NOT standard market suffixes
+	// (US, HK, CN, SH, SZ) → VA/{EXCHANGE}/{PAIR}
+	switch market {
+	case "US", "HK", "CN", "SH", "SZ", "A", "B":
+		// Standard market suffix — continue to stock/ETF resolution below.
+	default:
+		// Non-standard suffix treated as exchange identifier for crypto.
+		return "VA/" + market + "/" + code
+	}
+
+	// Check special prefixes (ETF, index, warrant).
 	if id, ok := getSpecial()[code]; ok {
 		return id
 	}

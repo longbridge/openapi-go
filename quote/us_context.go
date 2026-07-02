@@ -3,7 +3,8 @@ package quote
 import (
 	"context"
 	"net/url"
-	"strings"
+
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // CryptoOverview holds the market overview for a single cryptocurrency.
@@ -22,23 +23,10 @@ type CryptoOverview struct {
 	Profile            interface{} `json:"profile"`
 }
 
-// cryptoSymbolToCounterID converts a crypto symbol in PAIR.EXCHANGE format
-// to the internal VA/{EXCHANGE}/{PAIR} counter_id.
-//
-// Example: "BTCUSD.HAS" → "VA/HAS/BTCUSD"
-func cryptoSymbolToCounterID(symbol string) string {
-	if idx := strings.LastIndex(symbol, "."); idx > 0 {
-		pair := symbol[:idx]
-		exchange := strings.ToUpper(symbol[idx+1:])
-		return "VA/" + exchange + "/" + pair
-	}
-	// No exchange suffix — pass through as-is for forward compatibility.
-	return symbol
-}
-
 // CryptoOverview returns market overview data for a cryptocurrency.
 //
 // symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.HAS" → VA/HAS/BTCUSD.
+// Uses counter.SymbolToID for conversion, consistent with all other symbol-based methods.
 //
 // Path: GET /v1/gemini/us/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
@@ -47,7 +35,7 @@ func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*Cryp
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", cryptoSymbolToCounterID(symbol))
+	q.Set("counter_id", counter.SymbolToID(symbol))
 	var resp CryptoOverview
 	if err := c.opts.httpClient.Get(ctx, "/v1/gemini/us/crypto-overview", q, &resp); err != nil {
 		return nil, err
