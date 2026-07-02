@@ -60,6 +60,16 @@ func WithBody(v interface{}) RequestOption {
 	}
 }
 
+// IsUS reports whether the configured credentials belong to the US data center.
+// Returns true when any credential carries the "us_" prefix.
+func (c *Client) IsUS() bool {
+	if c.opts.OAuthClient != nil {
+		// For OAuth, we cannot inspect the token synchronously; skip.
+		return false
+	}
+	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken) == dcRegionUs
+}
+
 // Get sends Get request with queryParams
 func (c *Client) Get(ctx context.Context, path string, queryParams url.Values, resp interface{}, ropts ...RequestOption) error {
 	return c.Call(ctx, "GET", path, queryParams, nil, resp, ropts...)
