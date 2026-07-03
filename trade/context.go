@@ -40,19 +40,30 @@ type TradeContext struct {
 }
 
 // OnQuote set callback function which will be called when server push events.
+// No-op when created via NewHTTPFromCfg (no WS connection).
 func (c *TradeContext) OnTrade(f func(*PushEvent)) {
-	c.core.SetHandler(f)
+	if c.core != nil {
+		c.core.SetHandler(f)
+	}
 }
 
 // Subscribe topics then the handler will receive push event.
 // Reference: https://open.longbridge.com/en/docs/trade/trade-push#subscribe
+// Returns an error when created via NewHTTPFromCfg (no WS connection).
 func (c *TradeContext) Subscribe(ctx context.Context, topics []string) (subRes *SubResponse, err error) {
+	if c.core == nil {
+		return nil, errors.New("trade: Subscribe requires a WS connection; use NewFromCfg instead of NewHTTPFromCfg")
+	}
 	return c.core.Subscribe(ctx, topics)
 }
 
 // Unsubscribe topics then the handler will not receive the symbol's event.
 // Reference: https://open.longbridge.com/en/docs/trade/trade-push#cancel-subscribe
+// Returns an error when created via NewHTTPFromCfg (no WS connection).
 func (c *TradeContext) Unsubscribe(ctx context.Context, topics []string) (unsubRes *UnsubResponse, err error) {
+	if c.core == nil {
+		return nil, errors.New("trade: Unsubscribe requires a WS connection; use NewFromCfg instead of NewHTTPFromCfg")
+	}
 	return c.core.Unsubscribe(ctx, topics)
 }
 
@@ -353,6 +364,9 @@ func (c *TradeContext) EstimateMaxPurchaseQuantity(ctx context.Context, params *
 
 // Close
 func (c *TradeContext) Close() error {
+	if c.core == nil {
+		return nil
+	}
 	return c.core.Close()
 }
 
@@ -363,6 +377,19 @@ func NewFormEnv() (*TradeContext, error) {
 		return nil, err
 	}
 	return NewFromCfg(cfg)
+}
+
+// NewHTTPFromCfg returns a TradeContext that uses only the HTTP client,
+// without establishing a WebSocket connection. Use this when you only need
+// HTTP-based methods (e.g. US-market APIs: QueryUSOrders, USAssetOverview,
+// USRealizedPL, USOrderDetail) and do not need trade push events.
+func NewHTTPFromCfg(cfg *config.Config) (*TradeContext, error) {
+	httpClient, err := http.NewFromCfg(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "create http client error")
+	}
+	opts := newOptions(WithHttpClient(httpClient))
+	return &TradeContext{opts: opts, core: nil}, nil
 }
 
 // NewFromCfg return TradeContext with config.Config.
