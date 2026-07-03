@@ -51,13 +51,18 @@ func TestStripRegionPrefix(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"us_m_eyJabc", "us_m_eyJabc"},
-		{"hk_m_eyJabc", "hk_m_eyJabc"},
-		{"ap_m_eyJabc", "ap_m_eyJabc"},
+		// Region prefix is stripped; bare JWT (eyJ…) is returned.
+		{"us_m_eyJabc", "eyJabc"},
+		{"hk_m_eyJabc", "eyJabc"},
+		{"ap_m_eyJabc", "eyJabc"},
+		// Already-bare JWT is unchanged.
 		{"eyJabc", "eyJabc"},
-		{"Bearer us_m_eyJabc", "us_m_eyJabc"},
-		{"Bearer hk_m_eyJabc", "hk_m_eyJabc"},
+		// Bearer wrapper + region prefix: both stripped.
+		{"Bearer us_m_eyJabc", "eyJabc"},
+		{"Bearer hk_m_eyJabc", "eyJabc"},
 		{"Bearer eyJabc", "eyJabc"},
+		// App key (no eyJ): unchanged.
+		{"f56dd0886267f801328d0936da495a25", "f56dd0886267f801328d0936da495a25"},
 	}
 	for _, tc := range tests {
 		got := stripRegionPrefix(tc.input)
