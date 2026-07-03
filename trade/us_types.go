@@ -16,7 +16,8 @@ type QueryUSOrdersRequest struct {
 
 // QueryUSOrdersResponse holds the paged list of US orders.
 type QueryUSOrdersResponse struct {
-	Orders []map[string]interface{} `json:"orders"`
+	Orders     []map[string]interface{} `json:"orders"`
+	TotalCount int32                    `json:"total_count"`
 }
 
 // AttachedOrder is a take-profit or stop-loss sub-order attached to a US order.
@@ -38,83 +39,61 @@ type USOrderDetailResponse struct {
 	AttachedOrders []AttachedOrder        `json:"attached_orders,omitempty"`
 }
 
-// USStockPosition is a stock holding in the US account.
-type USStockPosition struct {
-	Symbol             string `json:"symbol"`
-	Name               string `json:"name"`
-	Quantity           string `json:"quantity"`
-	AvailableQuantity  string `json:"available_quantity"`
-	Currency           string `json:"currency"`
-	CostPrice          string `json:"cost_price"`
-	MarketValue        string `json:"market_value"`
-	UnrealizedPL       string `json:"unrealized_pl"`
-	UnrealizedPLRatio  string `json:"unrealized_pl_ratio"`
-	LastDone           string `json:"last_done"`
-	PrevClose          string `json:"prev_close"`
-	ChangeRate         string `json:"change_rate"`
-	NightLastDone      string `json:"night_last_done"`
-	PretradeClose      string `json:"pretrade_close"`
-	TradeStatus        string `json:"trade_status"`
-	IndividualQuantity string `json:"individual_quantity"`
+// ── USAssetOverview ────────────────────────────────────────────────────────
+
+// USCashEntry is one currency cash entry in USAssetOverview.
+type USCashEntry struct {
+	Currency      string `json:"currency"`
+	FrozenBuyCash string `json:"frozen_buy_cash"`
+	Outstanding   string `json:"outstanding"`
+	SettledCash   string `json:"settled_cash"`
+	TotalAmount   string `json:"total_amount"`
+	TotalCash     string `json:"total_cash"`
 }
 
-// USOptionPosition is an option holding in the US account.
-type USOptionPosition struct {
-	Symbol             string `json:"symbol"`
-	StrikePrice        string `json:"strike_price"`
-	DueDate            string `json:"due_date"`
-	ContractMultiplier int32  `json:"contract_multiplier"`
-	Type               string `json:"type"`
-	Quantity           string `json:"quantity"`
-	MarketValue        string `json:"market_value"`
-	UnrealizedPL       string `json:"unrealized_pl"`
+// USCryptoEntry is one cryptocurrency holding in USAssetOverview.
+type USCryptoEntry struct {
+	AssetType         string `json:"asset_type"`
+	AverageCost       string `json:"average_cost"`
+	CounterID         string `json:"counter_id"`
+	Currency          string `json:"currency"`
+	IndustryCounterID string `json:"industry_counter_id"`
+	IndustryName      string `json:"industry_name"`
+	// Additional fields passed through without type assertion.
+	Extra map[string]interface{} `json:"-"`
 }
 
-// USCryptoPosition is a cryptocurrency holding in the US account.
-type USCryptoPosition struct {
-	Symbol       string `json:"symbol"`
-	Quantity     string `json:"quantity"`
-	MarketValue  string `json:"market_value"`
-	UnrealizedPL string `json:"unrealized_pl"`
-	CostPrice    string `json:"cost_price"`
-}
-
-// USBuyPower holds purchasing power breakdown for a US account.
-type USBuyPower struct {
-	CashBuyPower      string `json:"cash_buy_power"`
-	OvernightBuyPower string `json:"overnight_buy_power"`
-	DayTradeBuyPower  string `json:"day_trade_buy_power"`
-	OptionBuyPower    string `json:"option_buy_power"`
-	CryptoBuyPower    string `json:"crypto_buy_power"`
-}
-
-// USAssetOverview is the full US account asset snapshot.
+// USAssetOverview is the US account asset snapshot.
+// Field names match the actual API response from /v1/us/assets/overview.
 type USAssetOverview struct {
-	AccountType     string            `json:"account_type"`
-	NetAssets       string            `json:"net_assets"`
-	TotalCash       string            `json:"total_cash"`
-	UnrealizedPL    string            `json:"unrealized_pl"`
-	Positions       []USStockPosition `json:"positions"`
-	OptionPositions []USOptionPosition `json:"option_positions"`
-	MultiLegs       []map[string]interface{} `json:"multi_legs"`
-	CryptoPositions []USCryptoPosition `json:"crypto_positions"`
-	BuyPower        USBuyPower        `json:"buy_power"`
+	AccountType    string        `json:"account_type"`
+	AssetTimestamp string        `json:"asset_timestamp"`
+	CashBuyPower   string        `json:"cash_buy_power"`
+	CashList       []USCashEntry `json:"cash_list"`
+	CryptoList     []USCryptoEntry `json:"crypto_list"`
+	// The full response may contain additional fields (stock positions, option
+	// positions, etc.) that are preserved here for forward compatibility.
+	Extra map[string]interface{} `json:"-"`
 }
 
-// RealizedPLItem is a single realized P&L entry by symbol.
-type RealizedPLItem struct {
-	Symbol       string `json:"symbol"`
-	Name         string `json:"name"`
-	Category     string `json:"category"`
-	RealizedPL   string `json:"realized_pl"`
-	QuantitySold string `json:"quantity_sold"`
-	AvgCost      string `json:"avg_cost"`
-	AvgSellPrice string `json:"avg_sell_price"`
+// ── USRealizedPL ───────────────────────────────────────────────────────────
+
+// USRealizedPLMetric is one time-period metric within a USRealizedPLEntry.
+type USRealizedPLMetric struct {
+	Amount string `json:"amount"`
+	Period int32  `json:"period"`
+	Rate   string `json:"rate"`
 }
 
-// USRealizedPL is the response for USRealizedPL.
+// USRealizedPLEntry is one asset-category entry in USRealizedPL.
+// Category: 0=all, 1=stock, 2=option, 3=crypto (server-defined values).
+type USRealizedPLEntry struct {
+	Category int32                `json:"category"`
+	Currency string               `json:"currency"`
+	Metrics  []USRealizedPLMetric `json:"metrics"`
+}
+
+// USRealizedPL is the response for GET /v1/us/assets/pl/realized.
 type USRealizedPL struct {
-	TotalRealizedPL string           `json:"total_realized_pl"`
-	Currency        string           `json:"currency"`
-	Items           []RealizedPLItem `json:"items"`
+	RealizedPLList []USRealizedPLEntry `json:"realized_pl_list"`
 }
