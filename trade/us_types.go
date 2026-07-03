@@ -1,5 +1,7 @@
 package trade
 
+import "time"
+
 // QueryUSOrdersRequest is the request body for QueryUSOrders.
 type QueryUSOrdersRequest struct {
 	AccountChannel string   `json:"account_channel"`
@@ -53,27 +55,42 @@ type USCashEntry struct {
 
 // USCryptoEntry is one cryptocurrency holding in USAssetOverview.
 type USCryptoEntry struct {
+	AssetType        string `json:"asset_type"`
+	AverageCost      string `json:"average_cost"`
+	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT"),
+	// converted from the API's counter_id field (e.g. "VA/BKKT/BTCUSD").
+	Symbol           string `json:"symbol"`
+	Currency         string `json:"currency"`
+	IndustrySymbol   string `json:"industry_symbol"`
+	IndustryName     string `json:"industry_name"`
+}
+
+// usRawCryptoEntry is the raw API shape before symbol conversion.
+type usRawCryptoEntry struct {
 	AssetType         string `json:"asset_type"`
 	AverageCost       string `json:"average_cost"`
 	CounterID         string `json:"counter_id"`
 	Currency          string `json:"currency"`
 	IndustryCounterID string `json:"industry_counter_id"`
 	IndustryName      string `json:"industry_name"`
-	// Additional fields passed through without type assertion.
-	Extra map[string]interface{} `json:"-"`
+}
+
+// usRawAssetOverview is the raw API shape before field conversion.
+type usRawAssetOverview struct {
+	AccountType    string             `json:"account_type"`
+	AssetTimestamp string             `json:"asset_timestamp"`
+	CashBuyPower   string             `json:"cash_buy_power"`
+	CashList       []USCashEntry      `json:"cash_list"`
+	CryptoList     []usRawCryptoEntry `json:"crypto_list"`
 }
 
 // USAssetOverview is the US account asset snapshot.
-// Field names match the actual API response from /v1/us/assets/overview.
 type USAssetOverview struct {
-	AccountType    string        `json:"account_type"`
-	AssetTimestamp string        `json:"asset_timestamp"`
-	CashBuyPower   string        `json:"cash_buy_power"`
-	CashList       []USCashEntry `json:"cash_list"`
+	AccountType    string          `json:"account_type"`
+	AssetTimestamp time.Time       `json:"asset_timestamp"`
+	CashBuyPower   string          `json:"cash_buy_power"`
+	CashList       []USCashEntry   `json:"cash_list"`
 	CryptoList     []USCryptoEntry `json:"crypto_list"`
-	// The full response may contain additional fields (stock positions, option
-	// positions, etc.) that are preserved here for forward compatibility.
-	Extra map[string]interface{} `json:"-"`
 }
 
 // ── USRealizedPL ───────────────────────────────────────────────────────────
