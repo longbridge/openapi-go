@@ -2,7 +2,6 @@ package trade
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -35,12 +34,8 @@ func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOr
 	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
 		return nil, err
 	}
-	var raw json.RawMessage
-	if err := c.opts.httpClient.Get(ctx, path, nil, &raw); err != nil {
-		return nil, err
-	}
 	var out USOrderDetailResponse
-	if err := json.Unmarshal(raw, &out.Raw); err != nil {
+	if err := c.opts.httpClient.Get(ctx, path, nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

@@ -25,10 +25,22 @@ type QueryUSOrdersResponse struct {
 	TotalCount int32                    `json:"total_count"`
 }
 
+// USOrderHistory is one entry in the order history list.
+type USOrderHistory struct {
+	ExecType  int    `json:"exec_type"`
+	Status    string `json:"status"`
+	Price     string `json:"price"`
+	Qty       string `json:"qty"`
+	Time      string `json:"time"`
+	Msg       string `json:"msg"`
+}
+
 // USOrderDetailResponse is the response for USOrderDetail.
-// The full raw JSON is preserved in Raw for callers that need all fields.
+// Order contains the full order object; OrderHistories contains state transitions.
 type USOrderDetailResponse struct {
-	Raw map[string]interface{} `json:"-"`
+	Order                map[string]interface{} `json:"order"`
+	OrderHistories       []USOrderHistory       `json:"order_histories"`
+	CurrentAttachedOrder map[string]interface{} `json:"current_attached_order"`
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────

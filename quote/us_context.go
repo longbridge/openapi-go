@@ -9,23 +9,27 @@ import (
 
 // CryptoOverview holds the market overview for a single cryptocurrency.
 type CryptoOverview struct {
-	Name               string      `json:"name"`
-	Ticker             string      `json:"ticker"`
-	Currency           string      `json:"currency"`
-	AllTimeHigh        string      `json:"all_time_high"`
-	AllTimeHighDate    string      `json:"all_time_high_date"`
-	AllTimeLow         string      `json:"all_time_low"`
-	AllTimeLowDate     string      `json:"all_time_low_date"`
-	IpoDate            string      `json:"ipo_date"`
-	IssuePrice         string      `json:"issue_price"`
-	Shares             string      `json:"shares"`
-	OfficialWebAddress string      `json:"official_web_address"`
-	Profile            interface{} `json:"profile"`
+	CounterID          string `json:"counter_id"`
+	Name               string `json:"name"`
+	Ticker             string `json:"ticker"`
+	BaseAsset          string `json:"base_asset"`
+	Currency           string `json:"currency"`
+	AllTimeHigh        string `json:"all_time_high"`
+	AllTimeHighDate    string `json:"all_time_high_date"`
+	AllTimeLow         string `json:"all_time_low"`
+	AllTimeLowDate     string `json:"all_time_low_date"`
+	IpoDate            string `json:"ipo_date"`
+	IssuePrice         string `json:"issue_price"`
+	Shares             string `json:"shares"`
+	OfficialWebAddress string `json:"official_web_address"`
+	Logo               string `json:"logo"`
+	WikiURL            string `json:"wiki_url"`
+	Profile            string `json:"profile"`
 }
 
 // CryptoOverview returns market overview data for a cryptocurrency.
 //
-// symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.HAS" → VA/HAS/BTCUSD.
+// symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.BKKT" → VA/BKKT/BTCUSD (US DC).
 // Uses counter.SymbolToID for conversion, consistent with all other symbol-based methods.
 //
 // Path: GET /v1/gemini/us/crypto-overview
