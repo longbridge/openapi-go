@@ -2,23 +2,30 @@ package trade
 
 import "time"
 
-// QueryUSOrdersRequest is the request body for QueryUSOrders.
+// GetUSHistoryOrders is the request for QueryUSOrders, modelled after
+// GetHistoryOrders for HK/CN orders.
 //
-// QueryType values: 0=all (includes Rejected), 1=pending, 2=history (filled only).
-// Use QueryType=0 to match what the app shows as "past orders".
-type QueryUSOrdersRequest struct {
-	// AccountChannel is the account channel filter. Pass "" to use the token's
-	// default account channel (server auto-resolves from the token).
-	AccountChannel string   `json:"account_channel"`
-	Action         int32    `json:"action"`
-	StartAt        float64  `json:"start_at"`
-	EndAt          float64  `json:"end_at"`
-	CounterIDs     []string `json:"counter_ids"`
-	SecurityTypes  []string `json:"security_types"`
-	QueryType      int32    `json:"query_type"`
-	Page           int32    `json:"page"`
-	Limit          int32    `json:"limit"`
-	QueryVersion   float64  `json:"query_version"`
+// QueryType: 0=all (includes Rejected), 1=pending, 2=history (filled only).
+// Default (QueryType=0) matches what the app shows as "past orders".
+type GetUSHistoryOrders struct {
+	Symbol    string    // optional — user-facing symbol e.g. "AAPL.US" or "DOGEUSD.BKKT"
+	Side      OrderSide // optional — Buy / Sell; zero value = all directions
+	StartAt   int64     // optional — unix seconds; zero = last 90 days
+	EndAt     int64     // optional — unix seconds; zero = now
+	QueryType int32     // 0=all, 1=pending, 2=filled history; default 0
+	Page      int32     // 1-based page number; default 1
+	Limit     int32     // page size; default 20
+}
+
+// QueryUSOrdersRequest is an alias for GetUSHistoryOrders.
+type QueryUSOrdersRequest = GetUSHistoryOrders
+
+// GetUSRealizedPL is the request for USRealizedPL.
+type GetUSRealizedPL struct {
+	Currency string // required — e.g. "USD"
+	// Category filters by asset type: "ALL", "STOCK", "OPTION", "CRYPTO".
+	// Zero value / empty = all categories.
+	Category string
 }
 
 // USOrder is one order entry in QueryUSOrdersResponse.

@@ -79,16 +79,66 @@ func unixStrToTime(s string) time.Time {
 	return time.Time{}
 }
 
-// QueryUSOrders queries the paginated US order list.
+// QueryUSOrders queries the US order list.
 //
 // Path: POST /v1/orders/query
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequest) (*QueryUSOrdersResponse, error) {
+func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrders) (*QueryUSOrdersResponse, error) {
 	if err := c.opts.httpClient.CheckRegion("/v1/orders/query", "US"); err != nil {
 		return nil, err
 	}
+	if req == nil {
+		req = &GetUSHistoryOrders{}
+	}
+	now := time.Now().Unix()
+
+	// Build action from Side
+	action := int32(0)
+	switch req.Side {
+	case OrderSideBuy:
+		action = 1
+	case OrderSideSell:
+		action = 2
+	}
+
+	// Build counter_ids from Symbol
+	counterIDs := []string{}
+	if req.Symbol != "" {
+		counterIDs = append(counterIDs, counter.SymbolToID(req.Symbol))
+	}
+
+	// Apply defaults
+	page, limit := req.Page, req.Limit
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	startAt := float64(req.StartAt)
+	if startAt == 0 {
+		startAt = float64(now - 90*24*3600)
+	}
+	endAt := float64(req.EndAt)
+	if endAt == 0 {
+		endAt = float64(now)
+	}
+
+	body := map[string]interface{}{
+		"account_channel": "",
+		"action":          action,
+		"start_at":        startAt,
+		"end_at":          endAt,
+		"counter_ids":     counterIDs,
+		"security_types":  []string{},
+		"query_type":      req.QueryType,
+		"page":            page,
+		"limit":           limit,
+		"query_version":   float64(now),
+	}
+
 	var raw usRawQueryUSOrdersResponse
-	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", req, &raw); err != nil {
+	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", body, &raw); err != nil {
 		return nil, err
 	}
 	orders := make([]USOrder, 0, len(raw.Orders))
@@ -155,20 +205,19 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 
 // USRealizedPL returns realized profit-and-loss for the US account.
 //
-// currency is required (e.g. "USD").
-// category filters by asset type: "ALL", "STOCK", "OPTION", or "CRYPTO";
-// pass nil for all categories.
-//
 // Path: GET /v1/us/assets/pl/realized
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *TradeContext) USRealizedPL(ctx context.Context, currency string, category *string) (*USRealizedPL, error) {
+func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (*USRealizedPL, error) {
 	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/pl/realized", "US"); err != nil {
 		return nil, err
 	}
+	if req == nil {
+		req = &GetUSRealizedPL{Currency: "USD"}
+	}
 	q := url.Values{}
-	q.Set("currency", currency)
-	if category != nil {
-		q.Set("category", *category)
+	q.Set("currency", req.Currency)
+	if req.Category != "" {
+		q.Set("category", req.Category)
 	}
 	var resp USRealizedPL
 	if err := c.opts.httpClient.Get(ctx, "/v1/us/assets/pl/realized", q, &resp); err != nil {
