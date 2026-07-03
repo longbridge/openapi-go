@@ -10,6 +10,68 @@ import (
 	"github.com/longbridge/openapi-go/internal/counter"
 )
 
+func convertUSOrder(o usRawOrder) USOrder {
+	return USOrder{
+		OrderID:           o.ID,
+		AAID:              o.AAID,
+		AccountChannel:    o.AccountChannel,
+		Action:            o.Action,
+		Symbol:            counter.IDToSymbol(o.CounterID),
+		UnderlyingSymbol:  counter.IDToSymbol(o.UnderlyingCounterID),
+		Code:              o.Code,
+		Name:              o.Name,
+		SecurityType:      o.SecurityType,
+		Currency:          o.Currency,
+		TradeCurrency:     o.TradeCurrency,
+		OrderType:         o.OrderType,
+		Status:            o.Status,
+		Price:             o.Price,
+		Quantity:          o.Quantity,
+		ExecutedQty:       o.ExecutedQty,
+		ExecutedPrice:     o.ExecutedPrice,
+		ExecutedAmount:    o.ExecutedAmount,
+		OperateDirection:  o.OperateDirection,
+		TimeInForce:       o.TimeInForce,
+		GTD:               o.GTD,
+		SubmittedAt:       unixStrToTime(o.SubmittedAt),
+		UpdatedAt:         unixStrToTime(o.UpdatedAt),
+		Msg:               o.Msg,
+		Report:            o.Report,
+		ContractDirection: o.ContractDirection,
+		ContractDueDate:   o.ContractDueDate,
+		StrikePrice:       o.StrikePrice,
+		TailingAmount:     o.TailingAmount,
+		TailingPercent:    o.TailingPercent,
+		TriggerPrice:      o.TriggerPrice,
+		TriggerStatus:     o.TriggerStatus,
+		TriggerAt:         o.TriggerAt,
+		TriggerExchange:   o.TriggerExchange,
+		TriggerLastDone:   o.TriggerLastDone,
+		TriggerCount:      o.TriggerCount,
+		LotSize:           o.LotSize,
+		LimitOffset:       o.LimitOffset,
+		LimitDepthLevel:   o.LimitDepthLevel,
+		MarketPrice:       o.MarketPrice,
+		LastDone:          o.LastDone,
+		OrgID:             o.OrgID,
+		Tag:               o.Tag,
+		ForceOnlyRTH:      o.ForceOnlyRTH,
+		DeductionsStatus:  o.DeductionsStatus,
+		FreeStatus:        o.FreeStatus,
+		Trend:             o.Trend,
+	}
+}
+
+func unixStrToTime(s string) time.Time {
+	if s == "" || s == "0" {
+		return time.Time{}
+	}
+	if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return time.Unix(n, 0).UTC()
+	}
+	return time.Time{}
+}
+
 // QueryUSOrders queries the paginated US order list.
 //
 // Path: POST /v1/orders/query
@@ -18,11 +80,15 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequ
 	if err := c.opts.httpClient.CheckRegion("/v1/orders/query", "US"); err != nil {
 		return nil, err
 	}
-	var resp QueryUSOrdersResponse
-	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", req, &resp); err != nil {
+	var raw usRawQueryUSOrdersResponse
+	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", req, &raw); err != nil {
 		return nil, err
 	}
-	return &resp, nil
+	orders := make([]USOrder, 0, len(raw.Orders))
+	for _, o := range raw.Orders {
+		orders = append(orders, convertUSOrder(o))
+	}
+	return &QueryUSOrdersResponse{Orders: orders, TotalCount: raw.TotalCount}, nil
 }
 
 // USOrderDetail returns the detail for a single US order.

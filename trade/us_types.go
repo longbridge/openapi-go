@@ -19,10 +19,128 @@ type QueryUSOrdersRequest struct {
 	QueryVersion   float64  `json:"query_version"`
 }
 
+// USOrder is one order entry in QueryUSOrdersResponse.
+// counter_id fields are converted to user-facing symbol format.
+type USOrder struct {
+	// OrderID is the unique order identifier (field "id" in raw response).
+	// Use this with USOrderDetail.
+	OrderID            string    `json:"id"`
+	AAID               string    `json:"aaid"`
+	AccountChannel     string    `json:"account_channel"`
+	// Action: 1=buy, 2=sell
+	Action             int32     `json:"action"`
+	// Symbol is converted from counter_id (e.g. "VA/BKKT/DOGEUSD" → "DOGEUSD.BKKT")
+	Symbol             string    `json:"symbol"`
+	// UnderlyingSymbol is converted from underlying_counter_id (options only)
+	UnderlyingSymbol   string    `json:"underlying_symbol"`
+	Code               string    `json:"code"`
+	Name               string    `json:"name"`
+	SecurityType       string    `json:"security_type"`
+	Currency           string    `json:"currency"`
+	TradeCurrency      string    `json:"trade_currency"`
+	OrderType          string    `json:"order_type"`
+	Status             string    `json:"status"`
+	Price              string    `json:"price"`
+	Quantity           string    `json:"quantity"`
+	ExecutedQty        string    `json:"executed_qty"`
+	ExecutedPrice      string    `json:"executed_price"`
+	ExecutedAmount     string    `json:"executed_amount"`
+	OperateDirection   string    `json:"operate_direction"`
+	TimeInForce        int32     `json:"time_in_force"`
+	GTD                string    `json:"gtd"`
+	SubmittedAt        time.Time `json:"submitted_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	Msg                string    `json:"msg"`
+	Report             string    `json:"report"`
+	// Options-specific fields
+	ContractDirection  string    `json:"contract_direction"`
+	ContractDueDate    string    `json:"contract_due_date"`
+	StrikePrice        string    `json:"strike_price"`
+	// Trailing stop fields
+	TailingAmount      string    `json:"tailing_amount"`
+	TailingPercent     string    `json:"tailing_percent"`
+	// Trigger / conditional order fields
+	TriggerPrice       string    `json:"trigger_price"`
+	TriggerStatus      int32     `json:"trigger_status"`
+	TriggerAt          string    `json:"trigger_at"`
+	TriggerExchange    string    `json:"trigger_exchange"`
+	TriggerLastDone    string    `json:"trigger_last_done"`
+	TriggerCount       int32     `json:"trigger_count"`
+	// Other
+	LotSize            string    `json:"lot_size"`
+	LimitOffset        string    `json:"limit_offset"`
+	LimitDepthLevel    int32     `json:"limit_depth_level"`
+	MarketPrice        string    `json:"market_price"`
+	LastDone           string    `json:"last_done"`
+	OrgID              string    `json:"org_id"`
+	Tag                int32     `json:"tag"`
+	ForceOnlyRTH       int32     `json:"force_only_rth"`
+	DeductionsStatus   int32     `json:"deductions_status"`
+	FreeStatus         int32     `json:"free_status"`
+	Trend              int32     `json:"trend"`
+}
+
+// usRawOrder is the raw deserialization shape before symbol conversion.
+type usRawOrder struct {
+	ID                  string `json:"id"`
+	AAID                string `json:"aaid"`
+	AccountChannel      string `json:"account_channel"`
+	Action              int32  `json:"action"`
+	CounterID           string `json:"counter_id"`
+	UnderlyingCounterID string `json:"underlying_counter_id"`
+	Code                string `json:"code"`
+	Name                string `json:"name"`
+	SecurityType        string `json:"security_type"`
+	Currency            string `json:"currency"`
+	TradeCurrency       string `json:"trade_currency"`
+	OrderType           string `json:"order_type"`
+	Status              string `json:"status"`
+	Price               string `json:"price"`
+	Quantity            string `json:"quantity"`
+	ExecutedQty         string `json:"executed_qty"`
+	ExecutedPrice       string `json:"executed_price"`
+	ExecutedAmount      string `json:"executed_amount"`
+	OperateDirection    string `json:"operate_direction"`
+	TimeInForce         int32  `json:"time_in_force"`
+	GTD                 string `json:"gtd"`
+	SubmittedAt         string `json:"submitted_at"`
+	UpdatedAt           string `json:"updated_at"`
+	Msg                 string `json:"msg"`
+	Report              string `json:"report"`
+	ContractDirection   string `json:"contract_direction"`
+	ContractDueDate     string `json:"contract_due_date"`
+	StrikePrice         string `json:"strike_price"`
+	TailingAmount       string `json:"tailing_amount"`
+	TailingPercent      string `json:"tailing_percent"`
+	TriggerPrice        string `json:"trigger_price"`
+	TriggerStatus       int32  `json:"trigger_status"`
+	TriggerAt           string `json:"trigger_at"`
+	TriggerExchange     string `json:"trigger_exchange"`
+	TriggerLastDone     string `json:"trigger_last_done"`
+	TriggerCount        int32  `json:"trigger_count"`
+	LotSize             string `json:"lot_size"`
+	LimitOffset         string `json:"limit_offset"`
+	LimitDepthLevel     int32  `json:"limit_depth_level"`
+	MarketPrice         string `json:"market_price"`
+	LastDone            string `json:"last_done"`
+	OrgID               string `json:"org_id"`
+	Tag                 int32  `json:"tag"`
+	ForceOnlyRTH        int32  `json:"force_only_rth"`
+	DeductionsStatus    int32  `json:"deductions_status"`
+	FreeStatus          int32  `json:"free_status"`
+	Trend               int32  `json:"trend"`
+}
+
 // QueryUSOrdersResponse holds the paged list of US orders.
 type QueryUSOrdersResponse struct {
-	Orders     []map[string]interface{} `json:"orders"`
-	TotalCount int32                    `json:"total_count"`
+	Orders     []USOrder `json:"orders"`
+	TotalCount int32     `json:"total_count"`
+}
+
+// usRawQueryUSOrdersResponse is the raw deserialization shape.
+type usRawQueryUSOrdersResponse struct {
+	Orders     []usRawOrder `json:"orders"`
+	TotalCount int32        `json:"total_count"`
 }
 
 // USOrderHistory is one entry in the order history list.
