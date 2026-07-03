@@ -84,24 +84,12 @@ func (e *RegionRestrictedError) Error() string {
 	)
 }
 
-// stripRegionPrefix strips the routing prefix from a credential so only the
-// bare JWT is sent in the Authorization header.
+// stripRegionPrefix strips any leading "Bearer " from a credential.
 //
-// Access tokens are prefixed with their data-center identifier
-// (e.g. "us_m_eyJ…", "hk_m_eyJ…"). The prefix is routing metadata consumed
-// by dcRegionFromCredential; the gateway validates only the bare JWT (starting
-// with "eyJ"). Sending the full prefixed string causes JWT header decode
-// failure on the server side.
-//
-// Stripping order:
-//  1. Remove any leading "Bearer " OAuth wrapper.
-//  2. Remove any region prefix before the JWT start ("eyJ").
-//
-// App keys (hex strings, no "eyJ") are returned unchanged.
+// Region prefixes (hk_m_, us_m_, ap_m_, …) are routing metadata consumed by
+// dcRegionFromCredential to derive the x-dc-region header. The gateway
+// accepts the full prefixed token and routes by the header, so no region
+// prefix is stripped — only "Bearer " is removed.
 func stripRegionPrefix(credential string) string {
-	credential = strings.TrimPrefix(credential, "Bearer ")
-	if idx := strings.Index(credential, "eyJ"); idx > 0 {
-		credential = credential[idx:]
-	}
-	return credential
+	return strings.TrimPrefix(credential, "Bearer ")
 }
