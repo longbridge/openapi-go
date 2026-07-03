@@ -55,24 +55,22 @@ type USCashEntry struct {
 
 // USCryptoEntry is one cryptocurrency holding in USAssetOverview.
 type USCryptoEntry struct {
-	AssetType        string `json:"asset_type"`
-	AverageCost      string `json:"average_cost"`
+	AssetType   string `json:"asset_type"`
+	AverageCost string `json:"average_cost"`
 	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT"),
 	// converted from the API's counter_id field (e.g. "VA/BKKT/BTCUSD").
-	Symbol           string `json:"symbol"`
-	Currency         string `json:"currency"`
-	IndustrySymbol   string `json:"industry_symbol"`
-	IndustryName     string `json:"industry_name"`
+	Symbol      string `json:"symbol"`
+	Currency    string `json:"currency"`
+	IndustryName string `json:"industry_name"`
 }
 
 // usRawCryptoEntry is the raw API shape before symbol conversion.
 type usRawCryptoEntry struct {
-	AssetType         string `json:"asset_type"`
-	AverageCost       string `json:"average_cost"`
-	CounterID         string `json:"counter_id"`
-	Currency          string `json:"currency"`
-	IndustryCounterID string `json:"industry_counter_id"`
-	IndustryName      string `json:"industry_name"`
+	AssetType   string `json:"asset_type"`
+	AverageCost string `json:"average_cost"`
+	CounterID   string `json:"counter_id"`
+	Currency    string `json:"currency"`
+	IndustryName string `json:"industry_name"`
 }
 
 // usRawAssetOverview is the raw API shape before field conversion.

@@ -81,12 +81,11 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 	cryptoList := make([]USCryptoEntry, 0, len(raw.CryptoList))
 	for _, e := range raw.CryptoList {
 		cryptoList = append(cryptoList, USCryptoEntry{
-			AssetType:      e.AssetType,
-			AverageCost:    e.AverageCost,
-			Symbol:         counter.IDToSymbol(e.CounterID),
-			Currency:       e.Currency,
-			IndustrySymbol: counter.IDToSymbol(e.IndustryCounterID),
-			IndustryName:   e.IndustryName,
+			AssetType:    e.AssetType,
+			AverageCost:  e.AverageCost,
+			Symbol:       counter.IDToSymbol(e.CounterID),
+			Currency:     e.Currency,
+			IndustryName: e.IndustryName,
 		})
 	}
 	var ts time.Time
