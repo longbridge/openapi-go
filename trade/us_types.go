@@ -7,6 +7,8 @@ import "time"
 // QueryType values: 0=all (includes Rejected), 1=pending, 2=history (filled only).
 // Use QueryType=0 to match what the app shows as "past orders".
 type QueryUSOrdersRequest struct {
+	// AccountChannel is the account channel filter. Pass "" to use the token's
+	// default account channel (server auto-resolves from the token).
 	AccountChannel string   `json:"account_channel"`
 	Action         int32    `json:"action"`
 	StartAt        float64  `json:"start_at"`
