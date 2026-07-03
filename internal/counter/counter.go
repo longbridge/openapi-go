@@ -69,11 +69,15 @@ func IDToSymbol(counterID string) string {
 }
 
 // cryptoExchanges is the set of known crypto exchange identifiers used as
-// symbol suffixes (e.g. "BTCUSD.HAS" → "VA/HAS/BTCUSD").
+// symbol suffixes (e.g. "BTCUSD.BKKT" → "VA/BKKT/BTCUSD").
+//
+// Region mapping:
+//   - US DC: BKKT
+//   - HK DC: HAS, OSL
 var cryptoExchanges = map[string]bool{
-	"HAS":  true,
-	"OSL":  true,
-	"BKKT": true,
+	"BKKT": true, // US
+	"HAS":  true, // HK
+	"OSL":  true, // HK
 }
 
 // SymbolToID converts a user-facing symbol to its internal counter_id.
