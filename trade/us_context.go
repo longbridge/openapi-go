@@ -27,37 +27,21 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequ
 }
 
 // USOrderDetail returns the detail for a single US order.
-// When isAttached is true, attached take-profit/stop-loss sub-orders are
-// included in the response.
 //
-// Path: GET /v3/orders/{order_id}
+// Path: GET /v1/orders/{order_id}
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string, isAttached bool) (*USOrderDetailResponse, error) {
-	path := fmt.Sprintf("/v3/orders/%s", orderID)
+func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOrderDetailResponse, error) {
+	path := fmt.Sprintf("/v1/orders/%s", orderID)
 	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
 		return nil, err
 	}
-	q := url.Values{}
-	q.Set("order_id_str", orderID)
-	if isAttached {
-		q.Set("is_attached", "true")
-	}
 	var raw json.RawMessage
-	if err := c.opts.httpClient.Get(ctx, path, q, &raw); err != nil {
+	if err := c.opts.httpClient.Get(ctx, path, nil, &raw); err != nil {
 		return nil, err
 	}
 	var out USOrderDetailResponse
 	if err := json.Unmarshal(raw, &out.Raw); err != nil {
 		return nil, err
-	}
-	if isAttached {
-		var wrapper struct {
-			AttachedOrders []AttachedOrder `json:"attached_orders"`
-		}
-		if err := json.Unmarshal(raw, &wrapper); err != nil {
-			return nil, err
-		}
-		out.AttachedOrders = wrapper.AttachedOrders
 	}
 	return &out, nil
 }

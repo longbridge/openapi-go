@@ -25,23 +25,10 @@ type QueryUSOrdersResponse struct {
 	TotalCount int32                    `json:"total_count"`
 }
 
-// AttachedOrder is a take-profit or stop-loss sub-order attached to a US order.
-type AttachedOrder struct {
-	OrderID      string `json:"order_id"`
-	Type         string `json:"type"`
-	Side         string `json:"side"`
-	Price        string `json:"price"`
-	TrailAmount  string `json:"trail_amount"`
-	TrailPercent string `json:"trail_percent"`
-	Status       string `json:"status"`
-}
-
 // USOrderDetailResponse is the response for USOrderDetail.
-// The raw order detail fields are passed through as-is; attached_orders is
-// populated only when isAttached=true.
+// The full raw JSON is preserved in Raw for callers that need all fields.
 type USOrderDetailResponse struct {
-	Raw            map[string]interface{} `json:"-"`
-	AttachedOrders []AttachedOrder        `json:"attached_orders,omitempty"`
+	Raw map[string]interface{} `json:"-"`
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────
