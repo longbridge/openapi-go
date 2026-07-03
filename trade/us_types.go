@@ -72,8 +72,15 @@ type USOrder struct {
 	LimitDepthLevel    int32     `json:"limit_depth_level"`
 	MarketPrice        string    `json:"market_price"`
 	LastDone           string    `json:"last_done"`
-	OrgID              string    `json:"org_id"`
-	Tag                int32     `json:"tag"`
+	MonitorPrice             string    `json:"monitor_price"`
+	SubmittedAmount          string    `json:"submitted_amount"`
+	PlatformDeductionsStatus int32     `json:"platform_deductions_status"`
+	PloyID                   string    `json:"ploy_id"`
+	PloyType                 string    `json:"ploy_type"`
+	TickerSize               string    `json:"ticker_size"`
+	CurrentMillisecond       string    `json:"current_millisecond"`
+	OrgID                    string    `json:"org_id"`
+	Tag                      int32     `json:"tag"`
 	ForceOnlyRTH       int32     `json:"force_only_rth"`
 	DeductionsStatus   int32     `json:"deductions_status"`
 	FreeStatus         int32     `json:"free_status"`
@@ -123,8 +130,15 @@ type usRawOrder struct {
 	LimitDepthLevel     int32  `json:"limit_depth_level"`
 	MarketPrice         string `json:"market_price"`
 	LastDone            string `json:"last_done"`
-	OrgID               string `json:"org_id"`
-	Tag                 int32  `json:"tag"`
+	MonitorPrice              string `json:"monitor_price"`
+	SubmittedAmount           string `json:"submitted_amount"`
+	PlatformDeductionsStatus  int32  `json:"platform_deductions_status"`
+	PloyID                    string `json:"ploy_id"`
+	PloyType                  string `json:"ploy_type"`
+	TickerSize                string `json:"ticker_size"`
+	CurrentMillisecond        string `json:"current_millisecond"`
+	OrgID                     string `json:"org_id"`
+	Tag                       int32  `json:"tag"`
 	ForceOnlyRTH        int32  `json:"force_only_rth"`
 	DeductionsStatus    int32  `json:"deductions_status"`
 	FreeStatus          int32  `json:"free_status"`
@@ -154,7 +168,9 @@ type USOrderHistory struct {
 }
 
 // USOrderDetailResponse is the response for USOrderDetail.
-// Order contains the full order object; OrderHistories contains state transitions.
+// Order contains the full order object (counter_id is NOT converted to symbol here;
+// use QueryUSOrders for converted Symbol fields).
+// OrderHistories contains state transitions.
 type USOrderDetailResponse struct {
 	Order                map[string]interface{} `json:"order"`
 	OrderHistories       []USOrderHistory       `json:"order_histories"`
@@ -162,6 +178,8 @@ type USOrderDetailResponse struct {
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────
+// Note: only cash and crypto positions are exposed; stock/option/multi-leg
+// positions from the full API response are not currently captured.
 
 // USCashEntry is one currency cash entry in USAssetOverview.
 type USCashEntry struct {
@@ -221,7 +239,7 @@ type USRealizedPLMetric struct {
 }
 
 // USRealizedPLEntry is one asset-category entry in USRealizedPL.
-// Category: 0=all, 1=stock, 2=option, 3=crypto (server-defined values).
+// Category values: 0=all, 1=stock, 2=option, 3=crypto.
 type USRealizedPLEntry struct {
 	Category int32                `json:"category"`
 	Currency string               `json:"currency"`

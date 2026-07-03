@@ -53,8 +53,15 @@ func convertUSOrder(o usRawOrder) USOrder {
 		LimitDepthLevel:   o.LimitDepthLevel,
 		MarketPrice:       o.MarketPrice,
 		LastDone:          o.LastDone,
-		OrgID:             o.OrgID,
-		Tag:               o.Tag,
+		MonitorPrice:             o.MonitorPrice,
+		SubmittedAmount:          o.SubmittedAmount,
+		PlatformDeductionsStatus: o.PlatformDeductionsStatus,
+		PloyID:                   o.PloyID,
+		PloyType:                 o.PloyType,
+		TickerSize:               o.TickerSize,
+		CurrentMillisecond:       o.CurrentMillisecond,
+		OrgID:                    o.OrgID,
+		Tag:                      o.Tag,
 		ForceOnlyRTH:      o.ForceOnlyRTH,
 		DeductionsStatus:  o.DeductionsStatus,
 		FreeStatus:        o.FreeStatus,
@@ -96,10 +103,10 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *QueryUSOrdersRequ
 // Path: GET /v1/orders/{order_id}
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOrderDetailResponse, error) {
-	path := fmt.Sprintf("/v1/orders/%s", orderID)
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegion("/v1/orders/{order_id}", "US"); err != nil {
 		return nil, err
 	}
+	path := fmt.Sprintf("/v1/orders/%s", orderID)
 	var out USOrderDetailResponse
 	if err := c.opts.httpClient.Get(ctx, path, nil, &out); err != nil {
 		return nil, err
