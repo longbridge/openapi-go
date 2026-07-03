@@ -3,6 +3,9 @@ package trade
 import "time"
 
 // QueryUSOrdersRequest is the request body for QueryUSOrders.
+//
+// QueryType values: 0=all (includes Rejected), 1=pending, 2=history (filled only).
+// Use QueryType=0 to match what the app shows as "past orders".
 type QueryUSOrdersRequest struct {
 	AccountChannel string   `json:"account_channel"`
 	Action         int32    `json:"action"`
