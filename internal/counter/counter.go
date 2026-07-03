@@ -72,6 +72,7 @@ func IDToSymbol(counterID string) string {
 // symbol suffixes (e.g. "BTCUSD.HAS" → "VA/HAS/BTCUSD").
 var cryptoExchanges = map[string]bool{
 	"HAS":  true,
+	"OSL":  true,
 	"BKKT": true,
 }
 
