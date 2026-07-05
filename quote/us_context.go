@@ -51,7 +51,7 @@ type cryptoRawOverview struct {
 
 // CryptoOverview returns market overview data for a cryptocurrency.
 //
-// symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.BKKT" → VA/BKKT/BTCUSD (US DC).
+// symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.BKKT" (US DC uses BKKT).
 // The returned Symbol field is converted back from the API's counter_id.
 //
 // Path: GET /v1/gemini/us/crypto-overview
