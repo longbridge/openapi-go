@@ -63,6 +63,7 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 
 // FinancialStatementV3 returns the US financial statement detail (IS/BS/CF) for the given
 // symbol (e.g. "AAPL.US"), statement kind, and report period.
+// Only applicable to stocks — ETFs do not have financial statements.
 //
 // kind: "IS" (income statement), "BS" (balance sheet), "CF" (cash flow)
 // report: "annual" or "quarterly"
