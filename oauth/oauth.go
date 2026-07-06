@@ -32,7 +32,7 @@ import (
 const (
 	authTimeout          = 5 * time.Minute
 	oauthBaseURL         = "https://openapi.longbridge.com"
-	oauthBaseURLStaging  = "https://openapi.longbridge.xyz"
+	oauthBaseURLStaging  = "https://openapi-global.longbridge.xyz"
 	defaultCallbackPort  = 60355
 	expiresSoonSecs      = 3600
 	tokenDir             = ".longbridge/openapi/tokens"
