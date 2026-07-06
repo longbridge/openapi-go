@@ -227,6 +227,7 @@ func (c *TradeContext) CancelOrder(ctx context.Context, orderId string) (err err
 //	tctx, err := trade.NewFromCfg(conf)
 //	ab, err := trade.AccountBalance(context.Background(), &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
 func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBalance) (accounts []*AccountBalance, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/asset/account", "AP"); err != nil { return }
 	var resp jsontypes.AccountBalances
 	err = c.opts.httpClient.Get(ctx, "/v1/asset/account", params.Values(), &resp)
 	if err != nil {
@@ -250,6 +251,7 @@ func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBal
 //	  BussinessType: trade.BalanceTypeCash,
 //	})
 func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashflows []*CashFlow, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/asset/cashflow", "AP"); err != nil { return }
 	var resp jsontypes.CashFlows
 	err = c.opts.httpClient.Get(ctx, "/v1/asset/cashflow", params.Values(), &resp)
 	if err != nil {
@@ -267,6 +269,7 @@ func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashf
 //	tctx, err := trade.NewFromCfg(conf)
 //	channels, err := tctx.FundPositions(context.Background, []string{"AAPL.US", "700.HK"})
 func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fundPositionChannels []*FundPositionChannel, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/asset/fund", "AP"); err != nil { return }
 	params := &GetFundPositions{
 		Symbols: symbols,
 	}
@@ -287,6 +290,7 @@ func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fun
 //	tctx, err := trade.NewFromCfg(conf)
 //	channels, err := tctx.StockPositions(context.Background(), []string{"AAPL.US"})
 func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (stockPositionChannels []*StockPositionChannel, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/asset/stock", "AP"); err != nil { return }
 	params := &GetStockPositions{
 		Symbols: symbols,
 	}
