@@ -106,6 +106,19 @@ func (c *TradeContext) TodayExecutions(ctx context.Context, params *GetTodayExec
 	return
 }
 
+// AllExecutions will return all executions
+// Reference: https://open.longbridge.com/en/docs/trade/execution/all_executions
+func (c *TradeContext) AllExecutions(ctx context.Context, params *GetAllExecutions) (resp *AllExecutionsResponse, err error) {
+	jsonResp := &jsontypes.AllExecutionsResponse{}
+	err = c.opts.httpClient.Get(ctx, "/v3/trade/execution/all", params.Values(), jsonResp)
+	if err != nil {
+		return
+	}
+	resp = &AllExecutionsResponse{HasMore: jsonResp.HasMore}
+	err = util.Copy(&resp.Trades, jsonResp.Trades)
+	return
+}
+
 // HistoryOrders will return history orders
 // Reference: https://open.longbridge.com/en/docs/trade/order/history_orders
 // Example:

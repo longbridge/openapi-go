@@ -82,10 +82,11 @@ const (
 	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
 
 	// Outside RTH
-	OutsideRTHOnly      OutsideRTH = "RTH_ONLY"          // Regular trading hour only
-	OutsideRTHAny       OutsideRTH = "ANY_TIME"          // Any time
-	OutsideRTHOvernight OutsideRTH = "OVERNIGHT"         // Overnight
-	OutsideRTHUnknown   OutsideRTH = "UnknownOutsideRth" // Default is UnknownOutsideRth when the order is not a US stock
+	OutsideRTHOnly            OutsideRTH = "RTH_ONLY"          // Regular trading hour only
+	OutsideRTHAny             OutsideRTH = "ANY_TIME"          // Any time
+	OutsideRTHOvernight       OutsideRTH = "OVERNIGHT"         // Overnight
+	OutsideRTHOptionPreMarket OutsideRTH = "OPTION_PRE_MARKET" // Overnight option
+	OutsideRTHUnknown         OutsideRTH = "UnknownOutsideRth" // Default is UnknownOutsideRth when the order is not a US stock
 
 	// Order tag
 	OrderTagNormal       OrderTag = "Normal"       // Normal Order
@@ -144,6 +145,12 @@ type Execution struct {
 // Executions has a Execution list
 type Executions struct {
 	Trades []*Execution
+}
+
+// AllExecutionsResponse is the response for get all executions request
+type AllExecutionsResponse struct {
+	HasMore bool
+	Trades  []*Execution
 }
 
 // Orders has a Order details

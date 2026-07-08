@@ -18,6 +18,14 @@ type GetTodayExecutions struct {
 	OrderId string // optional
 }
 
+type GetAllExecutions struct {
+	Symbol  string    // optional
+	OrderId string    // optional
+	StartAt time.Time // optional
+	EndAt   time.Time // optional
+	Page    int64     // optional
+}
+
 type GetHistoryOrders struct {
 	Symbol  string         // optional
 	Status  []OrderStatus  // optional

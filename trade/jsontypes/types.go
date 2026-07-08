@@ -15,6 +15,12 @@ type Executions struct {
 	Trades []*Execution `json:"trades"`
 }
 
+// AllExecutionsResponse is the response for get all executions request
+type AllExecutionsResponse struct {
+	HasMore bool         `json:"has_more"`
+	Trades  []*Execution `json:"trades"`
+}
+
 type SubmitOrderResponse struct {
 	OrderId string `json:"order_id"`
 }

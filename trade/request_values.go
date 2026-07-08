@@ -29,6 +29,23 @@ func (req *GetTodayExecutions) Values() url.Values {
 	return p.Values()
 }
 
+func (req *GetAllExecutions) Values() url.Values {
+	if req == nil {
+		return url.Values{}
+	}
+	p := &params{}
+	p.Add("symbol", req.Symbol)
+	p.Add("order_id", req.OrderId)
+	if v := req.StartAt.Unix(); v > 0 {
+		p.AddInt("start_at", v)
+	}
+	if v := req.EndAt.Unix(); v > 0 {
+		p.AddInt("end_at", v)
+	}
+	p.AddOptInt("page", req.Page)
+	return p.Values()
+}
+
 func (r *GetHistoryOrders) Values() url.Values {
 	if r == nil {
 		return url.Values{}
