@@ -77,15 +77,14 @@ type FinancialOverview struct {
 }
 
 // FinancialStatement is the US financial statement (IS/BS/CF).
+// kind controls which statement is returned: "IS" (income), "BS" (balance sheet), "CF" (cash flow).
+// List contains the line items; element shape varies by kind and is preserved as raw JSON.
+// EmptyFields lists metric keys that the API could not populate.
 type FinancialStatement struct {
-	Revenue   string `json:"revenue"`
-	NetIncome string `json:"net_income"`
-	NetMargin string `json:"net_margin"`
-	Periods   []struct {
-		Date   string      `json:"date"`
-		Values interface{} `json:"values"`
-	} `json:"periods"`
-	Currency string `json:"currency"`
+	Currency    string        `json:"currency"`
+	Report      string        `json:"report"`
+	List        []interface{} `json:"list"`         // line items; shape varies by kind
+	EmptyFields []string      `json:"empty_fields"`
 }
 
 // KeyMetricItem is one period entry in KeyFinancialMetrics.
