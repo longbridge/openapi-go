@@ -205,9 +205,9 @@ type usRawQueryUSOrdersResponse struct {
 // counter_id is NOT converted to symbol; timestamp fields are raw unix-second strings.
 // CurrentMillisecond is the server response timestamp.
 type USOrderDetailResponse struct {
-	Order                map[string]interface{} `json:"order"`
-	CurrentAttachedOrder map[string]interface{} `json:"current_attached_order"`
-	CurrentMillisecond   string                 `json:"current_millisecond"`
+	Order                  map[string]interface{} `json:"order"`
+	CurrentAttachedParams  map[string]interface{} `json:"current_attached_params"`
+	CurrentMillisecond     string                 `json:"current_millisecond"`
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────

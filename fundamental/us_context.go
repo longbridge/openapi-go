@@ -88,7 +88,7 @@ func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kin
 // KeyFinancialMetrics returns key financial ratios (ROE, gross/net margin, debt ratio) for
 // the given symbol (e.g. "AAPL.US") and report period.
 //
-// report: "annual" or "quarterly"
+// report: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 //
 // Path: GET /v1/stock-info/fin-keyfactor
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
@@ -109,7 +109,7 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 // AnalystConsensus returns analyst consensus estimates (EPS and revenue forecasts) for
 // the given symbol (e.g. "AAPL.US") and report period.
 //
-// report: "annual" or "quarterly"
+// report: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 //
 // Path: GET /v1/stock-info/fin-consensus
 // US token required; returns *http.RegionRestrictedError for non-US credentials.

@@ -10,14 +10,21 @@ type RankTag struct {
 	HighlightText string `json:"highlight_text"`
 }
 
+// USSharelistItem is one entry in USCompanyOverview.ShareList.
+type USSharelistItem struct {
+	Chg  string `json:"chg"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // USCompanyOverview is the US company summary snapshot.
 type USCompanyOverview struct {
-	Intro       string        `json:"intro"`
-	MarketCap   string        `json:"market_cap"`
-	CcySymbol   string        `json:"ccy_symbol"`
-	TopRankTags []RankTag     `json:"top_rank_tags"`
-	ShareList   []interface{} `json:"sharelist"`
-	DetailURL   string        `json:"detail_url"`
+	Intro       string            `json:"intro"`
+	MarketCap   string            `json:"market_cap"`
+	CcySymbol   string            `json:"ccy_symbol"`
+	TopRankTags []RankTag         `json:"top_rank_tags"`
+	ShareList   []USSharelistItem `json:"sharelist"`
+	DetailURL   string            `json:"detail_url"`
 }
 
 // ValuationMetric is one valuation indicator entry within ValuationOverview.Metrics.
@@ -142,15 +149,31 @@ type AIChatData struct {
 	WorkflowType   string `json:"workflow_type"`
 }
 
+// USConsensusEstimate holds actual vs estimated values for one metric.
+type USConsensusEstimate struct {
+	Actual   string `json:"actual"`
+	Estimate string `json:"estimate"`
+}
+
+// USConsensusItem is one fiscal-year entry in AnalystConsensus.List.
+type USConsensusItem struct {
+	EBIT       USConsensusEstimate `json:"ebit"`
+	EPS        USConsensusEstimate `json:"eps"`
+	FiscalYear int64               `json:"fiscal_year"`
+	ReportTxt  string              `json:"report_txt"`
+	Revenue    USConsensusEstimate `json:"revenue"`
+}
+
 // AnalystConsensus holds analyst consensus estimates and AI analysis.
+// report enum: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 type AnalystConsensus struct {
-	AISummary  string        `json:"ai_summary"`
-	AIChatData AIChatData    `json:"aichat_data"`
-	Currency   string        `json:"currency"`
-	Report     string        `json:"report"`
-	List       []interface{} `json:"list"`        // consensus detail; shape varies by report type
-	OptReports []interface{} `json:"opt_reports"` // option consensus; shape varies by report type
-	H5Data     interface{}   `json:"h5_data"`
+	AISummary  string            `json:"ai_summary"`
+	AIChatData AIChatData        `json:"aichat_data"`
+	Currency   string            `json:"currency"`
+	Report     string            `json:"report"`
+	List       []USConsensusItem `json:"list"`
+	OptReports []string          `json:"opt_reports"`
+	H5Data     interface{}       `json:"h5_data"`
 }
 
 // FiscalYearDividend holds one fiscal-year row in ETFDividendInfo.
