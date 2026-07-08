@@ -128,7 +128,7 @@ type KeyMetricItem struct {
 	FpEnd     string      `json:"fp_end"`
 	ReportTxt string      `json:"report_txt"`
 	RptDate   string      `json:"rpt_date"`
-	Fields    interface{} `json:"fields"` // metric values; shape varies per field set
+	Fields    []interface{} `json:"fields"` // metric values; element shape varies per field set
 }
 
 // KeyFinancialMetrics holds per-period key ratios (ROE, margins, debt ratio).
