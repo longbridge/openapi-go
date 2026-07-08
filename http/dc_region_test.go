@@ -45,7 +45,7 @@ func TestDcRegionAsStr(t *testing.T) {
 	}
 }
 
-func TestStripRegionPrefix(t *testing.T) {
+func TestStripBearerPrefix(t *testing.T) {
 	// Region prefixes are kept as-is; only "Bearer " is stripped.
 	tests := []struct {
 		input string
@@ -60,9 +60,9 @@ func TestStripRegionPrefix(t *testing.T) {
 		{"Bearer eyJabc", "eyJabc"},
 	}
 	for _, tc := range tests {
-		got := stripRegionPrefix(tc.input)
+		got := stripBearerPrefix(tc.input)
 		if got != tc.want {
-			t.Errorf("stripRegionPrefix(%q) = %q, want %q", tc.input, got, tc.want)
+			t.Errorf("stripBearerPrefix(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }

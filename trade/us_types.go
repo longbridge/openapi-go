@@ -1,6 +1,39 @@
 package trade
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
+
+// unixTimestamp is a time.Time that unmarshals from JSON unix-second values
+// expressed either as a JSON number (1783455324) or as a decimal string
+// ("1783455324"). RFC3339 strings are accepted as a fallback. An empty string,
+// "0", or null maps to the zero time.Time.
+type unixTimestamp time.Time
+
+func (t *unixTimestamp) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	// Strip JSON string quotes if present.
+	if len(s) >= 2 && s[0] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	if s == "" || s == "null" || s == "0" {
+		*t = unixTimestamp(time.Time{})
+		return nil
+	}
+	if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+		*t = unixTimestamp(time.Unix(n, 0).UTC())
+		return nil
+	}
+	if parsed, err := time.Parse(time.RFC3339, s); err == nil {
+		*t = unixTimestamp(parsed.UTC())
+		return nil
+	}
+	*t = unixTimestamp(time.Time{})
+	return nil
+}
+
+func (t unixTimestamp) Time() time.Time { return time.Time(t) }
 
 // GetUSHistoryOrders is the request for QueryUSOrders, modelled after
 // GetHistoryOrders for HK/CN orders.
@@ -119,8 +152,8 @@ type usRawOrder struct {
 	OperateDirection    string `json:"operate_direction"`
 	TimeInForce         int32  `json:"time_in_force"`
 	GTD                 string `json:"gtd"`
-	SubmittedAt         string `json:"submitted_at"`
-	UpdatedAt           string `json:"updated_at"`
+	SubmittedAt         unixTimestamp `json:"submitted_at"`
+	UpdatedAt           unixTimestamp `json:"updated_at"`
 	Msg                 string `json:"msg"`
 	Report              string `json:"report"`
 	ContractDirection   string `json:"contract_direction"`
@@ -177,8 +210,10 @@ type USOrderHistory struct {
 }
 
 // USOrderDetailResponse is the response for USOrderDetail.
-// Order contains the full order object (counter_id is NOT converted to symbol here;
-// use QueryUSOrders for converted Symbol fields).
+// Order contains the full raw order object. counter_id is NOT converted to symbol
+// (use QueryUSOrders for typed USOrder with Symbol). Timestamp fields such as
+// submitted_at and updated_at are raw string unix-second values in this map;
+// use strconv.ParseInt to convert them.
 // OrderHistories contains state transitions.
 type USOrderDetailResponse struct {
 	Order                map[string]interface{} `json:"order"`
@@ -187,8 +222,6 @@ type USOrderDetailResponse struct {
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────
-// Note: only cash and crypto positions are exposed; stock/option/multi-leg
-// positions from the full API response are not currently captured.
 
 // USCashEntry is one currency cash entry in USAssetOverview.
 type USCashEntry struct {
@@ -247,7 +280,7 @@ type USRealizedPLMetric struct {
 	Rate   string `json:"rate"`
 }
 
-// USRealizedPLEntry is one asset-category entry in USRealizedPL.
+// USRealizedPLEntry is one asset-category entry in USRealizedPLResponse.
 // Category values: 0=all, 1=stock, 2=option, 3=crypto.
 type USRealizedPLEntry struct {
 	Category int32                `json:"category"`
@@ -255,7 +288,7 @@ type USRealizedPLEntry struct {
 	Metrics  []USRealizedPLMetric `json:"metrics"`
 }
 
-// USRealizedPL is the response for GET /v1/us/assets/pl/realized.
-type USRealizedPL struct {
+// USRealizedPLResponse is the response for GET /v1/us/assets/pl/realized.
+type USRealizedPLResponse struct {
 	RealizedPLList []USRealizedPLEntry `json:"realized_pl_list"`
 }

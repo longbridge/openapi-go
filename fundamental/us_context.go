@@ -61,7 +61,7 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 	return &resp, nil
 }
 
-// FinancialStatementV3 returns the US financial statement detail (IS/BS/CF) for the given
+// FinancialStatement returns the US financial statement detail (IS/BS/CF) for the given
 // symbol (e.g. "AAPL.US"), statement kind, and report period.
 // Only applicable to stocks — ETFs do not have financial statements.
 //
@@ -70,7 +70,7 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 //
 // Path: GET /v1/us/quote/financials/statements
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, symbol, kind, report string) (*FinancialStatement, error) {
+func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kind, report string) (*FinancialStatement, error) {
 	if err := c.httpClient.CheckRegion("/v1/us/quote/financials/statements", "US"); err != nil {
 		return nil, err
 	}

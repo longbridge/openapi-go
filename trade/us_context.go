@@ -33,8 +33,8 @@ func convertUSOrder(o usRawOrder) USOrder {
 		OperateDirection:  o.OperateDirection,
 		TimeInForce:       o.TimeInForce,
 		GTD:               o.GTD,
-		SubmittedAt:       unixStrToTime(o.SubmittedAt),
-		UpdatedAt:         unixStrToTime(o.UpdatedAt),
+		SubmittedAt:       o.SubmittedAt.Time(),
+		UpdatedAt:         o.UpdatedAt.Time(),
 		Msg:               o.Msg,
 		Report:            o.Report,
 		ContractDirection: o.ContractDirection,
@@ -67,16 +67,6 @@ func convertUSOrder(o usRawOrder) USOrder {
 		FreeStatus:        o.FreeStatus,
 		Trend:             o.Trend,
 	}
-}
-
-func unixStrToTime(s string) time.Time {
-	if s == "" || s == "0" {
-		return time.Time{}
-	}
-	if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-		return time.Unix(n, 0).UTC()
-	}
-	return time.Time{}
 }
 
 // QueryUSOrders queries the US order list.
@@ -153,10 +143,10 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 // Path: GET /v1/orders/{order_id}
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOrderDetailResponse, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/orders/{order_id}", "US"); err != nil {
+	path := fmt.Sprintf("/v1/orders/%s", orderID)
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("/v1/orders/%s", orderID)
 	var out USOrderDetailResponse
 	if err := c.opts.httpClient.Get(ctx, path, nil, &out); err != nil {
 		return nil, err
@@ -207,7 +197,7 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 //
 // Path: GET /v1/us/assets/pl/realized
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (*USRealizedPL, error) {
+func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (*USRealizedPLResponse, error) {
 	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/pl/realized", "US"); err != nil {
 		return nil, err
 	}
@@ -219,7 +209,7 @@ func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (
 	if req.Category != "" {
 		q.Set("category", req.Category)
 	}
-	var resp USRealizedPL
+	var resp USRealizedPLResponse
 	if err := c.opts.httpClient.Get(ctx, "/v1/us/assets/pl/realized", q, &resp); err != nil {
 		return nil, err
 	}

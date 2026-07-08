@@ -118,20 +118,20 @@ type AIChatData struct {
 
 // AnalystConsensus holds analyst consensus estimates and AI analysis.
 type AnalystConsensus struct {
-	AISummary  string      `json:"ai_summary"`
-	AIChatData AIChatData  `json:"aichat_data"`
-	Currency   string      `json:"currency"`
-	Report     string      `json:"report"`
-	List       interface{} `json:"list"`       // consensus detail; shape TBD from production
-	OptReports interface{} `json:"opt_reports"` // option consensus; shape TBD from production
-	H5Data     interface{} `json:"h5_data"`
+	AISummary  string        `json:"ai_summary"`
+	AIChatData AIChatData    `json:"aichat_data"`
+	Currency   string        `json:"currency"`
+	Report     string        `json:"report"`
+	List       []interface{} `json:"list"`        // consensus detail; shape varies by report type
+	OptReports []interface{} `json:"opt_reports"` // option consensus; shape varies by report type
+	H5Data     interface{}   `json:"h5_data"`
 }
 
 // FiscalYearDividend holds dividend records for one fiscal year.
 type FiscalYearDividend struct {
-	Year          string                   `json:"year"`
-	TotalDividend string                   `json:"total_dividend"`
-	Records       []map[string]interface{} `json:"records"`
+	Year          string           `json:"year"`
+	TotalDividend string           `json:"total_dividend"`
+	Records       []USDividendItem `json:"records"`
 }
 
 // ETFDividendInfo holds ETF dividend history.
