@@ -1,8 +1,11 @@
 package trade
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
+
+	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // unixTimestamp is a time.Time that unmarshals from JSON unix-second values
@@ -253,8 +256,10 @@ type USAttachedOrder struct {
 	ActivateOrderType   string `json:"activate_order_type"`
 	ActivateRTH         int32  `json:"activate_rth"`
 	SubmitPrice         string `json:"submit_price"`
-	CounterID           string `json:"counter_id"`
-	Withdrawn           bool   `json:"withdrawn"`
+	// Symbol is the user-facing trading symbol (e.g. "NKE.US"), converted from CounterID.
+	Symbol    string `json:"-"`
+	CounterID string `json:"counter_id"`
+	Withdrawn bool   `json:"withdrawn"`
 }
 
 // USOrderDetail is the full typed order object within USOrderDetailResponse.
@@ -265,6 +270,10 @@ type USOrderDetail struct {
 	AAID                       string           `json:"aaid"`
 	AccountChannel             string           `json:"account_channel"`
 	Action                     int32            `json:"action"`
+	// Symbol is the user-facing trading symbol (e.g. "NKE.US"), converted from CounterID.
+	Symbol                     string           `json:"-"`
+	// UnderlyingSymbol is the user-facing underlying symbol (options only), converted from UnderlyingCounterID.
+	UnderlyingSymbol           string           `json:"-"`
 	CounterID                  string           `json:"counter_id"`
 	UnderlyingCounterID        string           `json:"underlying_counter_id"`
 	SecurityType               string           `json:"security_type"`
@@ -341,6 +350,21 @@ type USOrderDetail struct {
 	OrderHistories             []USOrderHistory  `json:"order_histories"`
 }
 
+// UnmarshalJSON converts counter_id / underlying_counter_id fields to
+// user-facing Symbol / UnderlyingSymbol after standard JSON deserialization.
+func (o *USOrderDetail) UnmarshalJSON(b []byte) error {
+	type raw USOrderDetail
+	if err := json.Unmarshal(b, (*raw)(o)); err != nil {
+		return err
+	}
+	o.Symbol = counter.IDToSymbol(o.CounterID)
+	o.UnderlyingSymbol = counter.IDToSymbol(o.UnderlyingCounterID)
+	for i := range o.AttachedOrders {
+		o.AttachedOrders[i].Symbol = counter.IDToSymbol(o.AttachedOrders[i].CounterID)
+	}
+	return nil
+}
+
 // USOrderDetailResponse is the response for USOrderDetail.
 // CurrentAttachedOrder is the active bracket/conditional sub-order, or nil.
 // CurrentMillisecond is the server timestamp at response time.
@@ -354,7 +378,10 @@ type USOrderDetailResponse struct {
 
 // USStockEntry is one stock/equity position in USAssetOverview.
 type USStockEntry struct {
+	// Symbol is the ticker code returned by the API (e.g. "AAPL"). See FullSymbol for the qualified form.
 	Symbol                     string `json:"symbol"`
+	// FullSymbol is the user-facing qualified symbol (e.g. "AAPL.US"), converted from CounterID.
+	FullSymbol                 string `json:"-"`
 	AssetType                  string `json:"asset_type"`
 	Quantity                   string `json:"quantity"`
 	Currency                   string `json:"currency"`

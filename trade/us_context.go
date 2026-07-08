@@ -69,6 +69,13 @@ func convertUSOrder(o usRawOrder) USOrder {
 	}
 }
 
+func convertStockList(entries []USStockEntry) []USStockEntry {
+	for i := range entries {
+		entries[i].FullSymbol = counter.IDToSymbol(entries[i].CounterID)
+	}
+	return entries
+}
+
 // QueryUSOrders queries the US order list.
 //
 // Path: POST /v1/orders/query
@@ -191,7 +198,7 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 		OvernightBuyPower: raw.OvernightBuyPower,
 		Currency:          raw.Currency,
 		CashList:          raw.CashList,
-		StockList:         raw.StockList,
+		StockList:         convertStockList(raw.StockList),
 		OptionList:        raw.OptionList,
 		CryptoList:        cryptoList,
 		MultiLeg:          raw.MultiLeg,
