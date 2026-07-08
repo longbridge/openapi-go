@@ -2,37 +2,43 @@ package fundamental
 
 // RankTag is an industry-rank label returned by CompanyOverview.
 type RankTag struct {
-	Name     string `json:"name"`
-	Chg      string `json:"chg"`
-	RankType int32 `json:"rank_type"`
+	Key           string `json:"key"`
+	Location      int32  `json:"location"`
+	Title         string `json:"title"`
+	Text          string `json:"text"`
+	RankType      int32  `json:"rank_type"`
+	HighlightText string `json:"highlight_text"`
 }
 
 // USCompanyOverview is the US company summary snapshot.
 type USCompanyOverview struct {
-	Intro       string    `json:"intro"`
-	MarketCap   string    `json:"market_cap"`
-	CcySymbol   string    `json:"ccy_symbol"`
-	TopRankTags []RankTag `json:"top_rank_tags"`
-	DetailURL   string    `json:"detail_url"`
+	Intro       string        `json:"intro"`
+	MarketCap   string        `json:"market_cap"`
+	CcySymbol   string        `json:"ccy_symbol"`
+	TopRankTags []RankTag     `json:"top_rank_tags"`
+	ShareList   []interface{} `json:"sharelist"`
+	DetailURL   string        `json:"detail_url"`
 }
 
-// ValuationIndicator holds the current valuation metric detail.
-type ValuationIndicator struct {
-	Circle     string `json:"circle"`
-	Part       string `json:"part"`
-	Metric     string `json:"metric"`
-	MetricType string `json:"metric_type"`
-	Desc       string `json:"desc"`
-	CcySymbol  string `json:"ccy_symbol"`
+// ValuationMetric is one valuation indicator entry within ValuationOverview.Metrics.
+// Keys include "pe", "pb", "ps", etc.
+type ValuationMetric struct {
+	Circle         string `json:"circle"`
+	Part           string `json:"part"`
+	Metric         string `json:"metric"`
+	Desc           string `json:"desc"`
+	IndustryMedian string `json:"industry_median"`
 }
 
 // ValuationOverview is the US valuation snapshot.
 type ValuationOverview struct {
-	Indicator        string             `json:"indicator"`
-	CurrentIndicator ValuationIndicator `json:"current_indicator"`
-	Range            int32              `json:"range"`
-	Date             string             `json:"date"`
-	AISummary        string             `json:"ai_summary"`
+	Metrics    map[string]ValuationMetric `json:"metrics"`
+	Indicator  string                     `json:"indicator"`
+	Range      int32                      `json:"range"`
+	Date       string                     `json:"date"`
+	CcySymbol  string                     `json:"ccy_symbol"`
+	AIChatData AIChatData                 `json:"aichat_data"`
+	AISummary  string                     `json:"ai_summary"`
 }
 
 // USReportPeriod identifies a reporting period (quarter/half/annual).
@@ -44,25 +50,25 @@ type USReportPeriod struct {
 
 // FinancialISItem is one income-statement entry in FinancialOverview.
 type FinancialISItem struct {
-	Revenue   string                `json:"revenue"`
-	NetIncome string                `json:"net_income"`
-	NetMargin string                `json:"net_margin"`
+	Revenue   string         `json:"revenue"`
+	NetIncome string         `json:"net_income"`
+	NetMargin string         `json:"net_margin"`
 	Report    USReportPeriod `json:"report"`
 }
 
 // FinancialBSItem is one balance-sheet entry in FinancialOverview.
 type FinancialBSItem struct {
-	DebtAssetsRatio  string                `json:"debt_assets_ratio"`
-	TotalAssets      string                `json:"total_assets"`
-	TotalLiabilities string                `json:"total_liabilities"`
+	DebtAssetsRatio  string         `json:"debt_assets_ratio"`
+	TotalAssets      string         `json:"total_assets"`
+	TotalLiabilities string         `json:"total_liabilities"`
 	Report           USReportPeriod `json:"report"`
 }
 
 // FinancialCFItem is one cash-flow entry in FinancialOverview.
 type FinancialCFItem struct {
-	Operating string                `json:"operating"`
-	Investing string                `json:"investing"`
-	Financing string                `json:"financing"`
+	Operating string         `json:"operating"`
+	Investing string         `json:"investing"`
+	Financing string         `json:"financing"`
 	Report    USReportPeriod `json:"report"`
 }
 
@@ -126,7 +132,7 @@ type KeyFinancialMetrics struct {
 	List        []KeyMetricItem `json:"list"`
 }
 
-// AIChatData holds the AI chat context embedded in AnalystConsensus.
+// AIChatData holds the AI chat context embedded in analyst responses.
 type AIChatData struct {
 	AgentID        string `json:"agent_id"`
 	HandoffAgentID string `json:"handoff_agent_id"`
@@ -147,11 +153,13 @@ type AnalystConsensus struct {
 	H5Data     interface{}   `json:"h5_data"`
 }
 
-// FiscalYearDividend holds dividend records for one fiscal year.
+// FiscalYearDividend holds one fiscal-year row in ETFDividendInfo.
 type FiscalYearDividend struct {
-	Year          string           `json:"year"`
-	TotalDividend string           `json:"total_dividend"`
-	Records       []USDividendItem `json:"records"`
+	Dividend        string `json:"dividend"`
+	DividendYield   string `json:"dividend_yield"`
+	FiscalYear      string `json:"fiscal_year"`
+	Currency        string `json:"currency"`
+	FiscalYearRange string `json:"fiscal_year_range"`
 }
 
 // ETFDividendInfo holds ETF dividend history.
@@ -163,7 +171,7 @@ type ETFDividendInfo struct {
 	FiscalYearInfo   []FiscalYearDividend `json:"fiscal_year_info"`
 }
 
-// USDividendItem is a single dividend payment record (used by ETFDividendInfo).
+// USDividendItem is a single dividend payment record.
 type USDividendItem struct {
 	Dividend     string `json:"dividend"`
 	DividendType string `json:"dividend_type"`
@@ -212,17 +220,19 @@ type USDividendPayoutRecord struct {
 
 // USCompanyDividends holds historical dividend data for a US stock.
 type USCompanyDividends struct {
-	RecentDividends       USRecentDividend          `json:"recent_dividends"`
-	DividendHistory       []USDividendHistoryItem   `json:"dividend_history"`
-	PayoutRatios          []USDividendHistoryItem   `json:"payout_ratios"`
-	DividendPayoutHistory []USDividendPayoutRecord  `json:"dividend_payout_history"`
+	RecentDividends       USRecentDividend         `json:"recent_dividends"`
+	DividendHistory       []USDividendHistoryItem  `json:"dividend_history"`
+	PayoutRatios          []USDividendHistoryItem  `json:"payout_ratios"`
+	DividendPayoutHistory []USDividendPayoutRecord `json:"dividend_payout_history"`
 }
 
 // ETFFile is a single document in the ETF file list.
 type ETFFile struct {
-	Name     string `json:"name"`
-	FileType string `json:"file_type"`
-	URL      string `json:"url"`
+	FileName   string `json:"file_name"`
+	FilePath   string `json:"file_path"`
+	UpdateDate string `json:"update_date"`
+	Code       string `json:"code"`
+	Format     string `json:"format"`
 }
 
 // ETFFilesResponse holds the ETF document list.

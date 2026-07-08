@@ -200,28 +200,44 @@ type usRawQueryUSOrdersResponse struct {
 }
 
 // USOrderHistory is one entry in the order history list.
-type USOrderHistory struct {
-	ExecType  int    `json:"exec_type"`
-	Status    string `json:"status"`
-	Price     string `json:"price"`
-	Qty       string `json:"qty"`
-	Time      string `json:"time"`
-	Msg       string `json:"msg"`
-}
-
 // USOrderDetailResponse is the response for USOrderDetail.
-// Order contains the full raw order object. counter_id is NOT converted to symbol
-// (use QueryUSOrders for typed USOrder with Symbol). Timestamp fields such as
-// submitted_at and updated_at are raw string unix-second values in this map;
-// use strconv.ParseInt to convert them.
-// OrderHistories contains state transitions.
+// Order is the full raw order map; it contains an order_histories array internally.
+// counter_id is NOT converted to symbol; timestamp fields are raw unix-second strings.
+// CurrentMillisecond is the server response timestamp.
 type USOrderDetailResponse struct {
 	Order                map[string]interface{} `json:"order"`
-	OrderHistories       []USOrderHistory       `json:"order_histories"`
 	CurrentAttachedOrder map[string]interface{} `json:"current_attached_order"`
+	CurrentMillisecond   string                 `json:"current_millisecond"`
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────
+
+// USStockEntry is one stock/equity position in USAssetOverview.
+type USStockEntry struct {
+	Symbol                     string `json:"symbol"`
+	AssetType                  string `json:"asset_type"`
+	Quantity                   string `json:"quantity"`
+	Currency                   string `json:"currency"`
+	AverageCost                string `json:"average_cost"`
+	Market                     string `json:"market"`
+	CounterID                  string `json:"counter_id"`
+	TradeStatus                string `json:"trade_status"`
+	PrevClose                  string `json:"prev_close"`
+	LastDone                   string `json:"last_done"`
+	MarketPrice                string `json:"market_price"`
+	PretradeClose              string `json:"pretrade_close"`
+	StockInvestOfToday         string `json:"stock_invest_of_today"`
+	TodayPL                    string `json:"today_pl"`
+	PretradeStockInvestOfToday string `json:"pretrade_stock_invest_of_today"`
+	PretradeTodayPL            string `json:"pretrade_today_pl"`
+	NightLastDone              string `json:"night_last_done"`
+	NightPrevClose             string `json:"night_prev_close"`
+	PositionSide               string `json:"position_side"`
+	OpenPositionTime           string `json:"open_position_time"`
+	Name                       string `json:"name"`
+	IndustryCounterID          string `json:"industry_counter_id"`
+	IndustryName               string `json:"industry_name"`
+}
 
 // USCashEntry is one currency cash entry in USAssetOverview.
 type USCashEntry struct {
@@ -255,20 +271,30 @@ type usRawCryptoEntry struct {
 
 // usRawAssetOverview is the raw API shape before field conversion.
 type usRawAssetOverview struct {
-	AccountType    string             `json:"account_type"`
-	AssetTimestamp string             `json:"asset_timestamp"`
-	CashBuyPower   string             `json:"cash_buy_power"`
-	CashList       []USCashEntry      `json:"cash_list"`
-	CryptoList     []usRawCryptoEntry `json:"crypto_list"`
+	AccountType       string             `json:"account_type"`
+	AssetTimestamp    string             `json:"asset_timestamp"`
+	CashBuyPower      string             `json:"cash_buy_power"`
+	OvernightBuyPower string             `json:"overnight_buy_power"`
+	Currency          string             `json:"currency"`
+	CashList          []USCashEntry      `json:"cash_list"`
+	StockList         []USStockEntry     `json:"stock_list"`
+	OptionList        []interface{}      `json:"option_list"`
+	CryptoList        []usRawCryptoEntry `json:"crypto_list"`
+	MultiLeg          interface{}        `json:"multi_leg"`
 }
 
 // USAssetOverview is the US account asset snapshot.
 type USAssetOverview struct {
-	AccountType    string          `json:"account_type"`
-	AssetTimestamp time.Time       `json:"asset_timestamp"`
-	CashBuyPower   string          `json:"cash_buy_power"`
-	CashList       []USCashEntry   `json:"cash_list"`
-	CryptoList     []USCryptoEntry `json:"crypto_list"`
+	AccountType       string          `json:"account_type"`
+	AssetTimestamp    time.Time       `json:"-"`
+	CashBuyPower      string          `json:"cash_buy_power"`
+	OvernightBuyPower string          `json:"overnight_buy_power"`
+	Currency          string          `json:"currency"`
+	CashList          []USCashEntry   `json:"cash_list"`
+	StockList         []USStockEntry  `json:"stock_list"`
+	OptionList        []interface{}   `json:"option_list"`
+	CryptoList        []USCryptoEntry `json:"crypto_list"`
+	MultiLeg          interface{}     `json:"multi_leg"`
 }
 
 // ── USRealizedPL ───────────────────────────────────────────────────────────
