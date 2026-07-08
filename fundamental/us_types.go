@@ -35,32 +35,97 @@ type ValuationOverview struct {
 	AISummary        string             `json:"ai_summary"`
 }
 
-// FinancialOverview is the US financial overview (revenue, net income, EPS, cash flow).
-// The server defines the exact inner fields; callers receive the raw map.
-type FinancialOverview map[string]interface{}
+// USReportPeriod identifies a reporting period (quarter/half/annual).
+type USReportPeriod struct {
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+	ReportTxt string `json:"report_txt"`
+}
 
-// FinancialPeriod holds one reporting period's financial data.
-type FinancialPeriod struct {
-	Date   string                 `json:"date"`
-	Values map[string]interface{} `json:"values"`
+// FinancialISItem is one income-statement entry in FinancialOverview.
+type FinancialISItem struct {
+	Revenue   string                `json:"revenue"`
+	NetIncome string                `json:"net_income"`
+	NetMargin string                `json:"net_margin"`
+	Report    USReportPeriod `json:"report"`
+}
+
+// FinancialBSItem is one balance-sheet entry in FinancialOverview.
+type FinancialBSItem struct {
+	DebtAssetsRatio  string                `json:"debt_assets_ratio"`
+	TotalAssets      string                `json:"total_assets"`
+	TotalLiabilities string                `json:"total_liabilities"`
+	Report           USReportPeriod `json:"report"`
+}
+
+// FinancialCFItem is one cash-flow entry in FinancialOverview.
+type FinancialCFItem struct {
+	Operating string                `json:"operating"`
+	Investing string                `json:"investing"`
+	Financing string                `json:"financing"`
+	Report    USReportPeriod `json:"report"`
+}
+
+// FinancialOverview is the US financial overview containing income statement,
+// balance sheet, and cash flow summaries by reporting period.
+type FinancialOverview struct {
+	CcySymbol  string            `json:"ccy_symbol"`
+	ReportType string            `json:"report_type"`
+	ISList     []FinancialISItem `json:"is_list"`
+	BSList     []FinancialBSItem `json:"bs_list"`
+	CFList     []FinancialCFItem `json:"cf_list"`
 }
 
 // FinancialStatement is the US financial statement (IS/BS/CF).
 type FinancialStatement struct {
-	Revenue   string            `json:"revenue"`
-	NetIncome string            `json:"net_income"`
-	NetMargin string            `json:"net_margin"`
-	Periods   []FinancialPeriod `json:"periods"`
-	Currency  string            `json:"currency"`
+	Revenue   string `json:"revenue"`
+	NetIncome string `json:"net_income"`
+	NetMargin string `json:"net_margin"`
+	Periods   []struct {
+		Date   string      `json:"date"`
+		Values interface{} `json:"values"`
+	} `json:"periods"`
+	Currency string `json:"currency"`
 }
 
-// KeyFinancialMetrics holds per-period key ratios (ROE, margins, leverage).
-// The server defines the exact inner fields; callers receive the raw map.
-type KeyFinancialMetrics map[string]interface{}
+// KeyMetricItem is one period entry in KeyFinancialMetrics.
+type KeyMetricItem struct {
+	FfPeriod  string      `json:"ff_period"`
+	FfYear    int32       `json:"ff_year"`
+	FpEnd     string      `json:"fp_end"`
+	ReportTxt string      `json:"report_txt"`
+	RptDate   string      `json:"rpt_date"`
+	Fields    interface{} `json:"fields"` // metric values; shape varies per field set
+}
 
-// AnalystConsensus holds per-period EPS and revenue forecasts.
-// The server defines the exact inner fields; callers receive the raw map.
-type AnalystConsensus map[string]interface{}
+// KeyFinancialMetrics holds per-period key ratios (ROE, margins, debt ratio).
+type KeyFinancialMetrics struct {
+	Currency    string          `json:"currency"`
+	Report      string          `json:"report"`
+	EmptyFields []string        `json:"empty_fields"`
+	List        []KeyMetricItem `json:"list"`
+}
+
+// AIChatData holds the AI chat context embedded in AnalystConsensus.
+type AIChatData struct {
+	AgentID        string `json:"agent_id"`
+	HandoffAgentID string `json:"handoff_agent_id"`
+	Symbol         string `json:"symbol"`
+	Text           string `json:"text"`
+	Type           string `json:"type"`
+	WorkflowType   string `json:"workflow_type"`
+}
+
+// AnalystConsensus holds analyst consensus estimates and AI analysis.
+type AnalystConsensus struct {
+	AISummary  string      `json:"ai_summary"`
+	AIChatData AIChatData  `json:"aichat_data"`
+	Currency   string      `json:"currency"`
+	Report     string      `json:"report"`
+	List       interface{} `json:"list"`       // consensus detail; shape TBD from production
+	OptReports interface{} `json:"opt_reports"` // option consensus; shape TBD from production
+	H5Data     interface{} `json:"h5_data"`
+}
 
 // FiscalYearDividend holds dividend records for one fiscal year.
 type FiscalYearDividend struct {

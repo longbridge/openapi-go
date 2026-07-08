@@ -47,7 +47,7 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol strin
 //
 // Path: GET /v1/stock-info/finn-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, report string) (FinancialOverview, error) {
+func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, report string) (*FinancialOverview, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/finn-overview", "US"); err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/finn-overview", q, &resp); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	return &resp, nil
 }
 
 // FinancialStatementV3 returns the US financial statement detail (IS/BS/CF) for the given
@@ -92,7 +92,7 @@ func (c *FundamentalContext) FinancialStatementV3(ctx context.Context, symbol, k
 //
 // Path: GET /v1/stock-info/fin-keyfactor
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, report string) (KeyFinancialMetrics, error) {
+func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, report string) (*KeyFinancialMetrics, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-keyfactor", "US"); err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-keyfactor", q, &resp); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	return &resp, nil
 }
 
 // AnalystConsensus returns analyst consensus estimates (EPS and revenue forecasts) for
@@ -113,7 +113,7 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 //
 // Path: GET /v1/stock-info/fin-consensus
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
-func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, report string) (AnalystConsensus, error) {
+func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, report string) (*AnalystConsensus, error) {
 	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-consensus", "US"); err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, repor
 	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-consensus", q, &resp); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	return &resp, nil
 }
 
 // ETFDividendInfo returns dividend history for a US ETF (e.g. "SPY.US").
