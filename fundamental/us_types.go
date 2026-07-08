@@ -95,6 +95,7 @@ type FinancialStatementPeriod struct {
 	Fields    []FinancialStatementField `json:"fields"`
 	FpEnd     string                    `json:"fp_end"`
 	ReportTxt string                    `json:"report_txt"`
+	RptDate   string                    `json:"rpt_date"`
 }
 
 // FinancialStatement is the US financial statement (IS/BS/CF).
