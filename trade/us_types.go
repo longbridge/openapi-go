@@ -199,15 +199,155 @@ type usRawQueryUSOrdersResponse struct {
 	TotalCount int32        `json:"total_count"`
 }
 
-// USOrderHistory is one entry in the order history list.
+// USOrderHistory is one state-transition entry within USOrderDetail.OrderHistories.
+type USOrderHistory struct {
+	Price            string `json:"price"`
+	Qty              string `json:"qty"`
+	Status           string `json:"status"`
+	Msg              string `json:"msg"`
+	Time             string `json:"time"` // unix seconds as string
+	IsManually       bool   `json:"is_manually"`
+	ExecType         int32  `json:"exec_type"`
+	OppPartyID       string `json:"opp_party_id"`
+	TrdMatchID       string `json:"trd_match_id"`
+	Operator         string `json:"operator"`
+	OpEntrustWay     string `json:"op_entrust_way"`
+	CxlRejResponseTo int32  `json:"cxl_rej_response_to"`
+	WithdrawalReason string `json:"withdrawal_reason"`
+	OppName          string `json:"opp_name"`
+	ExecID           string `json:"exec_id"`
+}
+
+// USButtonControl holds the action-button state for an order.
+type USButtonControl struct {
+	Withdraw      int32    `json:"withdraw"`
+	Replace       int32    `json:"replace"`
+	Exceptionable []string `json:"exceptionable"`
+}
+
+// USChargeItem is one fee category within USChargeDetail.
+type USChargeItem struct {
+	Code int32    `json:"code"`
+	Name string   `json:"name"`
+	Fees []string `json:"fees"`
+}
+
+// USChargeDetail holds the fee breakdown for an order.
+type USChargeDetail struct {
+	Currency    string        `json:"currency"`
+	TotalAmount string        `json:"total_amount"`
+	Items       []USChargeItem `json:"items"`
+}
+
+// USAttachedOrder is one bracket/conditional order attached to the main order.
+type USAttachedOrder struct {
+	AttachedTypeDisplay int32  `json:"attached_type_display"`
+	ExecutedQty         string `json:"executed_qty"`
+	Quantity            string `json:"quantity"`
+	Status              string `json:"status"`
+	TriggerPrice        string `json:"trigger_price"`
+	OrderID             string `json:"order_id"`
+	GTD                 string `json:"gtd"`
+	TimeInForce         int32  `json:"time_in_force"`
+	Tag                 int32  `json:"tag"`
+	ActivateOrderType   string `json:"activate_order_type"`
+	ActivateRTH         int32  `json:"activate_rth"`
+	SubmitPrice         string `json:"submit_price"`
+	CounterID           string `json:"counter_id"`
+	Withdrawn           bool   `json:"withdrawn"`
+}
+
+// USOrderDetail is the full typed order object within USOrderDetailResponse.
+// submitted_at and done_at are raw unix-second strings (not converted to time.Time,
+// since this struct is also reused for CurrentAttachedOrder which may vary).
+type USOrderDetail struct {
+	ID                         string           `json:"id"`
+	AAID                       string           `json:"aaid"`
+	AccountChannel             string           `json:"account_channel"`
+	Action                     int32            `json:"action"`
+	CounterID                  string           `json:"counter_id"`
+	UnderlyingCounterID        string           `json:"underlying_counter_id"`
+	SecurityType               string           `json:"security_type"`
+	Name                       string           `json:"name"`
+	Currency                   string           `json:"currency"`
+	TradeCurrency              string           `json:"trade_currency"`
+	OrderType                  string           `json:"order_type"`
+	Status                     string           `json:"status"`
+	Price                      string           `json:"price"`
+	Quantity                   string           `json:"quantity"`
+	ExecutedQty                string           `json:"executed_qty"`
+	ExecutedPrice              string           `json:"executed_price"`
+	ExecutedAmount             string           `json:"executed_amount"`
+	OperateDirection           string           `json:"operate_direction"`
+	TimeInForce                int32            `json:"time_in_force"`
+	GTD                        string           `json:"gtd"`
+	Tag                        int32            `json:"tag"`
+	Msg                        string           `json:"msg"`
+	ForceOnlyRTH               int32            `json:"force_only_rth"`
+	SubmittedAt                string           `json:"submitted_at"` // unix seconds string
+	DoneAt                     string           `json:"done_at"`      // unix seconds string
+	TriggerPrice               string           `json:"trigger_price"`
+	TriggerAt                  string           `json:"trigger_at"`
+	TriggerStatus              int32            `json:"trigger_status"`
+	TriggerExchange            string           `json:"trigger_exchange"`
+	TriggerLastDone            string           `json:"trigger_last_done"`
+	TriggerCount               int32            `json:"trigger_count"`
+	TailingAmount              string           `json:"tailing_amount"`
+	TailingPercent             string           `json:"tailing_percent"`
+	LimitOffset                string           `json:"limit_offset"`
+	LimitDepthLevel            int32            `json:"limit_depth_level"`
+	MarketPrice                string           `json:"market_price"`
+	SubmittedAmount            string           `json:"submitted_amount"`
+	EstimatedFee               string           `json:"estimated_fee"`
+	FreeStatus                 int32            `json:"free_status"`
+	FreeAmount                 string           `json:"free_amount"`
+	FreeCurrency               string           `json:"free_currency"`
+	DeductionsStatus           int32            `json:"deductions_status"`
+	DeductionsAmount           string           `json:"deductions_amount"`
+	DeductionsCurrency         string           `json:"deductions_currency"`
+	PlatformDeductionsStatus   int32            `json:"platform_deductions_status"`
+	PlatformDeductionsAmount   string           `json:"platform_deductions_amount"`
+	PlatformDeductionsCurrency string           `json:"platform_deductions_currency"`
+	DisplayAccount             string           `json:"display_account"`
+	SettlementAccount          string           `json:"settlement_account"`
+	SettlementChannel          string           `json:"settlement_channel"`
+	CustomerName               string           `json:"customer_name"`
+	RealName                   string           `json:"real_name"`
+	EnName                     string           `json:"en_name"`
+	JointRealName              string           `json:"joint_real_name"`
+	JointEnName                string           `json:"joint_en_name"`
+	OrgID                      string           `json:"org_id"`
+	BCAN                       string           `json:"bcan"`
+	OpEntrustWay               int32            `json:"op_entrust_way"`
+	OpEntrustWayName           string           `json:"op_entrust_way_name"`
+	Remark                     string           `json:"remark"`
+	Notice                     string           `json:"notice"`
+	ShortSellType              int32            `json:"short_sell_type"`
+	PloyType                   string           `json:"ploy_type"` // API returns string e.g. "0"
+	PloyID                     string           `json:"ploy_id"`
+	PloyStatus                 string           `json:"ploy_status"`
+	Trend                      int32            `json:"trend"`
+	WithdrawalReason           string           `json:"withdrawal_reason"`
+	ActivateOrderType          string           `json:"activate_order_type"`
+	ActivateRTH                int32            `json:"activate_rth"`
+	SubmitPrice                string           `json:"submit_price"`
+	ContractDirection          string           `json:"contract_direction"`
+	StrikePrice                string           `json:"strike_price"`
+	ContractSize               string           `json:"contract_size"`
+	MonitorPrice               string           `json:"monitor_price"`
+	ButtonControl              USButtonControl   `json:"button_control"`
+	ChargeDetail               *USChargeDetail   `json:"charge_detail"`
+	AttachedOrders             []USAttachedOrder `json:"attached_orders"`
+	OrderHistories             []USOrderHistory  `json:"order_histories"`
+}
+
 // USOrderDetailResponse is the response for USOrderDetail.
-// Order is the full raw order map; it contains an order_histories array internally.
-// counter_id is NOT converted to symbol; timestamp fields are raw unix-second strings.
-// CurrentMillisecond is the server response timestamp.
+// CurrentAttachedOrder is the active bracket/conditional sub-order, or nil.
+// CurrentMillisecond is the server timestamp at response time.
 type USOrderDetailResponse struct {
-	Order                map[string]interface{} `json:"order"`
-	CurrentAttachedOrder map[string]interface{} `json:"current_attached_order"`
-	CurrentMillisecond   string                 `json:"current_millisecond"`
+	Order                *USOrderDetail `json:"order"`
+	CurrentAttachedOrder *USOrderDetail `json:"current_attached_order"`
+	CurrentMillisecond   string         `json:"current_millisecond"`
 }
 
 // ── USAssetOverview ────────────────────────────────────────────────────────
