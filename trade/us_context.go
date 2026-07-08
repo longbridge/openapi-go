@@ -216,6 +216,9 @@ func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (
 	if req == nil {
 		req = &GetUSRealizedPL{Currency: "USD"}
 	}
+	if req.Currency == "" {
+		req.Currency = "USD"
+	}
 	q := url.Values{}
 	q.Set("currency", req.Currency)
 	if req.Category != "" {
