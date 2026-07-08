@@ -163,7 +163,7 @@ type ETFDividendInfo struct {
 	FiscalYearInfo   []FiscalYearDividend `json:"fiscal_year_info"`
 }
 
-// USDividendItem is a single dividend payment record for a US stock.
+// USDividendItem is a single dividend payment record (used by ETFDividendInfo).
 type USDividendItem struct {
 	Dividend     string `json:"dividend"`
 	DividendType string `json:"dividend_type"`
@@ -172,13 +172,50 @@ type USDividendItem struct {
 	RecordDate   string `json:"record_date"`
 }
 
+// USRecentDividend holds the trailing-12-month dividend summary.
+type USRecentDividend struct {
+	DividendTTM      string `json:"dividend_ttm"`
+	DividendYieldTTM string `json:"dividend_yield_ttm"`
+	Payouts          string `json:"payouts"`
+	Currency         string `json:"currency"`
+}
+
+// USDividendHistoryItem is one fiscal-year row in the dividend history or payout-ratio table.
+type USDividendHistoryItem struct {
+	FiscalYear                string `json:"fiscal_year"`
+	FiscalYearRange           string `json:"fiscal_year_range"`
+	TotalShareholderYield     string `json:"total_shareholder_yield"`
+	Dividend                  string `json:"dividend"`
+	DividendYield             string `json:"dividend_yield"`
+	DividendGrowthRate        string `json:"dividend_growth_rate"`
+	DividendPayoutRatio       string `json:"dividend_payout_ratio"`
+	DividendToCashflowRatio   string `json:"dividend_to_cashflow_ratio"`
+	NetBuyback                string `json:"net_buyback"`
+	NetBuybackYield           string `json:"net_buyback_yield"`
+	NetBuybackGrowthRate      string `json:"net_buyback_growth_rate"`
+	NetBuybackPayoutRatio     string `json:"net_buyback_payout_ratio"`
+	NetBuybackToCashflowRatio string `json:"net_buyback_to_cashflow_ratio"`
+	Currency                  string `json:"currency"`
+}
+
+// USDividendPayoutRecord is one actual dividend payment event.
+type USDividendPayoutRecord struct {
+	Dividend      string `json:"dividend"`
+	DividendType  string `json:"dividend_type"`
+	Currency      string `json:"currency"`
+	ExDate        string `json:"ex_date"`
+	PaymentDate   string `json:"payment_date"`
+	RecordDate    string `json:"record_date"`
+	Title         string `json:"title"`
+	StartTimeUnix string `json:"start_time_unix"`
+}
+
 // USCompanyDividends holds historical dividend data for a US stock.
 type USCompanyDividends struct {
-	DividendTTM      string           `json:"dividend_ttm"`
-	DividendYieldTTM string           `json:"dividend_yield_ttm"`
-	Payouts          string           `json:"payouts"`
-	Currency         string           `json:"currency"`
-	Items            []USDividendItem `json:"items"`
+	RecentDividends       USRecentDividend          `json:"recent_dividends"`
+	DividendHistory       []USDividendHistoryItem   `json:"dividend_history"`
+	PayoutRatios          []USDividendHistoryItem   `json:"payout_ratios"`
+	DividendPayoutHistory []USDividendPayoutRecord  `json:"dividend_payout_history"`
 }
 
 // ETFFile is a single document in the ETF file list.
