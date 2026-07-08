@@ -76,15 +76,35 @@ type FinancialOverview struct {
 	CFList     []FinancialCFItem `json:"cf_list"`
 }
 
+// FinancialStatementField is one line item within a FinancialStatementPeriod.
+type FinancialStatementField struct {
+	DisplayOrder int32  `json:"display_order"`
+	Field        string `json:"field"`
+	ID           string `json:"id"`
+	Level        int64  `json:"level"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	ValueType    string `json:"value_type"`
+	YoY          string `json:"yoy"`
+}
+
+// FinancialStatementPeriod is one reporting period in FinancialStatement.
+type FinancialStatementPeriod struct {
+	FfPeriod  string                    `json:"ff_period"`
+	FfYear    int32                     `json:"ff_year"`
+	Fields    []FinancialStatementField `json:"fields"`
+	FpEnd     string                    `json:"fp_end"`
+	ReportTxt string                    `json:"report_txt"`
+}
+
 // FinancialStatement is the US financial statement (IS/BS/CF).
 // kind controls which statement is returned: "IS" (income), "BS" (balance sheet), "CF" (cash flow).
-// List contains the line items; element shape varies by kind and is preserved as raw JSON.
-// EmptyFields lists metric keys that the API could not populate.
+// EmptyFields lists field IDs that the API could not populate.
 type FinancialStatement struct {
-	Currency    string        `json:"currency"`
-	Report      string        `json:"report"`
-	List        []interface{} `json:"list"`         // line items; shape varies by kind
-	EmptyFields []string      `json:"empty_fields"`
+	Currency    string                     `json:"currency"`
+	Report      string                     `json:"report"`
+	List        []FinancialStatementPeriod `json:"list"`
+	EmptyFields []string                   `json:"empty_fields"`
 }
 
 // KeyMetricItem is one period entry in KeyFinancialMetrics.
