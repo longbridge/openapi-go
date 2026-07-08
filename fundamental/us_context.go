@@ -61,12 +61,12 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 	return &resp, nil
 }
 
-// FinancialStatement returns the US financial statement detail (IS/BS/CF) for the given
+// FinancialStatement returns the US financial statement detail for the given
 // symbol (e.g. "AAPL.US"), statement kind, and report period.
 // Only applicable to stocks — ETFs do not have financial statements.
 //
 // kind: "IS" (income statement), "BS" (balance sheet), "CF" (cash flow)
-// report: "annual" or "quarterly"
+// report: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 //
 // Path: GET /v1/us/quote/financials/statements
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
