@@ -89,15 +89,9 @@ const (
 	OutsideRTHUnknown         OutsideRTH = "UnknownOutsideRth" // Default is UnknownOutsideRth when the order is not a US stock
 
 	// Order tag
-	OrderTagNormal       OrderTag = "Normal"       // Normal Order
-	OrderTagLongTerm     OrderTag = "GTC"          // Long term Order
-	OrderTagGrey         OrderTag = "Grey"         // Grey Order
-	OrderTagMarginCall   OrderTag = "MarginCall"   // Force Selling
-	OrderTagOffline      OrderTag = "Offline"      // OTC
-	OrderTagCreditor     OrderTag = "Creditor"     // Option Exercise Long
-	OrderTagDebtor       OrderTag = "Debtor"       // Option Exercise Short
-	OrderTagNonExercise  OrderTag = "NonExercise"  // Wavier Of Option Exercise
-	OrderTagAllocatedSub OrderTag = "AllocatedSub" // Trade Allocation
+	OrderTagNormal   OrderTag = "Normal" // Normal Order
+	OrderTagLongTerm OrderTag = "Gtc"   // Long term Order
+	OrderTagGrey     OrderTag = "Grey"  // Grey Order
 
 	// Trigger status
 	TriggerStatusDeactive TriggerStatus = "DEACTIVE"
