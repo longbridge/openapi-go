@@ -8,16 +8,16 @@ import (
 
 // CompanyOverview returns the US company summary for the given symbol (e.g. "AAPL.US").
 //
-// Path: GET /v1/stock-info/company-overview
+// Path: GET /v1/us/stock-info/company-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string) (*USCompanyOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/company-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp USCompanyOverview
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/company-overview", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/company-overview", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -25,16 +25,16 @@ func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string)
 
 // ValuationOverview returns the US valuation snapshot (PE/PB/PS) for the given symbol (e.g. "AAPL.US").
 //
-// Path: GET /v1/stock-info/valuation-overview
+// Path: GET /v1/us/stock-info/valuation-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol string) (*ValuationOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/valuation-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/valuation-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp ValuationOverview
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/valuation-overview", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/valuation-overview", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -45,17 +45,17 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol strin
 //
 // report: "annual" or "quarterly"
 //
-// Path: GET /v1/stock-info/finn-overview
+// Path: GET /v1/us/stock-info/finn-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, report string) (*FinancialOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/finn-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/finn-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp FinancialOverview
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/finn-overview", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/finn-overview", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -90,17 +90,17 @@ func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kin
 //
 // report: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 //
-// Path: GET /v1/stock-info/fin-keyfactor
+// Path: GET /v1/us/stock-info/fin-keyfactor
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, report string) (*KeyFinancialMetrics, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-keyfactor", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-keyfactor", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp KeyFinancialMetrics
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-keyfactor", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/fin-keyfactor", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -111,17 +111,17 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 //
 // report: "q1" (Q1), "qf" (quarterly), "saf" (semi-annual), "3q" (Q3), "af" (annual)
 //
-// Path: GET /v1/stock-info/fin-consensus
+// Path: GET /v1/us/stock-info/fin-consensus
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, report string) (*AnalystConsensus, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/fin-consensus", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-consensus", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("report", report)
 	var resp AnalystConsensus
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/fin-consensus", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/fin-consensus", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -129,16 +129,16 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, repor
 
 // ETFDividendInfo returns dividend history for a US ETF (e.g. "SPY.US").
 //
-// Path: GET /v1/stock-info/etf-dividend-info
+// Path: GET /v1/us/stock-info/etf-dividend-info
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string) (*ETFDividendInfo, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-dividend-info", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-dividend-info", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp ETFDividendInfo
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/etf-dividend-info", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/etf-dividend-info", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -146,16 +146,16 @@ func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string)
 
 // CompanyDividends returns historical dividend payments for a US stock (e.g. "AAPL.US").
 //
-// Path: GET /v1/stock-info/company-dividends
+// Path: GET /v1/us/stock-info/company-dividends
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string) (*USCompanyDividends, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/company-dividends", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-dividends", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp USCompanyDividends
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/company-dividends", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/company-dividends", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -165,10 +165,10 @@ func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string
 //
 // size: number of files to return; pass nil for all.
 //
-// Path: GET /v1/stock-info/etf-files
+// Path: GET /v1/us/stock-info/etf-files
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFFiles(ctx context.Context, symbol string, size *int32) (*ETFFilesResponse, error) {
-	if err := c.httpClient.CheckRegion("/v1/stock-info/etf-files", "US"); err != nil {
+	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-files", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -177,7 +177,7 @@ func (c *FundamentalContext) ETFFiles(ctx context.Context, symbol string, size *
 		q.Set("size", fmt.Sprintf("%d", *size))
 	}
 	var resp ETFFilesResponse
-	if err := c.httpClient.Get(ctx, "/v1/stock-info/etf-files", q, &resp); err != nil {
+	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/etf-files", q, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

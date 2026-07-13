@@ -78,10 +78,10 @@ func convertStockList(entries []USStockEntry) []USStockEntry {
 
 // QueryUSOrders queries the US order list.
 //
-// Path: POST /v1/orders/query
+// Path: POST /v1/us/orders/query
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrders) (*QueryUSOrdersResponse, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/orders/query", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegion("/v1/us/orders/query", "US"); err != nil {
 		return nil, err
 	}
 	if req == nil {
@@ -135,7 +135,7 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 	}
 
 	var raw usRawQueryUSOrdersResponse
-	if err := c.opts.httpClient.Post(ctx, "/v1/orders/query", body, &raw); err != nil {
+	if err := c.opts.httpClient.Post(ctx, "/v1/us/orders/query", body, &raw); err != nil {
 		return nil, err
 	}
 	orders := make([]USOrder, 0, len(raw.Orders))
@@ -147,10 +147,10 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 
 // USOrderDetail returns the detail for a single US order.
 //
-// Path: GET /v1/orders/{order_id}
+// Path: GET /v1/us/orders/{order_id}
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOrderDetailResponse, error) {
-	path := fmt.Sprintf("/v1/orders/%s", orderID)
+	path := fmt.Sprintf("/v1/us/orders/%s", orderID)
 	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
 		return nil, err
 	}

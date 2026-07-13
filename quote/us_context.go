@@ -54,16 +54,16 @@ type cryptoRawOverview struct {
 // symbol must be in PAIR.EXCHANGE format, e.g. "BTCUSD.BKKT" (US DC uses BKKT).
 // The returned Symbol field is converted back from the API's counter_id.
 //
-// Path: GET /v1/gemini/us/crypto-overview
+// Path: GET /v1/us/gemini/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*CryptoOverview, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/gemini/us/crypto-overview", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegion("/v1/us/gemini/crypto-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("counter_id", counter.SymbolToID(symbol))
 	var raw cryptoRawOverview
-	if err := c.opts.httpClient.Get(ctx, "/v1/gemini/us/crypto-overview", q, &raw); err != nil {
+	if err := c.opts.httpClient.Get(ctx, "/v1/us/gemini/crypto-overview", q, &raw); err != nil {
 		return nil, err
 	}
 	return &CryptoOverview{
