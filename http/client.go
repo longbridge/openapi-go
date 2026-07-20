@@ -132,15 +132,10 @@ func (c *Client) GetOTPV2(ctx context.Context, ropts ...RequestOption) (string, 
 	return res.Otp, nil
 }
 
-// Call will send request with signature to http server
-func (c *Client) Call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ropts ...RequestOption) (err error) {
-	var (
-		br       io.Reader
-		bb       []byte
-		httpResp *nhttp.Response
-		rb       []byte
-	)
-
+// newRequest builds a signed *http.Request. It also returns the marshalled
+// request body (bb) so callers can log it or reuse it. It is shared by Call
+// and Stream.
+func (c *Client) newRequest(ctx context.Context, method, path string, queryParams interface{}, body interface{}, ropts ...RequestOption) (req *nhttp.Request, bb []byte, err error) {
 	ro := &RequestOptions{}
 	for _, opt := range ropts {
 		opt(ro)
@@ -150,17 +145,18 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		body = ro.body
 	}
 
+	var br io.Reader
 	if body != nil {
 		bb, err = json.Marshal(body)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		br = bytes.NewBuffer(bb)
 	}
 
-	req, err := nhttp.NewRequestWithContext(ctx, method, c.opts.URL+path, br)
+	req, err = nhttp.NewRequestWithContext(ctx, method, c.opts.URL+path, br)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	appKey := c.opts.AppKey
@@ -170,7 +166,7 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	if c.opts.OAuthClient != nil {
 		token, err := c.opts.OAuthClient.AccessToken(ctx)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		// Derive DC region from the token prefix ("us_" → US, otherwise AP),
 		// then strip the prefix so only the bare token is sent to the gateway.
@@ -207,13 +203,28 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		vals, ok := queryParams.(url.Values)
 		if !ok {
 			if vals, err = query.Values(queryParams); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 		req.URL.RawQuery = vals.Encode()
 	}
 	// set signature (no-op for OAuth when appSecret is empty)
 	signature(req, appSecret, bb)
+
+	return req, bb, nil
+}
+
+// Call will send request with signature to http server
+func (c *Client) Call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ropts ...RequestOption) (err error) {
+	var (
+		httpResp *nhttp.Response
+		rb       []byte
+	)
+
+	req, bb, err := c.newRequest(ctx, method, path, queryParams, body, ropts...)
+	if err != nil {
+		return err
+	}
 
 	log.Debugf("http call method:%v url:%v body:%v", req.Method, req.URL, string(bb))
 	httpResp, err = c.httpClient.Do(req)
