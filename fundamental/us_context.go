@@ -14,8 +14,12 @@ func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string)
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-overview", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	var resp USCompanyOverview
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/company-overview", q, &resp); err != nil {
 		return nil, err
@@ -31,8 +35,12 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol strin
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/valuation-overview", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	var resp ValuationOverview
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/valuation-overview", q, &resp); err != nil {
 		return nil, err
@@ -51,8 +59,12 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/finn-overview", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	q.Set("report", report)
 	var resp FinancialOverview
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/finn-overview", q, &resp); err != nil {
@@ -74,8 +86,12 @@ func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kin
 	if err := c.httpClient.CheckRegion("/v1/us/quote/financials/statements", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	q.Set("kind", kind)
 	q.Set("report", report)
 	var resp FinancialStatement
@@ -96,8 +112,12 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-keyfactor", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	q.Set("report", report)
 	var resp KeyFinancialMetrics
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/fin-keyfactor", q, &resp); err != nil {
@@ -117,8 +137,12 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, repor
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-consensus", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	q.Set("report", report)
 	var resp AnalystConsensus
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/fin-consensus", q, &resp); err != nil {
@@ -135,8 +159,12 @@ func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string)
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-dividend-info", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	var resp ETFDividendInfo
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/etf-dividend-info", q, &resp); err != nil {
 		return nil, err
@@ -152,8 +180,12 @@ func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-dividends", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	var resp USCompanyDividends
 	if err := c.httpClient.Get(ctx, "/v1/us/stock-info/company-dividends", q, &resp); err != nil {
 		return nil, err
@@ -171,8 +203,12 @@ func (c *FundamentalContext) ETFFiles(ctx context.Context, symbol string, size *
 	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-files", "US"); err != nil {
 		return nil, err
 	}
+	cid, err := checkSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("counter_id", cid)
 	if size != nil {
 		q.Set("size", fmt.Sprintf("%d", *size))
 	}

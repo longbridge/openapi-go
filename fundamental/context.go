@@ -63,6 +63,15 @@ func symbolToCounterID(symbol string) string { return counter.SymbolToID(symbol)
 
 func counterIDToSymbol(counterID string) string { return counter.IDToSymbol(counterID) }
 
+// checkSymbol validates that symbol is in CODE.MARKET format and returns
+// the corresponding counter_id. Returns an error for bare tickers like "AXTI".
+func checkSymbol(symbol string) (string, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return "", err
+	}
+	return counter.SymbolToID(symbol), nil
+}
+
 // decimalFromString parses a decimal string; returns nil for empty strings or
 // unparseable values.
 func decimalFromString(s string) *decimal.Decimal {

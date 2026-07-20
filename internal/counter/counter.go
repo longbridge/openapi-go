@@ -2,9 +2,21 @@ package counter
 
 import (
 	_ "embed"
+	"fmt"
 	"strings"
 	"sync"
 )
+
+// ValidateSymbol returns an error if symbol is not in the expected
+// CODE.MARKET format (e.g. "AAPL.US", "BTCUSD.BKKT").
+// Both the code and market parts must be non-empty.
+func ValidateSymbol(symbol string) error {
+	idx := strings.LastIndex(symbol, ".")
+	if idx <= 0 || idx == len(symbol)-1 {
+		return fmt.Errorf("invalid symbol %q: expected CODE.MARKET format (e.g. \"AAPL.US\")", symbol)
+	}
+	return nil
+}
 
 //go:embed US-ETF.csv
 var usEtfCSV string

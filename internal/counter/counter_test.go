@@ -2,24 +2,23 @@ package counter
 
 import "testing"
 
-func TestIDToSymbol(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
+func TestValidateSymbol(t *testing.T) {
+	tests := []struct {
+		symbol  string
+		wantErr bool
 	}{
-		{"ST/US/TSLA", "TSLA.US"},
-		{"ST/HK/700", "700.HK"},
-		{"ST/SH/600519", "600519.SH"},
-		{"ST/SZ/000001", "000001.SZ"},
-		{"IX/HK/HSI", "HSI.HK"},
-		// non-slash formats returned unchanged
-		{"AAPL.US", "AAPL.US"},
-		{"", ""},
+		{"AAPL.US", false},
+		{"SPY.US", false},
+		{"BTCUSD.BKKT", false},
+		{"AXTI", true},        // no dot
+		{"", true},            // empty
+		{".US", true},         // empty code
+		{"AAPL.", true},       // empty market
 	}
-	for _, c := range cases {
-		got := IDToSymbol(c.in)
-		if got != c.want {
-			t.Errorf("IDToSymbol(%q) = %q, want %q", c.in, got, c.want)
+	for _, tt := range tests {
+		err := ValidateSymbol(tt.symbol)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("ValidateSymbol(%q) error = %v, wantErr %v", tt.symbol, err, tt.wantErr)
 		}
 	}
 }

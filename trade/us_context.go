@@ -101,6 +101,9 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 	// Build counter_ids from Symbol
 	counterIDs := []string{}
 	if req.Symbol != "" {
+		if err := counter.ValidateSymbol(req.Symbol); err != nil {
+			return nil, err
+		}
 		counterIDs = append(counterIDs, counter.SymbolToID(req.Symbol))
 	}
 

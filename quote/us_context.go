@@ -60,6 +60,9 @@ func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*Cryp
 	if err := c.opts.httpClient.CheckRegion("/v1/us/gemini/crypto-overview", "US"); err != nil {
 		return nil, err
 	}
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", counter.SymbolToID(symbol))
 	var raw cryptoRawOverview
