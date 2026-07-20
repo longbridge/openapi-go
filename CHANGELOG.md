@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.26.0] - 2026-07-20
+
+### Added
+
+- **US market APIs** — 14 new interfaces for US-region accounts (requires `us_` token):
+  - Fundamental: `CompanyOverview`, `ValuationOverview`, `FinancialOverview`, `FinancialStatement`, `KeyFinancialMetrics`, `AnalystConsensus`, `ETFDividendInfo`, `CompanyDividends`, `ETFFiles`
+  - Quote: `CryptoOverview` (BTCUSD.BKKT etc.)
+  - Trade: `USAssetOverview`, `USRealizedPL`, `QueryUSOrders`, `USOrderDetail`
+- **DC-region routing** — `x-dc-region` header derived from token prefix (`us_` → US, others → AP); `NewHTTPFromCfg` for HTTP-only trade context without WebSocket
+- **`AllExecutions`** — `GET /v3/trade/execution/all` queries today and historical executions in one call with pagination
+- **`OutsideRTH.OptionPreMarket`** — new enum variant for overnight option orders
+
+### Changed
+
+- `OrderTag` enum values updated to match current API definitions; unused variants removed
+- `QuoteContext.RealtimeQuote` skips nil cache entries instead of panicking
+
+### Fixed
+
+- `QuoteContext.RealtimeQuote`: nil pointer dereference when cache entry is empty (#104)
+
 ## [v0.25.2] - 2026-06-26
 
 ### Added
