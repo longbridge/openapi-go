@@ -3,6 +3,8 @@ package trade
 
 import (
 	"context"
+
+	"github.com/longbridge/openapi-go/internal/counter"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -320,6 +322,9 @@ func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (st
 //	tctx, err := trade.NewFromCfg(conf)
 //	mr, err := tctx.MarginRatio(context.Background(), "AAPL.US")
 func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRatio MarginRatio, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("symbol", symbol)
 	var resp jsontypes.MarginRatio

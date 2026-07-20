@@ -152,6 +152,9 @@ func (c *QuoteContext) WarrantQuote(ctx context.Context, symbols []string) (warr
 //	qctx, err := quote.NewFromEnv()
 //	depth, err := qctx.Depth(context.Background(), []string{"AAPL.HK"})
 func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth *SecurityDepth, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.Depth(ctx, symbol)
 }
 
@@ -163,6 +166,9 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 //	qctx, err := quote.NewFromEnv()
 //	brokers, err := qctx.Brokers(context.Background(), "AAPL.HK")
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	// Broker queue via WebSocket is served only by the AP data center.
 	if err = c.opts.httpClient.CheckRegion("quote/brokers (WebSocket)", "AP"); err != nil {
 		return
@@ -189,6 +195,9 @@ func (c *QuoteContext) Participants(ctx context.Context) (infos []*ParticipantIn
 //	qctx, err := quote.NewFromEnv()
 //	trades, err := qctx.Trades(context.Background())
 func (c *QuoteContext) Trades(ctx context.Context, symbol string, count int32) (trades []*Trade, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.Trades(ctx, symbol, count)
 }
 
@@ -199,6 +208,9 @@ func (c *QuoteContext) Trades(ctx context.Context, symbol string, count int32) (
 //	qctx, err := quote.NewFromEnv()
 //	trades, err := qctx.Intraday(context.Background(), "AAPL.US")
 func (c *QuoteContext) Intraday(ctx context.Context, symbol string) (lines []*IntradayLine, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.Intraday(ctx, symbol)
 }
 
@@ -223,6 +235,9 @@ func (c *QuoteContext) Intraday(ctx context.Context, symbol string) (lines []*In
 //	qctx, err := quote.NewFromEnv()
 //	klines, err := qctx.Candlesticks(context.Background(), "AAPL.US", quote.PeriodDay, 10, quote.AdjustTypeNo)
 func (c *QuoteContext) Candlesticks(ctx context.Context, symbol string, period Period, count int32, adjustType AdjustType) (sticks []*Candlestick, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.Candlesticks(ctx, symbol, period, count, adjustType)
 }
 
@@ -248,6 +263,9 @@ func (c *QuoteContext) Candlesticks(ctx context.Context, symbol string, period P
 //	dateTime := time.Date(2022, 5, 10, 11, 10, 0, 0, time.UTC)
 //	klines, err := qctx.HistoryCandlesticksByOffset(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, true, &dateTime, 100)
 func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol string, period Period, adjustType AdjustType, isForward bool, dateTime *time.Time, count int32, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.HistoryCandlesticksByOffset(ctx, symbol, period, adjustType, isForward, dateTime, count, opts...)
 }
 
@@ -274,6 +292,9 @@ func (c *QuoteContext) HistoryCandlesticksByOffset(ctx context.Context, symbol s
 //	endDate := time.Date(2022, 6, 10, 0, 0, 0, 0, time.UTC)
 //	klines, err := qctx.HistoryCandlesticksByDate(context.Background(), "AAPL.US", quote.PeriodDay, quote.AdjustTypeNo, &startDate, &endDate)
 func (c *QuoteContext) HistoryCandlesticksByDate(ctx context.Context, symbol string, period Period, adjustType AdjustType, startDate *time.Time, endDate *time.Time, opts ...CandlestickRequestOption) (sticks []*Candlestick, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.HistoryCandlesticksByDate(ctx, symbol, period, adjustType, startDate, endDate, opts...)
 }
 
@@ -285,6 +306,9 @@ func (c *QuoteContext) HistoryCandlesticksByDate(ctx context.Context, symbol str
 //	qctx, err := quote.NewFromEnv()
 //	list, err := qctx.OptionChainExpiryDateList(context.Background(), "AAPL.US")
 func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol string) (times []time.Time, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.OptionChainExpiryDateList(ctx, symbol)
 }
 
@@ -297,6 +321,9 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 //	date := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
 //	list, err := qctx.OptionChainInfoByDate(context.Background(), "AAPL.US", &date)
 func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string, expiryDate *time.Time) (strikePriceInfos []*StrikePriceInfo, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.OptionChainInfoByDate(ctx, symbol, expiryDate)
 }
 
@@ -325,6 +352,9 @@ func (c *QuoteContext) WarrantIssuers(ctx context.Context) (infos []*IssuerInfo,
 //	  Type: []quote.WarrantType{quote.WarrantCall, quote.WarrantPut},
 //	}, quote. WarrantZH_CN)
 func (c *QuoteContext) WarrantList(ctx context.Context, symbol string, config WarrantFilter, lang WarrantLanguage) (infos []*WarrantInfo, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.WarrantList(ctx, symbol, config, lang)
 }
 
@@ -360,6 +390,9 @@ func (c *QuoteContext) TradingDays(ctx context.Context, market openapi.Market, b
 //	qctx, err := quote.NewFromEnv()
 //	dist, err := qctx.CapitalDistribution(context.Background(), "700.HK")
 func (c *QuoteContext) CapitalDistribution(ctx context.Context, symbol string) (capitalDib CapitalDistribution, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.CapitalDistribution(ctx, symbol)
 }
 
@@ -371,6 +404,9 @@ func (c *QuoteContext) CapitalDistribution(ctx context.Context, symbol string) (
 //	qctx, err := quote.NewFromEnv()
 //	flowlines, err := qctx.CapitalFlow(context.Background(), "700.HK")
 func (c *QuoteContext) CapitalFlow(ctx context.Context, symbol string) (capitalFlowLines []CapitalFlowLine, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	return c.core.CapitalFlow(ctx, symbol)
 }
 
@@ -402,6 +438,9 @@ func (c *QuoteContext) RealtimeQuote(ctx context.Context, symbols []string) ([]*
 //	qctx, err := quote.NewFromEnv()
 //	depth, err := qctx.RealtimeDepth(context.Background(), "700.HK")
 func (c *QuoteContext) RealtimeDepth(ctx context.Context, symbol string) (*SecurityDepth, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	return c.core.RealtimeDepth(ctx, symbol)
 }
 
@@ -412,6 +451,9 @@ func (c *QuoteContext) RealtimeDepth(ctx context.Context, symbol string) (*Secur
 //	qctx, err := quote.NewFromEnv()
 //	trades, err := qctx.RealtimeTrades(context.Background(), "700.HK")
 func (c *QuoteContext) RealtimeTrades(ctx context.Context, symbol string) ([]*Trade, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	return c.core.RealtimeTrades(ctx, symbol)
 }
 
@@ -422,6 +464,9 @@ func (c *QuoteContext) RealtimeTrades(ctx context.Context, symbol string) ([]*Tr
 //	qctx, err := quote.NewFromEnv()
 //	brokers, err := qctx.RealtimeBrokers(context.Background(), "700.HK")
 func (c *QuoteContext) RealtimeBrokers(ctx context.Context, symbol string) (*SecurityBrokers, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	return c.core.RealtimeBrokers(ctx, symbol)
 }
 
@@ -510,6 +555,9 @@ func (c *QuoteContext) WatchedGroups(ctx context.Context) (groupList []*WatchedG
 
 // Filings returns the filings list for a symbol.
 func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*FilingItem, err error) {
+	if err = counter.ValidateSymbol(symbol); err != nil {
+		return
+	}
 	var resp jsontypes.FilingList
 	values := url.Values{}
 	values.Add("symbol", symbol)
@@ -539,6 +587,9 @@ func (c *QuoteContext) Filings(ctx context.Context, symbol string) (items []*Fil
 //
 // count controls the number of records returned (1–100, default 20).
 func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count uint32) (*ShortPositionsResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	isHK := strings.HasSuffix(strings.ToUpper(symbol), ".HK")
 	path := "/v1/quote/short-positions/us"
 	if isHK {
@@ -576,6 +627,9 @@ func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count 
 // OptionVolume returns aggregated call/put volume stats for a security.
 // Path: GET /v1/quote/option-volume-stats
 func (c *QuoteContext) OptionVolume(ctx context.Context, symbol string) (*OptionVolumeStats, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	var resp jsontypes.OptionVolumeStats
 	values := url.Values{}
 	values.Add("symbol", symbol)
@@ -591,6 +645,9 @@ func (c *QuoteContext) OptionVolume(ctx context.Context, symbol string) (*Option
 // OptionVolumeDaily returns daily option volume data for a security within a time range.
 // Path: GET /v1/quote/option-volume-stats/daily
 func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, start time.Time, end time.Time) ([]*DailyOptionVolume, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	var resp jsontypes.OptionVolumeDaily
 	values := url.Values{}
 	values.Add("symbol", symbol)
@@ -703,6 +760,9 @@ func New(opt ...Option) (*QuoteContext, error) {
 //   - ".HK" → GET /v1/quote/short-trades/hk
 //   - ".US" → GET /v1/quote/short-trades/us
 func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uint32) (*ShortTradesResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	values := url.Values{}
 	values.Set("counter_id", quoteSymbolToCounterID(symbol))
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))

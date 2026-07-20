@@ -108,6 +108,9 @@ func (c *FundamentalContext) FinancialReport(
 	kind FinancialReportKind,
 	period *FinancialReportPeriod,
 ) (*FinancialReports, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	kindStr := financialReportKindStr(kind)
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
@@ -168,6 +171,9 @@ func (c *FundamentalContext) InstitutionRating(
 	ctx context.Context,
 	symbol string,
 ) (*InstitutionRating, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	cid := symbolToCounterID(symbol)
 	q := url.Values{}
 	q.Set("counter_id", cid)
@@ -210,6 +216,9 @@ func (c *FundamentalContext) InstitutionRatingDetail(
 	ctx context.Context,
 	symbol string,
 ) (*InstitutionRatingDetail, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.InstitutionRatingDetail
@@ -228,6 +237,9 @@ func (c *FundamentalContext) Dividend(
 	ctx context.Context,
 	symbol string,
 ) (*DividendList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.DividendList
@@ -244,6 +256,9 @@ func (c *FundamentalContext) DividendDetail(
 	ctx context.Context,
 	symbol string,
 ) (*DividendList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.DividendList
@@ -262,6 +277,9 @@ func (c *FundamentalContext) ForecastEps(
 	ctx context.Context,
 	symbol string,
 ) (*ForecastEps, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.ForecastEps
@@ -280,6 +298,9 @@ func (c *FundamentalContext) Consensus(
 	ctx context.Context,
 	symbol string,
 ) (*FinancialConsensus, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.FinancialConsensus
@@ -298,6 +319,9 @@ func (c *FundamentalContext) Valuation(
 	ctx context.Context,
 	symbol string,
 ) (*ValuationData, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("indicator", "pe")
@@ -316,6 +340,9 @@ func (c *FundamentalContext) ValuationHistory(
 	ctx context.Context,
 	symbol string,
 ) (*ValuationHistoryResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.ValuationHistoryResponse
@@ -334,6 +361,9 @@ func (c *FundamentalContext) IndustryValuation(
 	ctx context.Context,
 	symbol string,
 ) (*IndustryValuationList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.IndustryValuationList
@@ -350,6 +380,9 @@ func (c *FundamentalContext) IndustryValuationDist(
 	ctx context.Context,
 	symbol string,
 ) (*IndustryValuationDist, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.IndustryValuationDist
@@ -368,6 +401,9 @@ func (c *FundamentalContext) Company(
 	ctx context.Context,
 	symbol string,
 ) (*CompanyOverview, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.CompanyOverview
@@ -386,6 +422,9 @@ func (c *FundamentalContext) Executive(
 	ctx context.Context,
 	symbol string,
 ) (*ExecutiveList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_ids", symbolToCounterID(symbol))
 	var resp jsontypes.ExecutiveList
@@ -404,6 +443,9 @@ func (c *FundamentalContext) Shareholder(
 	ctx context.Context,
 	symbol string,
 ) (*ShareholderList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.ShareholderList
@@ -422,6 +464,9 @@ func (c *FundamentalContext) FundHolder(
 	ctx context.Context,
 	symbol string,
 ) (*FundHolders, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.FundHolders
@@ -440,6 +485,9 @@ func (c *FundamentalContext) CorpAction(
 	ctx context.Context,
 	symbol string,
 ) (*CorpActions, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("req_type", "1")
@@ -460,6 +508,9 @@ func (c *FundamentalContext) InvestRelation(
 	ctx context.Context,
 	symbol string,
 ) (*InvestRelations, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("count", "0")
@@ -479,6 +530,9 @@ func (c *FundamentalContext) Operating(
 	ctx context.Context,
 	symbol string,
 ) (*OperatingList, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	// Operating reports are served only by the AP data center.
 	if err := c.httpClient.CheckRegion("/v1/quote/operatings", "AP"); err != nil {
 		return nil, err
@@ -501,6 +555,9 @@ func (c *FundamentalContext) Buyback(
 	ctx context.Context,
 	symbol string,
 ) (*BuybackData, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.BuybackData
@@ -519,6 +576,9 @@ func (c *FundamentalContext) Ratings(
 	ctx context.Context,
 	symbol string,
 ) (*StockRatings, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.StockRatings
@@ -1117,6 +1177,9 @@ func (c *FundamentalContext) ShareholderTop(
 	ctx context.Context,
 	symbol string,
 ) (*ShareholderTopResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp json.RawMessage
@@ -1136,6 +1199,9 @@ func (c *FundamentalContext) ShareholderDetail(
 	symbol string,
 	objectID int64,
 ) (*ShareholderDetailResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	q.Set("object_id", strconv.FormatInt(objectID, 10))
@@ -1162,6 +1228,9 @@ func (c *FundamentalContext) ValuationComparison(
 	currency string,
 	comparisonSymbols []string,
 ) (*ValuationComparisonResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	counterIDs := make([]string, 0, len(comparisonSymbols))
 	for _, s := range comparisonSymbols {
 		counterIDs = append(counterIDs, symbolToCounterID(s))
@@ -1246,6 +1315,9 @@ func (c *FundamentalContext) EtfAssetAllocation(
 	ctx context.Context,
 	symbol string,
 ) (*AssetAllocationResponse, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", counterpkg.SymbolToCounterID(symbol))
 	var resp jsontypes.AssetAllocationResponse
@@ -1324,6 +1396,9 @@ func (c *FundamentalContext) BusinessSegments(
 	ctx context.Context,
 	symbol string,
 ) (*BusinessSegments, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.BusinessSegments
@@ -1343,6 +1418,9 @@ func (c *FundamentalContext) BusinessSegmentsHistory(
 	report string,
 	cate string,
 ) (*BusinessSegmentsHistory, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	if report != "" {
@@ -1368,6 +1446,9 @@ func (c *FundamentalContext) InstitutionRatingViews(
 	ctx context.Context,
 	symbol string,
 ) (*InstitutionRatingViews, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	var resp jsontypes.InstitutionRatingViews
@@ -1449,6 +1530,9 @@ func (c *FundamentalContext) FinancialReportSnapshot(
 	fiscalYear int,
 	fiscalPeriod string,
 ) (*FinancialReportSnapshot, error) {
+	if err := counter.ValidateSymbol(symbol); err != nil {
+		return nil, err
+	}
 	q := url.Values{}
 	q.Set("counter_id", symbolToCounterID(symbol))
 	if report != "" {
