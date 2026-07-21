@@ -232,6 +232,22 @@ func (c *TradeContext) CancelOrder(ctx context.Context, orderId string) (err err
 	return
 }
 
+// CancelOrderAttached cancels an attached (take-profit / stop-loss) sub-order by its own order ID,
+// instead of the parent order's ID.
+// Reference: https://open.longbridge.com/en/docs/trade/order/withdraw
+// Example:
+//
+//	conf, err := config.NewFromEnv()
+//	tctx, err := trade.NewFromCfg(conf)
+//	err = tctx.CancelOrderAttached(context.Background(), "706388312699592705")
+func (c *TradeContext) CancelOrderAttached(ctx context.Context, orderId string) (err error) {
+	values := url.Values{}
+	values.Add("order_id", orderId)
+	values.Add("is_attached", "true")
+	err = c.opts.httpClient.Delete(ctx, "/v1/trade/order", values, nil)
+	return
+}
+
 // AccountBalance to obtain the available, desirable, frozen, to-be-settled, and in-transit funds (fund purchase and redemption) information for each currency of the user.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/account
 // Example:
@@ -341,6 +357,27 @@ func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRa
 func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
 	values := url.Values{}
 	values.Add("order_id", orderId)
+	var resp jsontypes.OrderDetail
+	err = c.opts.httpClient.Get(ctx, "/v1/trade/order", values, &resp)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&orderDetail, resp)
+	return
+}
+
+// OrderDetailAttached queries detail for an attached (take-profit / stop-loss) sub-order by its
+// own order ID, instead of the parent order's ID.
+// Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
+// Example:
+//
+//	conf, err := config.NewFromEnv()
+//	tctx, err := trade.NewFromCfg(conf)
+//	od, err := tctx.OrderDetailAttached(context.Background(), "706388312699592705")
+func (c *TradeContext) OrderDetailAttached(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
+	values := url.Values{}
+	values.Add("order_id", orderId)
+	values.Add("is_attached", "true")
 	var resp jsontypes.OrderDetail
 	err = c.opts.httpClient.Get(ctx, "/v1/trade/order", values, &resp)
 	if err != nil {

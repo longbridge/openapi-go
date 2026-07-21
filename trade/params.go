@@ -61,6 +61,12 @@ func (p params) AddOptDecimal(key string, val decimal.Decimal) {
 	}
 }
 
+func (p params) AddOptBool(key string, val bool) {
+	if val {
+		p[key] = "true"
+	}
+}
+
 func (p params) Values() url.Values {
 	vals := url.Values{}
 	for k, v := range p {

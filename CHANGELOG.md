@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Attached order (take-profit / stop-loss) support** for `SubmitOrder` and `ReplaceOrder`:
+  - New types: `AttachedOrderType` (`AttachedOrderTypeProfitTaker` / `AttachedOrderTypeStopLoss` / `AttachedOrderTypeBracket`), `AttachedOrderDetail`, `SubmitAttachedParams`, `ReplaceAttachedParams`
+  - `SubmitOrder` / `ReplaceOrder`: new `AttachedParams` field
+  - `Order` / `OrderDetail`: new `AttachedOrders []AttachedOrderDetail` field
+  - New `TradeContext.OrderDetailAttached(orderId)` and `TradeContext.CancelOrderAttached(orderId)` methods — query/cancel an attached sub-order by its own order ID
+  - `GetTodayOrders`: new `OrderId` and `IsAttached` fields — when combined, treats `OrderId` as an attached sub-order ID and returns that sub-order as an `Order` entry (not the parent order)
+
+### Breaking changes
+
+- `OrderDetail.ChargeDetail` is now `*OrderChargeDetail` (previously non-pointer). Attached orders return `nil` for this field; callers must handle the absent case.
+
 ## [v0.26.0] - 2026-07-20
 
 ### Added

@@ -36,10 +36,15 @@ type GetHistoryOrders struct {
 }
 
 type GetTodayOrders struct {
-	Symbol string         // optional
-	Status []OrderStatus  // optional
-	Side   OrderSide      // optional
-	Market openapi.Market // optional
+	Symbol  string         // optional
+	Status  []OrderStatus  // optional
+	Side    OrderSide      // optional
+	Market  openapi.Market // optional
+	OrderId string         // optional
+	// IsAttached, combined with OrderId, treats OrderId as an attached sub-order
+	// ID and returns that sub-order as an Order entry (not the parent order).
+	// Has no effect without OrderId.
+	IsAttached bool // optional
 }
 
 type GetFundPositions struct {
@@ -68,6 +73,7 @@ type ReplaceOrder struct {
 	TrailingAmount  decimal.Decimal // TSLPAMT / TSMAMT Order Required
 	TrailingPercent decimal.Decimal // TSLPPCT / TSMAPCT Order Required
 	Remark          string
+	AttachedParams  *ReplaceAttachedParams // optional, take-profit / stop-loss parameters
 }
 
 type SubmitOrder struct {
@@ -83,7 +89,44 @@ type SubmitOrder struct {
 	ExpireDate        *time.Time      // required when time_in_force is GTD
 	OutsideRTH        OutsideRTH
 	Remark            string
-	TimeInForce       TimeType // required
+	TimeInForce       TimeType              // required
+	AttachedParams    *SubmitAttachedParams // optional, take-profit / stop-loss parameters
+}
+
+// SubmitAttachedParams is attached order (take-profit / stop-loss) parameters for SubmitOrder.
+type SubmitAttachedParams struct {
+	AttachedOrderType AttachedOrderType // required
+	ProfitTakerPrice  decimal.Decimal   // optional, take-profit trigger price
+	StopLossPrice     decimal.Decimal   // optional, stop-loss trigger price
+	TimeInForce       TimeType          // optional
+	ExpireTime        int64             // optional, unix timestamp seconds, used when TimeInForce is GTD
+	ActivateOrderType OrderType         // optional, order type to submit after trigger
+	// ProfitTakerSubmitPrice is required when ActivateOrderType is LIT.
+	ProfitTakerSubmitPrice decimal.Decimal
+	// StopLossSubmitPrice is required when ActivateOrderType is LIT.
+	StopLossSubmitPrice decimal.Decimal
+	ActivateRTH         OutsideRTH // optional, RTH setting for the activated order
+}
+
+// ReplaceAttachedParams is attached order (take-profit / stop-loss) parameters for ReplaceOrder.
+type ReplaceAttachedParams struct {
+	AttachedOrderType AttachedOrderType // required
+	ProfitTakerPrice  decimal.Decimal   // optional, take-profit trigger price
+	StopLossPrice     decimal.Decimal   // optional, stop-loss trigger price
+	TimeInForce       TimeType          // optional
+	ExpireTime        int64             // optional, unix timestamp seconds, used when TimeInForce is GTD
+	ProfitTakerId     int64             // optional, existing take-profit order ID to modify
+	StopLossId        int64             // optional, existing stop-loss order ID to modify
+	CancelAllAttached bool              // optional, cancel all attached orders
+	MainId            int64             // optional, main order ID
+	Quantity          decimal.Decimal   // optional, attached order quantity
+	MarketPrice       decimal.Decimal   // optional
+	ActivateOrderType OrderType         // optional, order type to submit after trigger
+	// ProfitTakerSubmitPrice is required when ActivateOrderType is LIT.
+	ProfitTakerSubmitPrice decimal.Decimal
+	// StopLossSubmitPrice is required when ActivateOrderType is LIT.
+	StopLossSubmitPrice decimal.Decimal
+	ActivateRTH         OutsideRTH // optional, RTH setting for the activated order
 }
 
 type GetEstimateMaxPurchaseQuantity struct {

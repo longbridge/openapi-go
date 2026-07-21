@@ -107,6 +107,8 @@ func (r *GetTodayOrders) Values() url.Values {
 	p.Add("symbol", string(r.Symbol))
 	p.Add("side", string(r.Side))
 	p.Add("market", string(r.Market))
+	p.Add("order_id", r.OrderId)
+	p.AddOptBool("is_attached", r.IsAttached)
 	vals := p.Values()
 	for _, s := range r.Status {
 		vals.Add("status", string(s))
