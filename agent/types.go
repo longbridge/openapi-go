@@ -234,6 +234,8 @@ type continueBody struct {
 //		fmt.Print(e.Text)
 //	case *agent.WorkflowFinishedEvent:
 //		result = e.ConversationResponse
+//	case *agent.HumanInteractionRequiredEvent:
+//		interrupt = e.Interrupt
 //	}
 type ConversationStreamEvent interface {
 	conversationStreamEvent()
@@ -376,17 +378,29 @@ func (e *ChatFinishedEvent) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// WorkflowFinishedEvent reports that the run finished (succeeded,
-// interrupted, failed, or stopped), carrying the run's outcome. Not
-// necessarily the last event of the stream — the server may still emit a
-// few more housekeeping events (e.g. ChatTitleUpdatedEvent) before actually
-// closing the connection, so keep draining the stream until Next returns
-// false rather than stopping as soon as this is seen.
+// WorkflowFinishedEvent reports that the run finished (succeeded, failed, or
+// stopped), carrying the run's outcome. Not emitted when the run is
+// interrupted instead — see HumanInteractionRequiredEvent. Not necessarily
+// the last event of the stream — the server may still emit a few more
+// housekeeping events (e.g. ChatTitleUpdatedEvent) before actually closing
+// the connection, so keep draining the stream until Next returns false
+// rather than stopping as soon as this is seen.
 type WorkflowFinishedEvent struct {
 	*ConversationResponse
 }
 
 func (*WorkflowFinishedEvent) conversationStreamEvent() {}
+
+// HumanInteractionRequiredEvent reports that the run is paused, waiting for
+// more information from the caller — send answers via AgentContext.Continue
+// or AgentContext.ContinueStream to resume it. An interrupted run does not
+// emit WorkflowFinishedEvent; this event carries the interrupt details
+// instead, and the stream ends with ChatFinishedEvent right after it.
+type HumanInteractionRequiredEvent struct {
+	*Interrupt
+}
+
+func (*HumanInteractionRequiredEvent) conversationStreamEvent() {}
 
 // ChatTitleUpdatedEvent reports the server auto-generating a short title for
 // the conversation, as a UI convenience. Can arrive before or after

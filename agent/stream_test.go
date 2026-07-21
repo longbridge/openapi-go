@@ -25,6 +25,10 @@ const (
 	chatFinishedFrame     = `{"event":"chat_finished","workflow_run_id":"wr_1","data":{"chat_id":834552,"chat_uid":"ct_9f2c1a5b","error":"","error_message":"","message_id":42}}`
 	workflowFinishedFrame = `{"event":"workflow_finished","workflow_run_id":"wr_1","data":{"status":"succeeded","elapsed_time":3.21,"outputs":{"answer":"Tesla (TSLA.US) recently..."}}}`
 	chatTitleUpdatedFrame = `{"event":"chat_title_updated","workflow_run_id":"wr_1","data":{"chat_id":834552,"chat_uid":"ct_9f2c1a5b","source":"ai_generated","title":"Tesla stock performance","updated_at":1784546957}}`
+
+	// From https://open.longbridge.com/en/docs/ai/chat/events: the interrupt
+	// event fired mid-run instead of workflow_finished.
+	humanInteractionRequiredFrame = `{"event":"human_interaction_required","workflow_run_id":"wr_1","data":{"node_id":"n_ask_human","tool_call_id":"call_abc123","questions":[{"question":"Which time range would you like to check?","options":[{"description":"Past week"},{"description":"Past month"}],"multi_select":false}],"message_id":43,"chat_id":1001}}`
 )
 
 func newTestStream(frames ...string) *ConversationStream {
@@ -134,6 +138,66 @@ func TestConversationStreamFullSequence(t *testing.T) {
 	}
 	if chatTitleUpdated.ChatUID != "ct_9f2c1a5b" || chatTitleUpdated.Source != "ai_generated" || chatTitleUpdated.Title != "Tesla stock performance" {
 		t.Errorf("unexpected ChatTitleUpdatedEvent: %+v", chatTitleUpdated)
+	}
+
+	if stream.Next() {
+		t.Fatalf("expected stream to end, got event %T", stream.Event())
+	}
+	if err := stream.Err(); err != nil {
+		t.Errorf("unexpected error at end of stream: %v", err)
+	}
+}
+
+func TestConversationStreamInterruptedSequence(t *testing.T) {
+	// Per the docs, an interrupted run emits human_interaction_required and
+	// then chat_finished directly — no workflow_finished in between.
+	stream := newTestStream(
+		sseFrame(chatStartedFrame),
+		sseFrame(workflowStartedFrame),
+		sseFrame(humanInteractionRequiredFrame),
+		sseFrame(chatFinishedFrame),
+	)
+	defer stream.Close()
+
+	if !stream.Next() {
+		t.Fatalf("expected chat_started event, got err: %v", stream.Err())
+	}
+	if _, ok := stream.Event().(*ChatStartedEvent); !ok {
+		t.Fatalf("expected *ChatStartedEvent, got %T", stream.Event())
+	}
+
+	if !stream.Next() {
+		t.Fatalf("expected workflow_started event, got err: %v", stream.Err())
+	}
+	if _, ok := stream.Event().(*WorkflowStartedEvent); !ok {
+		t.Fatalf("expected *WorkflowStartedEvent, got %T", stream.Event())
+	}
+
+	if !stream.Next() {
+		t.Fatalf("expected human_interaction_required event, got err: %v", stream.Err())
+	}
+	interrupted, ok := stream.Event().(*HumanInteractionRequiredEvent)
+	if !ok {
+		t.Fatalf("expected *HumanInteractionRequiredEvent, got %T", stream.Event())
+	}
+	if interrupted.NodeID != "n_ask_human" || interrupted.ToolCallID != "call_abc123" {
+		t.Errorf("unexpected HumanInteractionRequiredEvent: %+v", interrupted.Interrupt)
+	}
+	if interrupted.MessageID != 43 || interrupted.ChatID != 1001 {
+		t.Errorf("unexpected MessageID/ChatID: %+v", interrupted.Interrupt)
+	}
+	if len(interrupted.Questions) != 1 || interrupted.Questions[0].Question != "Which time range would you like to check?" {
+		t.Fatalf("unexpected Questions: %+v", interrupted.Questions)
+	}
+	if len(interrupted.Questions[0].Options) != 2 || interrupted.Questions[0].MultiSelect {
+		t.Errorf("unexpected Questions[0]: %+v", interrupted.Questions[0])
+	}
+
+	if !stream.Next() {
+		t.Fatalf("expected chat_finished event, got err: %v", stream.Err())
+	}
+	if _, ok := stream.Event().(*ChatFinishedEvent); !ok {
+		t.Fatalf("expected *ChatFinishedEvent, got %T", stream.Event())
 	}
 
 	if stream.Next() {

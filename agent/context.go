@@ -167,6 +167,11 @@ func (c *AgentContext) Continue(ctx context.Context, agentID, chatUID, messageID
 // rather than stopping as soon as you see it. The caller must Close the
 // returned stream once done with it.
 //
+// An interrupted run does not emit a *WorkflowFinishedEvent at all: it emits
+// a *HumanInteractionRequiredEvent instead, followed directly by
+// *ChatFinishedEvent — send answers via ContinueStream (or Continue) using
+// its Interrupt details to resume.
+//
 // chatUID identifies an existing conversation to continue asking in; pass an
 // empty string to start a new one.
 //

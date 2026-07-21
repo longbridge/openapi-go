@@ -36,6 +36,8 @@ type conversationStarted struct {
 //			fmt.Print(e.Text)
 //		case *agent.WorkflowFinishedEvent:
 //			result = e.ConversationResponse
+//		case *agent.HumanInteractionRequiredEvent:
+//			interrupt = e.Interrupt
 //		}
 //	}
 //	if err := stream.Err(); err != nil {
@@ -188,6 +190,13 @@ func (s *ConversationStream) decodeEvent(payload string) (ConversationStreamEven
 			return nil, err
 		}
 		return &e, nil
+
+	case "human_interaction_required":
+		var e Interrupt
+		if err := json.Unmarshal(env.Data, &e); err != nil {
+			return nil, err
+		}
+		return &HumanInteractionRequiredEvent{Interrupt: &e}, nil
 
 	case "workflow_finished":
 		var payload workflowFinishedPayload
