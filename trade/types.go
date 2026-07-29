@@ -24,6 +24,7 @@ type (
 	DeductionStatus      string
 	ChargeCategoryCode   string
 	Currency             string
+	AttachedOrderType    string // Attached order type (take-profit / stop-loss / bracket)
 )
 
 const (
@@ -90,8 +91,8 @@ const (
 
 	// Order tag
 	OrderTagNormal   OrderTag = "Normal" // Normal Order
-	OrderTagLongTerm OrderTag = "Gtc"   // Long term Order
-	OrderTagGrey     OrderTag = "Grey"  // Grey Order
+	OrderTagLongTerm OrderTag = "Gtc"    // Long term Order
+	OrderTagGrey     OrderTag = "Grey"   // Grey Order
 
 	// Trigger status
 	TriggerStatusDeactive TriggerStatus = "DEACTIVE"
@@ -124,6 +125,11 @@ const (
 	CurrencyUSD     Currency = "USD"
 	CurrencyCNH     Currency = "CNH"
 	CurrencyDefault Currency = ""
+
+	// Attached order type
+	AttachedOrderTypeProfitTaker AttachedOrderType = "PROFIT_TAKER" // Take profit
+	AttachedOrderTypeStopLoss    AttachedOrderType = "STOP_LOSS"    // Stop loss
+	AttachedOrderTypeBracket     AttachedOrderType = "BRACKET"      // Bracket order (profit-taker + stop-loss)
 )
 
 // Execution is execution details
@@ -181,6 +187,32 @@ type Order struct {
 	Currency         string
 	OutsideRth       OutsideRTH
 	Remark           string
+	AttachedOrders   []AttachedOrderDetail
+}
+
+// AttachedOrderDetail is an attached (take-profit / stop-loss) sub-order of a bracket order.
+type AttachedOrderDetail struct {
+	OrderId             string
+	AttachedTypeDisplay AttachedOrderType // Actual type of this sub-order: ProfitTaker or StopLoss
+	TriggerPrice        *decimal.Decimal
+	Quantity            decimal.Decimal
+	ExecutedQty         decimal.Decimal
+	Status              OrderStatus
+	UpdatedAt           string // raw unix-second string
+	Withdrawn           bool
+	Gtd                 string // GTD expiry date, format YYYY-MM-DD
+	TimeInForce         TimeType
+	CounterId           string
+	TriggerStatus       TriggerStatus
+	ExecutedAmount      decimal.Decimal
+	Tag                 OrderTag
+	SubmittedAt         string // raw unix-second string
+	ExecutedPrice       *decimal.Decimal
+	ForceOnlyRTH        OutsideRTH
+	Reviewed            bool
+	ActivateOrderType   OrderType // Order type to submit after trigger
+	ActivateRTH         OutsideRTH
+	SubmitPrice         *decimal.Decimal // Submit (limit) price for the activated order
 }
 
 type OrderChargeItem struct {
@@ -250,7 +282,9 @@ type OrderDetail struct {
 	PlatformDeductedAmount   *decimal.Decimal
 	PlatformDeductedCurrency string
 	History                  OrderHistoryDetail
-	ChargeDetail             OrderChargeDetail
+	// ChargeDetail is nil for attached (take-profit / stop-loss) sub-orders.
+	ChargeDetail   *OrderChargeDetail
+	AttachedOrders []AttachedOrderDetail
 }
 
 // AccountBalances has a AccountBalance list
