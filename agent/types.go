@@ -214,8 +214,9 @@ func (r *ConversationResponse) UnmarshalJSON(data []byte) error {
 // conversationBody is the request body of AgentContext.Conversation and
 // AgentContext.ConversationStream.
 type conversationBody struct {
-	Query   string `json:"query"`
-	ChatUID string `json:"chat_uid,omitempty"`
+	Query           string `json:"query"`
+	ChatUID         string `json:"chat_uid,omitempty"`
+	ParentMessageID string `json:"parent_message_id,omitempty"`
 }
 
 // continueBody is the request body of AgentContext.Continue and

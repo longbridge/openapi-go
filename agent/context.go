@@ -31,7 +31,7 @@ const listTimeout = httplib.DefaultTimeout
 //
 //	conf, err := config.NewFromEnv()
 //	actx, err := agent.NewFromCfg(conf)
-//	resp, err := actx.Conversation(context.Background(), "ag_7d3f9b2c", "How has Tesla stock performed recently?", "")
+//	resp, err := actx.Conversation(context.Background(), "ag_7d3f9b2c", "How has Tesla stock performed recently?", "", "")
 type AgentContext struct {
 	httpClient *httplib.Client
 }
@@ -115,15 +115,21 @@ func (c *AgentContext) Agents(ctx context.Context, workspaceID string, opts *Get
 // chatUID identifies an existing conversation to continue asking in; pass an
 // empty string to start a new one.
 //
+// parentMessageID attaches this message after a specific earlier message in
+// an existing conversation, keeping the message stream in order; take it from
+// the MessageID of a previous response. It is only valid together with a
+// non-empty chatUID, the parent message must belong to that conversation, and
+// it must be left empty when starting a new conversation.
+//
 // The Agent generates the answer using capabilities such as market data and
 // account access. When the Agent needs more information or confirmation
 // from you, the run is interrupted (Status is ConversationStatusInterrupted)
 // — send your answers via Continue to resume it.
 //
 // Path: POST /v1/ai/agents/{id}/conversations
-func (c *AgentContext) Conversation(ctx context.Context, agentID, query, chatUID string) (*ConversationResponse, error) {
+func (c *AgentContext) Conversation(ctx context.Context, agentID, query, chatUID, parentMessageID string) (*ConversationResponse, error) {
 	path := "/v1/ai/agents/" + url.PathEscape(agentID) + "/conversations"
-	body := conversationBody{Query: query, ChatUID: chatUID}
+	body := conversationBody{Query: query, ChatUID: chatUID, ParentMessageID: parentMessageID}
 	var resp ConversationResponse
 	if err := c.httpClient.Post(ctx, path, body, &resp, httplib.WithRequestTimeout(requestTimeout)); err != nil {
 		return nil, err
@@ -175,10 +181,13 @@ func (c *AgentContext) Continue(ctx context.Context, agentID, chatUID, messageID
 // chatUID identifies an existing conversation to continue asking in; pass an
 // empty string to start a new one.
 //
+// parentMessageID attaches this message after a specific earlier message in
+// an existing conversation; see Conversation for its constraints.
+//
 // Path: POST /v1/ai/agents/{id}/conversations (Accept: text/event-stream)
-func (c *AgentContext) ConversationStream(ctx context.Context, agentID, query, chatUID string) (*ConversationStream, error) {
+func (c *AgentContext) ConversationStream(ctx context.Context, agentID, query, chatUID, parentMessageID string) (*ConversationStream, error) {
 	path := "/v1/ai/agents/" + url.PathEscape(agentID) + "/conversations"
-	body := conversationBody{Query: query, ChatUID: chatUID}
+	body := conversationBody{Query: query, ChatUID: chatUID, ParentMessageID: parentMessageID}
 	rc, err := c.httpClient.CallSSE(ctx, "POST", path, body)
 	if err != nil {
 		return nil, err

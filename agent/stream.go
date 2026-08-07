@@ -25,7 +25,7 @@ type conversationStarted struct {
 //
 // Usage:
 //
-//	stream, err := actx.ConversationStream(ctx, agentID, query, "")
+//	stream, err := actx.ConversationStream(ctx, agentID, query, "", "")
 //	if err != nil {
 //		// handle err
 //	}
