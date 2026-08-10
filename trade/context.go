@@ -375,6 +375,142 @@ func (c *TradeContext) EstimateMaxPurchaseQuantity(ctx context.Context, params *
 	return
 }
 
+// SubmitGridOrder submits a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/submit
+func (c *TradeContext) SubmitGridOrder(ctx context.Context, params *SubmitGridOrder) (orderId string, err error) {
+	var rule jsontypes.GridTradeRule
+	if err = util.Copy(&rule, params.GridTradingRule); err != nil {
+		return
+	}
+	body := jsontypes.SubmitGridOrder{
+		Symbol:             params.Symbol,
+		SettlementCurrency: params.SettlementCurrency,
+		GridTradingRule:    rule,
+	}
+	resp := &jsontypes.SubmitGridOrderResponse{}
+	err = c.opts.httpClient.Post(ctx, "/v1/gridtrading/submit", body, resp)
+	if err != nil {
+		return
+	}
+	return resp.OrderId, nil
+}
+
+// ReplaceGridOrder replaces (modifies) a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/replace
+func (c *TradeContext) ReplaceGridOrder(ctx context.Context, params *ReplaceGridOrder) (err error) {
+	var rule jsontypes.GridTradeRule
+	if err = util.Copy(&rule, params.GridTradingRule); err != nil {
+		return
+	}
+	body := jsontypes.ReplaceGridOrder{
+		OrderId:         params.OrderId,
+		GridTradingRule: rule,
+	}
+	return c.opts.httpClient.Post(ctx, "/v1/gridtrading/replace", body, nil)
+}
+
+// GridOrders returns a paged list of grid trading orders.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/list
+func (c *TradeContext) GridOrders(ctx context.Context, params *GetGridOrders) (orders *GridOrders, err error) {
+	resp := &jsontypes.GridOrders{}
+	err = c.opts.httpClient.Get(ctx, "/v1/gridtrading/list", params.Values(), resp)
+	if err != nil {
+		return
+	}
+	orders = &GridOrders{HasMore: resp.HasMore}
+	err = util.Copy(&orders.GridOrder, resp.GridOrder)
+	return
+}
+
+// GridOrdersByIds queries grid trading orders by their IDs.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/list
+func (c *TradeContext) GridOrdersByIds(ctx context.Context, orderIds []string) (orders []*GridOrder, err error) {
+	body := jsontypes.GridOrderIdsBody{OrderIds: orderIds}
+	resp := &jsontypes.GridOrders{}
+	err = c.opts.httpClient.Post(ctx, "/v1/gridtrading/list", body, resp)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&orders, resp.GridOrder)
+	return
+}
+
+// GridOrderDetail returns the detail (and paged history) of a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/detail
+func (c *TradeContext) GridOrderDetail(ctx context.Context, params *GetGridOrderDetail) (detail *GridOrderDetail, err error) {
+	resp := &jsontypes.GridOrderDetail{}
+	err = c.opts.httpClient.Get(ctx, "/v1/gridtrading/detail", params.Values(), resp)
+	if err != nil {
+		return
+	}
+	detail = &GridOrderDetail{}
+	err = util.Copy(detail, resp)
+	return
+}
+
+// GridTriggerHistory returns the trigger history of a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/trigger_history
+func (c *TradeContext) GridTriggerHistory(ctx context.Context, params *GetGridTriggerHistory) (history *GridTriggerHistory, err error) {
+	resp := &jsontypes.GridTriggerHistory{}
+	err = c.opts.httpClient.Get(ctx, "/v1/gridtrading/trigger_history_list", params.Values(), resp)
+	if err != nil {
+		return
+	}
+	history = &GridTriggerHistory{HasMore: resp.HasMore}
+	err = util.Copy(&history.TriggerOrders, resp.TriggerOrders)
+	return
+}
+
+// CancelGridOrder cancels a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/cancel
+func (c *TradeContext) CancelGridOrder(ctx context.Context, orderId string) (err error) {
+	return c.gridAction(ctx, "/v1/gridtrading/cancel", orderId)
+}
+
+// SuspendGridOrder suspends a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/suspend
+func (c *TradeContext) SuspendGridOrder(ctx context.Context, orderId string) (err error) {
+	return c.gridAction(ctx, "/v1/gridtrading/suspend", orderId)
+}
+
+// RestartGridOrder restarts a grid trading order.
+// Reference: https://open.longbridge.com/en/docs/trade/gridtrading/restart
+func (c *TradeContext) RestartGridOrder(ctx context.Context, orderId string) (err error) {
+	return c.gridAction(ctx, "/v1/gridtrading/restart", orderId)
+}
+
+// gridAction is the shared body for the cancel / suspend / restart grid actions.
+func (c *TradeContext) gridAction(ctx context.Context, path string, orderId string) (err error) {
+	body := jsontypes.GridOrderIdBody{OrderId: orderId}
+	return c.opts.httpClient.Post(ctx, path, body, nil)
+}
+
+// SubmitStrategyQuestionnaire records the user's consent to the strategy
+// risk disclosure required before using grid trading. The body sent is
+// {"type": "strategy", "items": {"agree": "true"}}.
+func (c *TradeContext) SubmitStrategyQuestionnaire(ctx context.Context) (err error) {
+	body := jsontypes.SubmitStrategyQuestionnaire{
+		Type:  "strategy",
+		Items: map[string]string{"agree": "true"},
+	}
+	return c.opts.httpClient.Post(ctx, "/v1/record/questionnaire", body, nil)
+}
+
+// GridOrderInfo returns order info used by the grid order window (lot size,
+// authorization flag, settlement currency, etc.).
+func (c *TradeContext) GridOrderInfo(ctx context.Context, symbol string) (info *GridOrderInfo, err error) {
+	values := url.Values{}
+	values.Add("symbol", symbol)
+	resp := &jsontypes.GridOrderInfo{}
+	err = c.opts.httpClient.Get(ctx, "/v1/orders/info", values, resp)
+	if err != nil {
+		return
+	}
+	info = &GridOrderInfo{}
+	err = util.Copy(info, resp)
+	return
+}
+
 // Close
 func (c *TradeContext) Close() error {
 	if c.core == nil {
