@@ -23,7 +23,7 @@ const (
 	messageFrame          = `{"event":"message","workflow_run_id":"wr_1","data":{"text":"Tesla"}}`
 	pingFrame             = `{"event":"ping","workflow_run_id":"wr_1","data":null}`
 	chatFinishedFrame     = `{"event":"chat_finished","workflow_run_id":"wr_1","data":{"chat_id":834552,"chat_uid":"ct_9f2c1a5b","error":"","error_message":"","message_id":42}}`
-	workflowFinishedFrame = `{"event":"workflow_finished","workflow_run_id":"wr_1","data":{"status":"succeeded","elapsed_time":3.21,"outputs":{"answer":"Tesla (TSLA.US) recently..."}}}`
+	workflowFinishedFrame = `{"event":"workflow_finished","workflow_run_id":"wr_1","data":{"status":"succeeded","elapsed_time":3.21,"outputs":{"answer":"Tesla (TSLA.US) recently...","further_questions":["What is Tesla's P/E?","How did Q3 deliveries look?"]}}}`
 	chatTitleUpdatedFrame = `{"event":"chat_title_updated","workflow_run_id":"wr_1","data":{"chat_id":834552,"chat_uid":"ct_9f2c1a5b","source":"ai_generated","title":"Tesla stock performance","updated_at":1784546957}}`
 
 	// From https://open.longbridge.com/en/docs/ai/chat/events: the interrupt
@@ -126,6 +126,9 @@ func TestConversationStreamFullSequence(t *testing.T) {
 	}
 	if workflowFinished.Answer != "Tesla (TSLA.US) recently..." {
 		t.Errorf("Answer = %q", workflowFinished.Answer)
+	}
+	if len(workflowFinished.FurtherQuestions) != 2 || workflowFinished.FurtherQuestions[0] != "What is Tesla's P/E?" {
+		t.Errorf("FurtherQuestions = %+v", workflowFinished.FurtherQuestions)
 	}
 
 	// Arrives *after* workflow_finished in this (real, observed) ordering.

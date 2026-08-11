@@ -208,12 +208,13 @@ func (s *ConversationStream) decodeEvent(payload string) (ConversationStreamEven
 			answer = *payload.Outputs.Answer
 		}
 		resp := &ConversationResponse{
-			Status:      payload.Status,
-			Answer:      answer,
-			References:  payload.Outputs.References,
-			ElapsedTime: payload.ElapsedTime,
-			Interrupt:   payload.Outputs.Interrupt,
-			Error:       payload.Outputs.Error,
+			Status:           payload.Status,
+			Answer:           answer,
+			References:       payload.Outputs.References,
+			FurtherQuestions: payload.Outputs.FurtherQuestions,
+			ElapsedTime:      payload.ElapsedTime,
+			Interrupt:        payload.Outputs.Interrupt,
+			Error:            payload.Outputs.Error,
 		}
 		if s.started != nil {
 			resp.ChatUID = s.started.ChatUID

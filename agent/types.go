@@ -170,6 +170,9 @@ type ConversationResponse struct {
 	Answer string `json:"answer"`
 	// References are sources referenced by the answer; nil if none.
 	References []Reference `json:"references"`
+	// FurtherQuestions are suggested follow-up questions ("you might also
+	// ask"); nil if none.
+	FurtherQuestions []string `json:"further_questions"`
 	// ElapsedTime is the run duration in seconds.
 	ElapsedTime float64 `json:"elapsed_time"`
 	// Interrupt is present only when Status is ConversationStatusInterrupted.
@@ -184,14 +187,15 @@ type ConversationResponse struct {
 // it the numeric form seen in some SSE payloads (see ChatStartedEvent).
 func (r *ConversationResponse) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		ChatUID     string             `json:"chat_uid"`
-		MessageID   json.RawMessage    `json:"message_id"`
-		Status      ConversationStatus `json:"status"`
-		Answer      string             `json:"answer"`
-		References  []Reference        `json:"references"`
-		ElapsedTime float64            `json:"elapsed_time"`
-		Interrupt   *Interrupt         `json:"interrupt"`
-		Error       *ConversationError `json:"error"`
+		ChatUID          string             `json:"chat_uid"`
+		MessageID        json.RawMessage    `json:"message_id"`
+		Status           ConversationStatus `json:"status"`
+		Answer           string             `json:"answer"`
+		References       []Reference        `json:"references"`
+		FurtherQuestions []string           `json:"further_questions"`
+		ElapsedTime      float64            `json:"elapsed_time"`
+		Interrupt        *Interrupt         `json:"interrupt"`
+		Error            *ConversationError `json:"error"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -205,6 +209,7 @@ func (r *ConversationResponse) UnmarshalJSON(data []byte) error {
 	r.Status = raw.Status
 	r.Answer = raw.Answer
 	r.References = raw.References
+	r.FurtherQuestions = raw.FurtherQuestions
 	r.ElapsedTime = raw.ElapsedTime
 	r.Interrupt = raw.Interrupt
 	r.Error = raw.Error
@@ -440,6 +445,9 @@ type workflowOutputs struct {
 	Answer *string `json:"answer"`
 	// References are sources referenced by the answer.
 	References []Reference `json:"references"`
+	// FurtherQuestions are suggested follow-up questions ("you might also
+	// ask").
+	FurtherQuestions []string `json:"further_questions"`
 	// Interrupt is present only when the status is "interrupted".
 	Interrupt *Interrupt `json:"interrupt"`
 	// Error is present only when the run failed.
