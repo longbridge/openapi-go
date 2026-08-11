@@ -15,6 +15,10 @@ const succeededJSON = `{
 	"references": [
 		{ "index": 1, "title": "...", "url": "..." }
 	],
+	"further_questions": [
+		"What is Tesla's P/E?",
+		"How did Q3 deliveries look?"
+	],
 	"elapsed_time": 3.21
 }`
 
@@ -63,6 +67,9 @@ func TestUnmarshalSucceededConversationResponse(t *testing.T) {
 	}
 	if len(resp.References) != 1 || resp.References[0].Index != 1 {
 		t.Errorf("References = %+v", resp.References)
+	}
+	if len(resp.FurtherQuestions) != 2 || resp.FurtherQuestions[0] != "What is Tesla's P/E?" {
+		t.Errorf("FurtherQuestions = %+v", resp.FurtherQuestions)
 	}
 	if resp.ElapsedTime != 3.21 {
 		t.Errorf("ElapsedTime = %v", resp.ElapsedTime)
