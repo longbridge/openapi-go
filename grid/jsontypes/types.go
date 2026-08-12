@@ -236,13 +236,14 @@ type GridChannelInfo struct {
 	SettlementCurrency []string `json:"settlement_currency"`
 }
 
-// GridOrderInfo is the /v1/orders/info response used by the grid order window.
-type GridOrderInfo struct {
-	Name         string          `json:"name"`
-	LastDone     string          `json:"last_done"`
-	LotSize      string          `json:"lot_size"`
-	BuyLotSize   string          `json:"buy_lot_size"`
-	SellLotSize  string          `json:"sell_lot_size"`
-	BidSizes     []*GridBidSize  `json:"bid_sizes"`
-	ChannelInfos GridChannelInfo `json:"channel_infos"`
+// GridSymbolInfo is the /v1/orders/info response — the security (symbol) info
+// used to build a grid order.
+type GridSymbolInfo struct {
+	Name        string          `json:"name"`
+	LastDone    string          `json:"last_done"`
+	LotSize     string          `json:"lot_size"`
+	BuyLotSize  string          `json:"buy_lot_size"`
+	SellLotSize string          `json:"sell_lot_size"`
+	BidSizes    []*GridBidSize  `json:"bid_sizes"`
+	ChannelInfo GridChannelInfo `json:"channel_infos"`
 }

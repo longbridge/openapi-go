@@ -174,13 +174,14 @@ type GridChannelInfo struct {
 	SettlementCurrency []string
 }
 
-// GridOrderInfo is the /v1/orders/info response used by the grid order window.
-type GridOrderInfo struct {
-	Name         string
-	LastDone     *decimal.Decimal
-	LotSize      *decimal.Decimal
-	BuyLotSize   *decimal.Decimal
-	SellLotSize  *decimal.Decimal
-	BidSizes     []*GridBidSize
-	ChannelInfos GridChannelInfo
+// GridSymbolInfo is the /v1/orders/info response — the security (symbol) info
+// used to build a grid order.
+type GridSymbolInfo struct {
+	Name        string
+	LastDone    *decimal.Decimal
+	LotSize     *decimal.Decimal
+	BuyLotSize  *decimal.Decimal
+	SellLotSize *decimal.Decimal
+	BidSizes    []*GridBidSize
+	ChannelInfo GridChannelInfo
 }

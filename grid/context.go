@@ -166,17 +166,17 @@ func (c *GridContext) SubmitStrategyQuestionnaire(ctx context.Context) (err erro
 	return c.httpClient.Post(ctx, "/v1/record/questionnaire", body, nil)
 }
 
-// OrderInfo returns order info used by the grid order window (lot size,
-// authorization flag, settlement currency, etc.).
-func (c *GridContext) OrderInfo(ctx context.Context, symbol string) (info *GridOrderInfo, err error) {
+// SymbolInfo returns the security (symbol) info used to build a grid order
+// (lot size, authorization flag, settlement currency, etc.).
+func (c *GridContext) SymbolInfo(ctx context.Context, symbol string) (info *GridSymbolInfo, err error) {
 	values := url.Values{}
 	values.Add("symbol", symbol)
-	resp := &jsontypes.GridOrderInfo{}
+	resp := &jsontypes.GridSymbolInfo{}
 	err = c.httpClient.Get(ctx, "/v1/orders/info", values, resp)
 	if err != nil {
 		return
 	}
-	info = &GridOrderInfo{}
+	info = &GridSymbolInfo{}
 	err = util.Copy(info, resp)
 	return
 }
