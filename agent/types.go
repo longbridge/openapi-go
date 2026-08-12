@@ -98,10 +98,21 @@ const (
 type Reference struct {
 	// Index is the reference index.
 	Index int32 `json:"index"`
-	// Title is the reference title.
+	// OriginalIndex is the index in the source list before any reranking.
+	OriginalIndex int32 `json:"original_index"`
+	// RefType is the reference kind, e.g. "NewsArticle".
+	RefType string `json:"type"`
+	// ID is the reference id.
+	ID string `json:"id"`
+	// Title is the reference title. Often empty at the top level — the
+	// human-readable title usually lives in Content.
 	Title string `json:"title"`
-	// URL is the reference URL.
+	// URL is the reference URL. Often empty at the top level — see Content.
 	URL string `json:"url"`
+	// Content is the full reference payload as sent by the server (source,
+	// description, published_at, source_url, source_logo, kind, …), kept as
+	// raw JSON because the field set varies by RefType. nil if absent.
+	Content json.RawMessage `json:"content"`
 }
 
 // QuestionOption is one option of a Question.
@@ -253,6 +264,12 @@ type ChatStartedEvent struct {
 	ChatUID string `json:"chat_uid"`
 	// MessageID is the message ID of this round.
 	MessageID string `json:"message_id"`
+	// ChatID is the ID of the owning conversation.
+	ChatID int64 `json:"chat_id"`
+	// Error is the error detail; empty at start.
+	Error string `json:"error"`
+	// ErrorMessage is the user-facing error message; empty at start.
+	ErrorMessage string `json:"error_message"`
 }
 
 func (*ChatStartedEvent) conversationStreamEvent() {}
@@ -262,8 +279,11 @@ func (*ChatStartedEvent) conversationStreamEvent() {}
 // blocking response's top-level message_id, which is a quoted string.
 func (e *ChatStartedEvent) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		ChatUID   string          `json:"chat_uid"`
-		MessageID json.RawMessage `json:"message_id"`
+		ChatUID      string          `json:"chat_uid"`
+		MessageID    json.RawMessage `json:"message_id"`
+		ChatID       int64           `json:"chat_id"`
+		Error        string          `json:"error"`
+		ErrorMessage string          `json:"error_message"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -274,6 +294,9 @@ func (e *ChatStartedEvent) UnmarshalJSON(data []byte) error {
 	}
 	e.ChatUID = raw.ChatUID
 	e.MessageID = messageID
+	e.ChatID = raw.ChatID
+	e.Error = raw.Error
+	e.ErrorMessage = raw.ErrorMessage
 	return nil
 }
 

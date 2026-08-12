@@ -121,6 +121,37 @@ func TestUnmarshalInterruptedConversationResponse(t *testing.T) {
 	}
 }
 
+func TestUnmarshalReferenceWithContent(t *testing.T) {
+	// The real wire reference nests human-readable fields under `content`
+	// and carries type/id/original_index; only `index` overlaps the old shape.
+	const j = `{"type":"NewsArticle","id":"295354885","index":1,"original_index":10,"content":{"source":"Zhitong","published_at":"2026-08-10T03:45:02Z"}}`
+	var r Reference
+	if err := json.Unmarshal([]byte(j), &r); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if r.Index != 1 || r.OriginalIndex != 10 || r.RefType != "NewsArticle" || r.ID != "295354885" {
+		t.Errorf("Reference = %+v", r)
+	}
+	var content map[string]any
+	if err := json.Unmarshal(r.Content, &content); err != nil {
+		t.Fatalf("content unmarshal error: %v", err)
+	}
+	if content["source"] != "Zhitong" {
+		t.Errorf("content.source = %v", content["source"])
+	}
+}
+
+func TestUnmarshalChatStartedEventFields(t *testing.T) {
+	const j = `{"chat_uid":"ct_1","message_id":42,"chat_id":1001,"error":"","error_message":""}`
+	var e ChatStartedEvent
+	if err := json.Unmarshal([]byte(j), &e); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if e.ChatUID != "ct_1" || e.MessageID != "42" || e.ChatID != 1001 {
+		t.Errorf("ChatStartedEvent = %+v", e)
+	}
+}
+
 func TestUnmarshalWorkspacesResponse(t *testing.T) {
 	const j = `{
 		"workspaces": [
