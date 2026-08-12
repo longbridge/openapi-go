@@ -30,7 +30,7 @@ type GridOrder struct {
 	PostTriggerBasePrice *decimal.Decimal
 	UpperLimitPrice      *decimal.Decimal
 	LowerLimitPrice      *decimal.Decimal
-	TriggerPriceType     int32 // 1 = spread, 2 = percent
+	TriggerPriceType     TriggerPriceType // Spread / Percent
 	TriggerSpreadUp      *decimal.Decimal
 	TriggerSpreadDown    *decimal.Decimal
 	TriggerPercentUp     *decimal.Decimal
@@ -48,15 +48,15 @@ type GridOrder struct {
 	TriggerBuyQuantity   *decimal.Decimal
 	UpperLimitQuantity   *decimal.Decimal
 	LowerLimitQuantity   *decimal.Decimal
-	UpperLimitEvent      int32
-	LowerLimitEvent      int32
+	UpperLimitEvent      GridLimitEvent
+	LowerLimitEvent      GridLimitEvent
 	MultipleTrigger      bool
 	TriggerTimes         int32
 	TotalBuyQuantity     *decimal.Decimal
 	TotalSellQuantity    *decimal.Decimal
 	TotalProfitBalance   *decimal.Decimal
 	SettlementCurrency   string
-	TimeInForce          int32 // 0 = Day, 1 = GTC, 6 = GTD
+	TimeInForce          GridTimeInForce // Day / GTC / GTD
 	Gtd                  string
 	CreatedAt            string
 	Rth                  int32
@@ -100,7 +100,7 @@ type GridOrderDetail struct {
 	CurrentBasePrice    *decimal.Decimal
 	UpperLimitPrice     *decimal.Decimal
 	LowerLimitPrice     *decimal.Decimal
-	TriggerPriceType    int32
+	TriggerPriceType    TriggerPriceType
 	TriggerSpreadUp     *decimal.Decimal
 	TriggerSpreadDown   *decimal.Decimal
 	TriggerPercentUp    *decimal.Decimal
@@ -110,14 +110,14 @@ type GridOrderDetail struct {
 	ReboundPercent      *decimal.Decimal
 	ReboundSpread       *decimal.Decimal
 	MultipleTrigger     bool
-	TimeInForce         int32
+	TimeInForce         GridTimeInForce
 	TriggerQuantity     *decimal.Decimal
 	TriggerSellQuantity *decimal.Decimal
 	TriggerBuyQuantity  *decimal.Decimal
 	UpperLimitQuantity  *decimal.Decimal
 	LowerLimitQuantity  *decimal.Decimal
-	UpperLimitEvent     int32
-	LowerLimitEvent     int32
+	UpperLimitEvent     GridLimitEvent
+	LowerLimitEvent     GridLimitEvent
 	TriggerSellDepth    int32
 	TriggerBuyDepth     int32
 	CreatedAt           string
@@ -153,7 +153,7 @@ type TriggerOrder struct {
 	Currency      string
 	LastDone      *decimal.Decimal
 	UpdatedAt     string
-	TimeInForce   int32
+	TimeInForce   GridTimeInForce
 	Gtd           string
 	TriggerAt     string
 	TriggerStatus int32
