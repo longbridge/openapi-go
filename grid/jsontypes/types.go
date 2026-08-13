@@ -5,7 +5,11 @@ package jsontypes
 
 // GridTradeRule is the grid trading rule request body used by submit / replace.
 // Prices and quantities are serialized as strings; enum-like fields are raw
-// integers. Optional string fields are omitted when empty.
+// integers. Field presence mirrors the Rust core SDK: the required minimum set
+// (prices, trigger type/spread/percent, quantities, time_in_force) is always
+// sent, while fields the caller leaves unset are omitted (omitempty). Note
+// `trigger_price_type` and `time_in_force` are always sent (Day == 0 is a valid
+// time_in_force), matching Rust's `Option` defaults.
 type GridTradeRule struct {
 	SubmittedBasePrice string `json:"submitted_base_price,omitempty"`
 	UpperLimitPrice    string `json:"upper_limit_price,omitempty"`
@@ -15,18 +19,18 @@ type GridTradeRule struct {
 	TriggerSpreadDown  string `json:"trigger_spread_down,omitempty"`
 	TriggerPercentUp   string `json:"trigger_percent_up,omitempty"`
 	TriggerPercentDown string `json:"trigger_percent_down,omitempty"`
-	MultipleTrigger    bool   `json:"multiple_trigger"`
+	MultipleTrigger    bool   `json:"multiple_trigger,omitempty"`
 	TimeInForce        int32  `json:"time_in_force"`
 	UpperLimitQuantity string `json:"upper_limit_quantity,omitempty"`
 	LowerLimitQuantity string `json:"lower_limit_quantity,omitempty"`
-	ExpireTime         int64  `json:"expire_time"`
-	UpperLimitEvent    int32  `json:"upper_limit_event"`
-	LowerLimitEvent    int32  `json:"lower_limit_event"`
-	TriggerSellDepth   int32  `json:"trigger_sell_depth"`
-	TriggerBuyDepth    int32  `json:"trigger_buy_depth"`
+	ExpireTime         int64  `json:"expire_time,omitempty"`
+	UpperLimitEvent    int32  `json:"upper_limit_event,omitempty"`
+	LowerLimitEvent    int32  `json:"lower_limit_event,omitempty"`
+	TriggerSellDepth   int32  `json:"trigger_sell_depth,omitempty"`
+	TriggerBuyDepth    int32  `json:"trigger_buy_depth,omitempty"`
 	TriggerQuantity    string `json:"trigger_quantity,omitempty"`
-	SupportShortsell   bool   `json:"support_shortsell"`
-	Rth                int32  `json:"rth"`
+	SupportShortsell   bool   `json:"support_shortsell,omitempty"`
+	Rth                int32  `json:"rth,omitempty"`
 	GridOrderTypeUp    string `json:"grid_order_type_up,omitempty"`
 	GridOrderTypeDown  string `json:"grid_order_type_down,omitempty"`
 }
@@ -221,14 +225,14 @@ type TriggerOrder struct {
 	TriggerStatus int32  `json:"trigger_status"`
 }
 
-// GridBidSize is a price-step (bid-size) rule entry from the order-info response.
+// GridBidSize is a price-step (bid-size) rule entry from the symbol-info response.
 type GridBidSize struct {
 	StrProceed string `json:"str_proceed"`
 	EndProceed string `json:"end_proceed"`
 	BidSize    string `json:"bid_size"`
 }
 
-// GridChannelInfo is the channel / authorization info nested in order-info.
+// GridChannelInfo is the channel / authorization info nested in symbol-info.
 type GridChannelInfo struct {
 	StrategyGranted    bool     `json:"strategy_granted"`
 	SupportRth         bool     `json:"support_rth"`
