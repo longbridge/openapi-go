@@ -33,32 +33,58 @@ type Orders struct {
 
 // Order is order details
 type Order struct {
-	OrderId          string `json:"order_id"`
-	Status           string `json:"status"`
-	StockName        string `json:"stock_name"`
-	Quantity         string `json:"quantity"`
-	ExecutedQuantity string `json:"executed_quantity"`
-	Price            string `json:"price"`
-	ExecutedPrice    string `json:"executed_price"`
-	SubmittedAt      string `json:"submmited_at"`
-	Side             string `json:"side"`
-	Symbol           string `json:"symbol"`
-	OrderType        string `json:"order_type"`
-	LastDone         string `json:"last_done"`
-	TriggerPrice     string `json:"trigger_price"`
-	Msg              string `json:"msg"`
-	Tag              string `json:"tag"`
-	TimeInForce      string `json:"time_in_force"`
-	ExpireDate       string `json:"expire_date"`
-	UpdatedAt        string `json:"updated_at"`
-	TriggerAt        string `json:"trigger_at"`
-	TrailingAmount   string `json:"trailing_amount"`
-	TrailingPercent  string `json:"trailing_percent"`
-	LimitOffset      string `json:"limit_offset"`
-	TriggerStatus    string `json:"trigger_status"`
-	Currency         string `json:"currency"`
-	OutsideRth       string `json:"outside_rth"`
-	Remark           string `json:"remark"`
+	OrderId          string                `json:"order_id"`
+	Status           string                `json:"status"`
+	StockName        string                `json:"stock_name"`
+	Quantity         string                `json:"quantity"`
+	ExecutedQuantity string                `json:"executed_quantity"`
+	Price            string                `json:"price"`
+	ExecutedPrice    string                `json:"executed_price"`
+	SubmittedAt      string                `json:"submmited_at"`
+	Side             string                `json:"side"`
+	Symbol           string                `json:"symbol"`
+	OrderType        string                `json:"order_type"`
+	LastDone         string                `json:"last_done"`
+	TriggerPrice     string                `json:"trigger_price"`
+	Msg              string                `json:"msg"`
+	Tag              string                `json:"tag"`
+	TimeInForce      string                `json:"time_in_force"`
+	ExpireDate       string                `json:"expire_date"`
+	UpdatedAt        string                `json:"updated_at"`
+	TriggerAt        string                `json:"trigger_at"`
+	TrailingAmount   string                `json:"trailing_amount"`
+	TrailingPercent  string                `json:"trailing_percent"`
+	LimitOffset      string                `json:"limit_offset"`
+	TriggerStatus    string                `json:"trigger_status"`
+	Currency         string                `json:"currency"`
+	OutsideRth       string                `json:"outside_rth"`
+	Remark           string                `json:"remark"`
+	AttachedOrders   []AttachedOrderDetail `json:"attached_orders"`
+}
+
+// AttachedOrderDetail is the raw wire type for an attached (take-profit / stop-loss) sub-order.
+type AttachedOrderDetail struct {
+	OrderId             string `json:"order_id"`
+	AttachedTypeDisplay string `json:"attached_type_display"`
+	TriggerPrice        string `json:"trigger_price"`
+	Quantity            string `json:"quantity"`
+	ExecutedQty         string `json:"executed_qty"`
+	Status              string `json:"status"`
+	UpdatedAt           string `json:"updated_at"`
+	Withdrawn           bool   `json:"withdrawn"`
+	Gtd                 string `json:"gtd"`
+	TimeInForce         string `json:"time_in_force"`
+	CounterId           string `json:"counter_id"`
+	TriggerStatus       string `json:"trigger_status"`
+	ExecutedAmount      string `json:"executed_amount"`
+	Tag                 string `json:"tag"`
+	SubmittedAt         string `json:"submitted_at"`
+	ExecutedPrice       string `json:"executed_price"`
+	ForceOnlyRth        string `json:"force_only_rth"`
+	Reviewed            bool   `json:"reviewed"`
+	ActivateOrderType   string `json:"activate_order_type"`
+	ActivateRth         string `json:"activate_rth"`
+	SubmitPrice         string `json:"submit_price"`
 }
 
 // AccountBalances has a AccountBalance list
@@ -187,30 +213,64 @@ type PushOrderChanged struct {
 }
 
 type ReplaceOrder struct {
-	OrderId         string `json:"order_id"`
-	Quantity        uint64 `json:"quantity,string"`
-	Price           string `json:"price"`
-	TriggerPrice    string `json:"trigger_price,omitempty"`
-	LimitOffset     string `json:"limit_offset,omitempty"`
-	TrailingAmount  string `json:"trailing_ammount,omitempty"`
-	TrailingPercent string `json:"trailing_percent,omitempty"`
-	Remark          string `json:"remark"`
+	OrderId         string                 `json:"order_id"`
+	Quantity        uint64                 `json:"quantity,string"`
+	Price           string                 `json:"price"`
+	TriggerPrice    string                 `json:"trigger_price,omitempty"`
+	LimitOffset     string                 `json:"limit_offset,omitempty"`
+	TrailingAmount  string                 `json:"trailing_ammount,omitempty"`
+	TrailingPercent string                 `json:"trailing_percent,omitempty"`
+	Remark          string                 `json:"remark"`
+	AttachedParams  *ReplaceAttachedParams `json:"attached_params,omitempty"`
 }
 
 type SubmitOrder struct {
-	Symbol            string `json:"symbol"`
-	OrderType         string `json:"order_type"`
-	Side              string `json:"side"`
-	SubmittedQuantity uint64 `json:"submitted_quantity,string"`
-	SubmittedPrice    string `json:"submitted_price,omitempty"`
-	TriggerPrice      string `json:"trigger_price,omitempty"`
-	LimitOffset       string `json:"limit_offset,omitempty"`
-	TrailingAmount    string `json:"trailing_amount,omitempty"`
-	TrailingPercent   string `json:"trailing_percent,omitempty"`
-	ExpireDate        string `json:"expire_date,omitempty"`
-	OutsideRTH        string `json:"outside_rth,omitempty"`
-	Remark            string `json:"remark,omitempty"`
-	TimeInForce       string `json:"time_in_force"`
+	Symbol            string                `json:"symbol"`
+	OrderType         string                `json:"order_type"`
+	Side              string                `json:"side"`
+	SubmittedQuantity uint64                `json:"submitted_quantity,string"`
+	SubmittedPrice    string                `json:"submitted_price,omitempty"`
+	TriggerPrice      string                `json:"trigger_price,omitempty"`
+	LimitOffset       string                `json:"limit_offset,omitempty"`
+	TrailingAmount    string                `json:"trailing_amount,omitempty"`
+	TrailingPercent   string                `json:"trailing_percent,omitempty"`
+	ExpireDate        string                `json:"expire_date,omitempty"`
+	OutsideRTH        string                `json:"outside_rth,omitempty"`
+	Remark            string                `json:"remark,omitempty"`
+	TimeInForce       string                `json:"time_in_force"`
+	AttachedParams    *SubmitAttachedParams `json:"attached_params,omitempty"`
+}
+
+// SubmitAttachedParams is the raw wire type for attached order (take-profit / stop-loss) parameters on submit.
+type SubmitAttachedParams struct {
+	AttachedOrderType      string `json:"attached_order_type"`
+	ProfitTakerPrice       string `json:"profit_taker_price,omitempty"`
+	StopLossPrice          string `json:"stop_loss_price,omitempty"`
+	TimeInForce            string `json:"time_in_force,omitempty"`
+	ExpireTime             int64  `json:"expire_time,omitempty"`
+	ActivateOrderType      string `json:"activate_order_type,omitempty"`
+	ProfitTakerSubmitPrice string `json:"profit_taker_submit_price,omitempty"`
+	StopLossSubmitPrice    string `json:"stop_loss_submit_price,omitempty"`
+	ActivateRTH            string `json:"activate_rth,omitempty"`
+}
+
+// ReplaceAttachedParams is the raw wire type for attached order (take-profit / stop-loss) parameters on replace.
+type ReplaceAttachedParams struct {
+	AttachedOrderType      string `json:"attached_order_type"`
+	ProfitTakerPrice       string `json:"profit_taker_price,omitempty"`
+	StopLossPrice          string `json:"stop_loss_price,omitempty"`
+	TimeInForce            string `json:"time_in_force,omitempty"`
+	ExpireTime             int64  `json:"expire_time,omitempty"`
+	ProfitTakerId          int64  `json:"profit_taker_id,omitempty"`
+	StopLossId             int64  `json:"stop_loss_id,omitempty"`
+	CancelAllAttached      bool   `json:"cancel_all_attached,omitempty"`
+	MainId                 int64  `json:"main_id,omitempty"`
+	Quantity               string `json:"quantity,omitempty"`
+	MarketPrice            string `json:"market_price,omitempty"`
+	ActivateOrderType      string `json:"activate_order_type,omitempty"`
+	ProfitTakerSubmitPrice string `json:"profit_taker_submit_price,omitempty"`
+	StopLossSubmitPrice    string `json:"stop_loss_submit_price,omitempty"`
+	ActivateRTH            string `json:"activate_rth,omitempty"`
 }
 
 type MarginRatio struct {
@@ -252,43 +312,44 @@ type OrderHistoryDetail struct {
 
 // OrderDetail is for get order detail response
 type OrderDetail struct {
-	OrderId                  string               `json:"order_id"`
-	Status                   string               `json:"status"`
-	StockName                string               `json:"stock_name"`
-	Quantity                 string               `json:"quantity"` // Submitted quantity
-	ExecutedQuantity         string               `json:"executed_quantity"`
-	Price                    string               `json:"price"` // Submitted price
-	ExecutedPrice            string               `json:"executed_price"`
-	SubmittedAt              string               `json:"submitted_at"`
-	Side                     string               `json:"side"` // Order side
-	Symbol                   string               `json:"symbol"`
-	OrderType                string               `json:"order_type"`
-	LastDone                 string               `json:"last_done"`
-	TriggerPrice             string               `json:"trigger_price"`
-	Msg                      string               `json:"msg"` // Rejected Message or remark
-	Tag                      string               `json:"tag"`
-	TimeInForce              string               `json:"time_in_force"`
-	ExpireDate               string               `json:"expire_date"`
-	UpdatedAt                string               `json:"updated_at"`
-	TriggerAt                string               `json:"trigger_at"` // Conditional order trigger time
-	TrailingAmount           string               `json:"trailing_amount"`
-	TrailingPercent          string               `json:"trailing_precent"`
-	LimitOffset              string               `json:"limit_offset"`
-	TriggerStatus            string               `json:"trigger_status"`
-	Currency                 string               `json:"currency"`
-	OutsideRth               string               `json:"outside_rth"` // Enable or disable outside regular trading hours
-	Remark                   string               `json:"remark"`
-	FreeStatus               string               `json:"free_status"`
-	FreeAmount               string               `json:"free_amount"`
-	FreeCurrency             string               `json:"free_currency"`
-	DeductionsStatus         string               `json:"deductions_status"`
-	DeductionsAmount         string               `json:"deductions_amount"`
-	DeductionsCurrency       string               `json:"deductions_currency"`
-	PlatformDeductedStatus   string               `json:"platform_deducted_status"`
-	PlatformDeductedAmount   string               `json:"platform_deducted_amount"`
-	PlatformDeductedCurrency string               `json:"platform_deducted_currency"`
-	History                  []OrderHistoryDetail `json:"history"`
-	ChargeDetail             OrderChargeDetail    `json:"charge_detail"`
+	OrderId                  string                `json:"order_id"`
+	Status                   string                `json:"status"`
+	StockName                string                `json:"stock_name"`
+	Quantity                 string                `json:"quantity"` // Submitted quantity
+	ExecutedQuantity         string                `json:"executed_quantity"`
+	Price                    string                `json:"price"` // Submitted price
+	ExecutedPrice            string                `json:"executed_price"`
+	SubmittedAt              string                `json:"submitted_at"`
+	Side                     string                `json:"side"` // Order side
+	Symbol                   string                `json:"symbol"`
+	OrderType                string                `json:"order_type"`
+	LastDone                 string                `json:"last_done"`
+	TriggerPrice             string                `json:"trigger_price"`
+	Msg                      string                `json:"msg"` // Rejected Message or remark
+	Tag                      string                `json:"tag"`
+	TimeInForce              string                `json:"time_in_force"`
+	ExpireDate               string                `json:"expire_date"`
+	UpdatedAt                string                `json:"updated_at"`
+	TriggerAt                string                `json:"trigger_at"` // Conditional order trigger time
+	TrailingAmount           string                `json:"trailing_amount"`
+	TrailingPercent          string                `json:"trailing_precent"`
+	LimitOffset              string                `json:"limit_offset"`
+	TriggerStatus            string                `json:"trigger_status"`
+	Currency                 string                `json:"currency"`
+	OutsideRth               string                `json:"outside_rth"` // Enable or disable outside regular trading hours
+	Remark                   string                `json:"remark"`
+	FreeStatus               string                `json:"free_status"`
+	FreeAmount               string                `json:"free_amount"`
+	FreeCurrency             string                `json:"free_currency"`
+	DeductionsStatus         string                `json:"deductions_status"`
+	DeductionsAmount         string                `json:"deductions_amount"`
+	DeductionsCurrency       string                `json:"deductions_currency"`
+	PlatformDeductedStatus   string                `json:"platform_deducted_status"`
+	PlatformDeductedAmount   string                `json:"platform_deducted_amount"`
+	PlatformDeductedCurrency string                `json:"platform_deducted_currency"`
+	History                  []OrderHistoryDetail  `json:"history"`
+	ChargeDetail             *OrderChargeDetail    `json:"charge_detail"`
+	AttachedOrders           []AttachedOrderDetail `json:"attached_orders"`
 }
 
 // EstimateMaxPurchaseQuantity is response for estimate maximum purchase quantity

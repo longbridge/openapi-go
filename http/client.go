@@ -39,6 +39,9 @@ type RequestOptions struct {
 	// Request Header
 	Header nhttp.Header
 	body   interface{}
+	// Timeout overrides the request timeout for a single Call. Ignored by
+	// CallSSE (see its docs).
+	Timeout time.Duration
 }
 
 // RequestOption use to set addition info to request
@@ -56,6 +59,18 @@ func WithBody(v interface{}) RequestOption {
 	return func(o *RequestOptions) {
 		if v != nil {
 			o.body = v
+		}
+	}
+}
+
+// WithRequestTimeout overrides the request timeout for a single Call, in
+// place of the timeout the underlying *http.Client was configured with.
+// Ignored by CallSSE, whose whole point is to keep receiving events for as
+// long as the underlying operation takes; only ctx cancellation bounds it.
+func WithRequestTimeout(d time.Duration) RequestOption {
+	return func(o *RequestOptions) {
+		if d > 0 {
+			o.Timeout = d
 		}
 	}
 }
@@ -132,19 +147,11 @@ func (c *Client) GetOTPV2(ctx context.Context, ropts ...RequestOption) (string, 
 	return res.Otp, nil
 }
 
-// Call will send request with signature to http server
-func (c *Client) Call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ropts ...RequestOption) (err error) {
-	var (
-		br       io.Reader
-		bb       []byte
-		httpResp *nhttp.Response
-		rb       []byte
-	)
-
-	ro := &RequestOptions{}
-	for _, opt := range ropts {
-		opt(ro)
-	}
+// buildRequest builds and signs the underlying *http.Request shared by Call
+// and CallSSE: marshals the body, resolves auth (API key or OAuth) and the
+// DC region, sets headers and query params, and signs the request.
+func (c *Client) buildRequest(ctx context.Context, method, path string, queryParams interface{}, body interface{}, ro *RequestOptions) (req *nhttp.Request, bb []byte, err error) {
+	var br io.Reader
 
 	if body == nil && ro.body != nil {
 		body = ro.body
@@ -153,14 +160,14 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	if body != nil {
 		bb, err = json.Marshal(body)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		br = bytes.NewBuffer(bb)
 	}
 
-	req, err := nhttp.NewRequestWithContext(ctx, method, c.opts.URL+path, br)
+	req, err = nhttp.NewRequestWithContext(ctx, method, c.opts.URL+path, br)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	appKey := c.opts.AppKey
@@ -170,7 +177,7 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	if c.opts.OAuthClient != nil {
 		token, err := c.opts.OAuthClient.AccessToken(ctx)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		// Derive DC region from the token prefix ("us_" → US, otherwise AP),
 		// then strip the prefix so only the bare token is sent to the gateway.
@@ -207,7 +214,7 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		vals, ok := queryParams.(url.Values)
 		if !ok {
 			if vals, err = query.Values(queryParams); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 		req.URL.RawQuery = vals.Encode()
@@ -215,15 +222,62 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	// set signature (no-op for OAuth when appSecret is empty)
 	signature(req, appSecret, bb)
 
+	return req, bb, nil
+}
+
+// readErrorBody reads a non-streaming error response body and converts it
+// to an *ApiError. Shared by Call's non-2xx path and CallSSE's fallback path
+// (a request that asked for text/event-stream but got a one-shot JSON error
+// body instead, e.g. for a 4xx/5xx before the server committed to SSE).
+func readErrorBody(httpResp *nhttp.Response) error {
+	defer httpResp.Body.Close()
+	rb, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return err
+	}
+	log.Debugf("http call response body:%s", rb)
+
+	apiResp := &apiResponse{}
+	if v := httpResp.Header.Get("x-trace-id"); v != "" {
+		apiResp.TraceID = v
+	}
+	if isJSON(httpResp.Header.Get("content-type")) {
+		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
+			return err
+		}
+	} else {
+		apiResp.Message = string(rb)
+	}
+	return NewError(httpResp.StatusCode, apiResp)
+}
+
+// Call will send request with signature to http server
+func (c *Client) Call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ropts ...RequestOption) (err error) {
+	ro := &RequestOptions{}
+	for _, opt := range ropts {
+		opt(ro)
+	}
+	if ro.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, ro.Timeout)
+		defer cancel()
+	}
+
+	req, bb, err := c.buildRequest(ctx, method, path, queryParams, body, ro)
+	if err != nil {
+		return err
+	}
+
 	log.Debugf("http call method:%v url:%v body:%v", req.Method, req.URL, string(bb))
-	httpResp, err = c.httpClient.Do(req)
+	httpResp, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	log.Debugf("http call response headers:%v", httpResp.Header)
 	defer httpResp.Body.Close()
 
-	if rb, err = io.ReadAll(httpResp.Body); err != nil {
+	rb, err := io.ReadAll(httpResp.Body)
+	if err != nil {
 		return err
 	}
 	log.Debugf("http call response body:%s", rb)
@@ -254,6 +308,43 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		return err
 	}
 	return nil
+}
+
+// CallSSE sends a request with signature to the http server and, once the
+// server responds with a 200 text/event-stream, returns the raw response
+// body for the caller to read as a server-sent-events stream — instead of
+// buffering the whole response the way Call does. The caller must Close the
+// returned io.ReadCloser once done with it.
+//
+// A per-request timeout set via WithRequestTimeout is ignored here: an
+// event-stream response can legitimately keep delivering events for as long
+// as the underlying operation takes, so only ctx cancellation bounds it.
+func (c *Client) CallSSE(ctx context.Context, method, path string, body interface{}, ropts ...RequestOption) (io.ReadCloser, error) {
+	ro := &RequestOptions{}
+	for _, opt := range ropts {
+		opt(ro)
+	}
+
+	req, bb, err := c.buildRequest(ctx, method, path, nil, body, ro)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "text/event-stream")
+
+	log.Debugf("http call method:%v url:%v body:%v", req.Method, req.URL, string(bb))
+	httpResp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("http call response headers:%v", httpResp.Header)
+
+	if httpResp.StatusCode == nhttp.StatusOK && strings.Contains(httpResp.Header.Get("content-type"), "text/event-stream") {
+		return httpResp.Body, nil
+	}
+
+	// Error responses (and any other non-SSE response) are still a one-shot
+	// body, not SSE.
+	return nil, readErrorBody(httpResp)
 }
 
 func isJSON(ct string) bool {
