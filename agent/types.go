@@ -117,6 +117,8 @@ type Reference struct {
 
 // QuestionOption is one option of a Question.
 type QuestionOption struct {
+	// Label is the short UI label for the option.
+	Label string `json:"label"`
 	// Description is the option text.
 	Description string `json:"description"`
 }
@@ -134,6 +136,25 @@ type Question struct {
 
 // Interrupt is present when a conversation run is interrupted, waiting for
 // AgentContext.Continue.
+// HumanInteraction is a single interaction requested while an Agent workflow
+// is paused.
+type HumanInteraction struct {
+	// ToolCallID is the tool call that requested the interaction.
+	ToolCallID string `json:"tool_call_id"`
+	// InterruptID is the stable key expected by the answers map when continuing.
+	InterruptID string `json:"interrupt_id"`
+	// InteractionType is the interaction type such as "ask_human" or
+	// "trade_password".
+	InteractionType string `json:"type"`
+	// ToolName is the human-readable tool name.
+	ToolName string `json:"tool_name"`
+	// Questions and answer options presented to the user.
+	Questions []Question `json:"questions"`
+	// ToolArgs is the original tool arguments, retained for host-specific UI
+	// rendering.
+	ToolArgs json.RawMessage `json:"tool_args"`
+}
+
 type Interrupt struct {
 	// NodeID is the ID of the node that triggered the interrupt.
 	NodeID string `json:"node_id"`
@@ -142,6 +163,9 @@ type Interrupt struct {
 	ToolCallID string `json:"tool_call_id"`
 	// Questions you need to answer.
 	Questions []Question `json:"questions"`
+	// Interactions are the full interaction descriptors used to render and
+	// answer the pause.
+	Interactions []HumanInteraction `json:"interactions"`
 	// MessageID is the ID of the paused message.
 	MessageID int64 `json:"message_id"`
 	// ChatID is the ID of the owning conversation.
