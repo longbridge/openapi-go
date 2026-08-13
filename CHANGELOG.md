@@ -4,6 +4,7 @@
 
 ### Added
 
+- **AI Agent:** `agent.Interrupt` now exposes `Interactions` — a slice of the new `agent.HumanInteraction` type (`ToolCallID`, `InterruptID`, `InteractionType`, `ToolName`, `Questions`, and the raw `ToolArgs`) — and `agent.QuestionOption` now exposes `Label`. A `null` `questions` / `interactions` list from the server is tolerated (decodes to an empty slice)
 - **Attached order (take-profit / stop-loss) support** for `SubmitOrder` and `ReplaceOrder`:
   - New types: `AttachedOrderType` (`AttachedOrderTypeProfitTaker` / `AttachedOrderTypeStopLoss` / `AttachedOrderTypeBracket`), `AttachedOrderDetail`, `SubmitAttachedParams`, `ReplaceAttachedParams`
   - `SubmitOrder` / `ReplaceOrder`: new `AttachedParams` field
