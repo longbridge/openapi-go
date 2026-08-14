@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
 - **AI Agent:** `agent.Interrupt` now exposes `Interactions` — a slice of the new `agent.HumanInteraction` type (`ToolCallID`, `InterruptID`, `InteractionType`, `ToolName`, `Questions`, and the raw `ToolArgs`) — and `agent.QuestionOption` now exposes `Label`. A `null` `questions` / `interactions` list from the server is tolerated (decodes to an empty slice)
 - **Attached order (take-profit / stop-loss) support** for `SubmitOrder` and `ReplaceOrder`:
   - New types: `AttachedOrderType` (`AttachedOrderTypeProfitTaker` / `AttachedOrderTypeStopLoss` / `AttachedOrderTypeBracket`), `AttachedOrderDetail`, `SubmitAttachedParams`, `ReplaceAttachedParams`
