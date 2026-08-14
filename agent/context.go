@@ -109,6 +109,41 @@ func (c *AgentContext) Agents(ctx context.Context, workspaceID string, opts *Get
 	return &resp, nil
 }
 
+// Chats lists the current account's chats (conversations) across Agents.
+//
+// Path: GET /v1/ai/chats
+func (c *AgentContext) Chats(ctx context.Context, opts *GetChatsOptions) (*ChatsResponse, error) {
+	q := url.Values{}
+	if opts != nil {
+		if opts.Page > 0 {
+			q.Set("page", strconv.FormatInt(int64(opts.Page), 10))
+		}
+		if opts.Limit > 0 {
+			q.Set("limit", strconv.FormatInt(int64(opts.Limit), 10))
+		}
+		if opts.ExcludeAgentUIDs != "" {
+			q.Set("exclude_agent_uids", opts.ExcludeAgentUIDs)
+		}
+	}
+	var resp ChatsResponse
+	if err := c.httpClient.Get(ctx, "/v1/ai/chats", q, &resp, httplib.WithRequestTimeout(listTimeout)); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Chat gets the detail of a single chat, including its messages.
+//
+// Path: GET /v1/ai/chats/{chatUID}
+func (c *AgentContext) Chat(ctx context.Context, chatUID string) (*ChatDetail, error) {
+	path := "/v1/ai/chats/" + url.PathEscape(chatUID)
+	var resp ChatDetail
+	if err := c.httpClient.Get(ctx, path, url.Values{}, &resp, httplib.WithRequestTimeout(listTimeout)); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // Conversation asks a question to the specified Agent, blocking until the
 // run succeeds, is interrupted, or fails.
 //

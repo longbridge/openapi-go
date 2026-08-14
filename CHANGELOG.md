@@ -4,6 +4,7 @@
 
 ### Added
 
+- **AI Agent:** add `AgentContext.Chats` (`GET /v1/ai/chats`) and `AgentContext.Chat` (`GET /v1/ai/chats/{chatUID}`) — list the account's chats (conversations) across Agents (optional `Page` / `Limit` / `ExcludeAgentUIDs` via `GetChatsOptions`), and fetch a single chat's detail with its messages. New types: `Chat`, `ChatsResponse`, `ChatMessage`, `ChatMessageChunk`, `ChatInfo`, `ChatDetail`, `GetChatsOptions`. The deeply-nested `ChatRelation` and message `Extends` are kept as raw JSON (`json.RawMessage`)
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
 - **AI Agent:** `agent.Interrupt` now exposes `Interactions` — a slice of the new `agent.HumanInteraction` type (`ToolCallID`, `InterruptID`, `InteractionType`, `ToolName`, `Questions`, and the raw `ToolArgs`) — and `agent.QuestionOption` now exposes `Label`. A `null` `questions` / `interactions` list from the server is tolerated (decodes to an empty slice)
 - **Attached order (take-profit / stop-loss) support** for `SubmitOrder` and `ReplaceOrder`:

@@ -77,6 +77,126 @@ type GetAgentsOptions struct {
 	Name string
 }
 
+// Chat is a chat (conversation) with an Agent, as returned by
+// AgentContext.Chats.
+type Chat struct {
+	// ID is the chat ID.
+	ID int64 `json:"id"`
+	// UID is the chat UID, used as the path parameter of AgentContext.Chat.
+	UID string `json:"uid"`
+	// Name is the chat name (title).
+	Name string `json:"name"`
+	// AgentID is the ID of the Agent this chat belongs to.
+	AgentID int64 `json:"agent_id"`
+	// AgentName is the name of the Agent this chat belongs to.
+	AgentName string `json:"agent_name"`
+	// AgentUID is the UID of the Agent this chat belongs to.
+	AgentUID string `json:"agent_uid"`
+	// FromSource is the source the chat was created from, e.g. "api".
+	FromSource string `json:"from_source"`
+	// HasUnread reports whether the chat has unread messages.
+	HasUnread bool `json:"has_unread"`
+	// CreatedAt is the creation time, Unix timestamp in seconds.
+	CreatedAt int64 `json:"created_at"`
+	// UpdatedAt is the last updated time, Unix timestamp in seconds.
+	UpdatedAt int64 `json:"updated_at"`
+	// ChatRelation is the Agent / permission relation metadata, kept as raw
+	// JSON because the field set is UI-configuration detail that varies by
+	// Agent.
+	ChatRelation json.RawMessage `json:"chat_relation"`
+}
+
+// ChatsResponse is the response for AgentContext.Chats.
+type ChatsResponse struct {
+	// Chats is the chat list.
+	Chats []Chat `json:"chats"`
+}
+
+// GetChatsOptions holds the optional query parameters for AgentContext.Chats.
+// The zero value uses the server defaults.
+type GetChatsOptions struct {
+	// Page is the page number, starting at 1. 0 uses the server default.
+	Page int32
+	// Limit is the page size. 0 uses the server default.
+	Limit int32
+	// ExcludeAgentUIDs excludes chats belonging to the given Agent UIDs
+	// (comma-joined, e.g. "dsl_builder"). Empty omits the filter.
+	ExcludeAgentUIDs string
+}
+
+// ChatMessageChunk is one content chunk of a ChatMessage.
+type ChatMessageChunk struct {
+	// ChunkType is the chunk type, e.g. "text".
+	ChunkType string `json:"chunk_type"`
+	// Content is the chunk content.
+	Content string `json:"content"`
+	// Index is the index of the chunk within the message.
+	Index int32 `json:"index"`
+	// StartedAt is the start time, Unix timestamp in seconds.
+	StartedAt int64 `json:"started_at"`
+	// StoppedAt is the stop time, Unix timestamp in seconds.
+	StoppedAt int64 `json:"stopped_at"`
+}
+
+// ChatMessage is a message within a chat.
+type ChatMessage struct {
+	// ID is the message ID.
+	ID int64 `json:"id"`
+	// ChatID is the ID of the owning chat.
+	ChatID int64 `json:"chat_id"`
+	// ChatUID is the UID of the owning chat.
+	ChatUID string `json:"chat_uid"`
+	// AgentID is the ID of the Agent.
+	AgentID int64 `json:"agent_id"`
+	// AgentName is the name of the Agent.
+	AgentName string `json:"agent_name"`
+	// AgentUID is the UID of the Agent.
+	AgentUID string `json:"agent_uid"`
+	// Sender is the sender, e.g. "user" or "assistant".
+	Sender string `json:"sender"`
+	// Status is the message status.
+	Status int32 `json:"status"`
+	// Likes is the number of likes.
+	Likes int32 `json:"likes"`
+	// ParentMessageID is the ID of the parent message; 0 if none.
+	ParentMessageID int64 `json:"parent_message_id"`
+	// ThinkingSeconds is the thinking time in seconds.
+	ThinkingSeconds int32 `json:"thinking_seconds"`
+	// ErrorCode is the error code; 0 if none.
+	ErrorCode int32 `json:"error_code"`
+	// WorkflowRunID is the workflow run ID.
+	WorkflowRunID string `json:"workflow_run_id"`
+	// CreatedAt is the creation time, Unix timestamp in seconds.
+	CreatedAt int64 `json:"created_at"`
+	// UpdatedAt is the last updated time, Unix timestamp in seconds.
+	UpdatedAt int64 `json:"updated_at"`
+	// Chunks are the content chunks of the message.
+	Chunks []ChatMessageChunk `json:"chunks"`
+	// Extends is the extension payload, kept as raw JSON.
+	Extends json.RawMessage `json:"extends"`
+}
+
+// ChatInfo is the chat summary carried in the ChatDetail response.
+type ChatInfo struct {
+	// ID is the chat ID.
+	ID int64 `json:"id"`
+	// Name is the chat name (title).
+	Name string `json:"name"`
+	// UID is the chat UID.
+	UID string `json:"uid"`
+}
+
+// ChatDetail is the response for AgentContext.Chat.
+type ChatDetail struct {
+	// Chat is the chat summary.
+	Chat ChatInfo `json:"chat"`
+	// ChatRelation is the Agent / permission relation metadata, kept as raw
+	// JSON.
+	ChatRelation json.RawMessage `json:"chat_relation"`
+	// Messages are the messages in the chat.
+	Messages []ChatMessage `json:"messages"`
+}
+
 // ─── Conversation ─────────────────────────────────────────────────────────
 
 // ConversationStatus is the final run status of a conversation.
