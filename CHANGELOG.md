@@ -1,10 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [v0.27.0] - 2026-08-14
 
 ### Added
 
-- **AI Agent:** `agent.Interrupt` now exposes `Interactions` — a slice of the new `agent.HumanInteraction` type (`ToolCallID`, `InterruptID`, `InteractionType`, `ToolName`, `Questions`, and the raw `ToolArgs`) — and `agent.QuestionOption` now exposes `Label`. A `null` `questions` / `interactions` list from the server is tolerated (decodes to an empty slice)
+- **AI Agent:** new `agent` package (`AgentContext`) for the AI Agent conversation API:
+  - `Workspaces` (`GET /v1/ai/workspaces`) and `Agents` (`GET /v1/ai/workspaces/{id}/agents`)
+  - `PublicAgents` (`GET /v1/ai/agents`) — lists all publicly available Agents on the platform (the Explore catalog); unlike `Agents` it is not scoped to a Workspace and returns every published, publicly-shared Agent. Takes the same optional `page` / `limit` / `name` parameters and returns the same `AgentsResponse`
+  - `Conversation` / `Continue` — blocking `POST .../conversations` and `.../continue` (dedicated 120s request timeout; the plain `Workspaces` / `Agents` GETs use 15s)
+  - `ConversationStream` / `ContinueStream` — SSE variants returning a `*ConversationStream` iterator (`Next` / `Event` / `Err` / `Close`), unbounded except for `ctx` cancellation. Events are modeled as an interface with 7 concrete types (`ChatStartedEvent`, `WorkflowStartedEvent`, `MessageEvent`, `PingEvent`, `ChatFinishedEvent`, `WorkflowFinishedEvent`, `ChatTitleUpdatedEvent`) plus an `OtherEvent` fallback for forward compatibility
+  - `Conversation` / `ConversationStream` take a `parentMessageID` to attach a follow-up after a specific earlier message — only valid together with a non-empty `chatUID`
+  - `ConversationResponse.FurtherQuestions` — the "you might also ask" follow-up suggestions carried in the `workflow_finished` outputs
+  - `Reference` captures the full source payload the server sends — `OriginalIndex`, `RefType` (wire `type`), `ID`, and the nested `Content` (`json.RawMessage`); previously `Title` / `URL` came back empty and `source` / `description` / `published_at` / … were lost entirely
+  - `ChatStartedEvent` carries `ChatID`, `Error`, and `ErrorMessage`
+  - `Interrupt.Interactions` — a slice of `HumanInteraction` (`ToolCallID`, `InterruptID`, `InteractionType`, `ToolName`, `Questions`, and the raw `ToolArgs`) — and `QuestionOption.Label`; a `null` `questions` / `interactions` list from the server is tolerated (decodes to an empty slice)
+  - `message_id` fields accept either a JSON string or a raw number, matching the other SDKs' defensive deserialization
+- **http:** new `CallSSE` (streaming call, returns the raw response body instead of buffering it) and `WithRequestTimeout` request option, added to support the streaming AI Agent calls
 - **Attached order (take-profit / stop-loss) support** for `SubmitOrder` and `ReplaceOrder`:
   - New types: `AttachedOrderType` (`AttachedOrderTypeProfitTaker` / `AttachedOrderTypeStopLoss` / `AttachedOrderTypeBracket`), `AttachedOrderDetail`, `SubmitAttachedParams`, `ReplaceAttachedParams`
   - `SubmitOrder` / `ReplaceOrder`: new `AttachedParams` field
