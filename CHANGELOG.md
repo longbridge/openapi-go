@@ -6,6 +6,7 @@
 
 - **AI Agent:** new `agent` package (`AgentContext`) for the AI Agent conversation API:
   - `Workspaces` (`GET /v1/ai/workspaces`) and `Agents` (`GET /v1/ai/workspaces/{id}/agents`)
+  - `PublicAgents` (`GET /v1/ai/agents`) — lists all publicly available Agents on the platform (the Explore catalog); unlike `Agents` it is not scoped to a Workspace and returns every published, publicly-shared Agent. Takes the same optional `page` / `limit` / `name` parameters and returns the same `AgentsResponse`
   - `Conversation` / `Continue` — blocking `POST .../conversations` and `.../continue` (dedicated 120s request timeout; the plain `Workspaces` / `Agents` GETs use 15s)
   - `ConversationStream` / `ContinueStream` — SSE variants returning a `*ConversationStream` iterator (`Next` / `Event` / `Err` / `Close`), unbounded except for `ctx` cancellation. Events are modeled as an interface with 7 concrete types (`ChatStartedEvent`, `WorkflowStartedEvent`, `MessageEvent`, `PingEvent`, `ChatFinishedEvent`, `WorkflowFinishedEvent`, `ChatTitleUpdatedEvent`) plus an `OtherEvent` fallback for forward compatibility
   - `Conversation` / `ConversationStream` take a `parentMessageID` to attach a follow-up after a specific earlier message — only valid together with a non-empty `chatUID`
