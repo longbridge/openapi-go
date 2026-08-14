@@ -69,125 +69,125 @@ type GetUSRealizedPL struct {
 type USOrder struct {
 	// OrderID is the unique order identifier (field "id" in raw response).
 	// Use this with USOrderDetail.
-	OrderID        string `json:"id"`
-	AAID           string `json:"aaid"`
-	AccountChannel string `json:"account_channel"`
+	OrderID            string    `json:"id"`
+	AAID               string    `json:"aaid"`
+	AccountChannel     string    `json:"account_channel"`
 	// Action: 1=buy, 2=sell
-	Action int32 `json:"action"`
+	Action             int32     `json:"action"`
 	// Symbol is converted from counter_id (e.g. "VA/BKKT/DOGEUSD" → "DOGEUSD.BKKT")
-	Symbol string `json:"symbol"`
+	Symbol             string    `json:"symbol"`
 	// UnderlyingSymbol is converted from underlying_counter_id (options only)
-	UnderlyingSymbol string    `json:"underlying_symbol"`
-	Code             string    `json:"code"`
-	Name             string    `json:"name"`
-	SecurityType     string    `json:"security_type"`
-	Currency         string    `json:"currency"`
-	TradeCurrency    string    `json:"trade_currency"`
-	OrderType        string    `json:"order_type"`
-	Status           string    `json:"status"`
-	Price            string    `json:"price"`
-	Quantity         string    `json:"quantity"`
-	ExecutedQty      string    `json:"executed_qty"`
-	ExecutedPrice    string    `json:"executed_price"`
-	ExecutedAmount   string    `json:"executed_amount"`
-	OperateDirection string    `json:"operate_direction"`
-	TimeInForce      int32     `json:"time_in_force"`
-	GTD              string    `json:"gtd"`
-	SubmittedAt      time.Time `json:"submitted_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Msg              string    `json:"msg"`
-	Report           string    `json:"report"`
+	UnderlyingSymbol   string    `json:"underlying_symbol"`
+	Code               string    `json:"code"`
+	Name               string    `json:"name"`
+	SecurityType       string    `json:"security_type"`
+	Currency           string    `json:"currency"`
+	TradeCurrency      string    `json:"trade_currency"`
+	OrderType          string    `json:"order_type"`
+	Status             string    `json:"status"`
+	Price              string    `json:"price"`
+	Quantity           string    `json:"quantity"`
+	ExecutedQty        string    `json:"executed_qty"`
+	ExecutedPrice      string    `json:"executed_price"`
+	ExecutedAmount     string    `json:"executed_amount"`
+	OperateDirection   string    `json:"operate_direction"`
+	TimeInForce        int32     `json:"time_in_force"`
+	GTD                string    `json:"gtd"`
+	SubmittedAt        time.Time `json:"submitted_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	Msg                string    `json:"msg"`
+	Report             string    `json:"report"`
 	// Options-specific fields
-	ContractDirection string `json:"contract_direction"`
-	ContractDueDate   string `json:"contract_due_date"`
-	StrikePrice       string `json:"strike_price"`
+	ContractDirection  string    `json:"contract_direction"`
+	ContractDueDate    string    `json:"contract_due_date"`
+	StrikePrice        string    `json:"strike_price"`
 	// Trailing stop fields
-	TailingAmount  string `json:"tailing_amount"`
-	TailingPercent string `json:"tailing_percent"`
+	TailingAmount      string    `json:"tailing_amount"`
+	TailingPercent     string    `json:"tailing_percent"`
 	// Trigger / conditional order fields
-	TriggerPrice    string `json:"trigger_price"`
-	TriggerStatus   int32  `json:"trigger_status"`
-	TriggerAt       string `json:"trigger_at"`
-	TriggerExchange string `json:"trigger_exchange"`
-	TriggerLastDone string `json:"trigger_last_done"`
-	TriggerCount    int32  `json:"trigger_count"`
+	TriggerPrice       string    `json:"trigger_price"`
+	TriggerStatus      int32     `json:"trigger_status"`
+	TriggerAt          string    `json:"trigger_at"`
+	TriggerExchange    string    `json:"trigger_exchange"`
+	TriggerLastDone    string    `json:"trigger_last_done"`
+	TriggerCount       int32     `json:"trigger_count"`
 	// Other
-	LotSize                  string `json:"lot_size"`
-	LimitOffset              string `json:"limit_offset"`
-	LimitDepthLevel          int32  `json:"limit_depth_level"`
-	MarketPrice              string `json:"market_price"`
-	LastDone                 string `json:"last_done"`
-	MonitorPrice             string `json:"monitor_price"`
-	SubmittedAmount          string `json:"submitted_amount"`
-	PlatformDeductionsStatus int32  `json:"platform_deductions_status"`
-	PloyID                   string `json:"ploy_id"`
-	PloyType                 string `json:"ploy_type"`
-	TickerSize               string `json:"ticker_size"`
-	CurrentMillisecond       string `json:"current_millisecond"`
-	OrgID                    string `json:"org_id"`
-	Tag                      int32  `json:"tag"`
-	ForceOnlyRTH             int32  `json:"force_only_rth"`
-	DeductionsStatus         int32  `json:"deductions_status"`
-	FreeStatus               int32  `json:"free_status"`
-	Trend                    int32  `json:"trend"`
+	LotSize            string    `json:"lot_size"`
+	LimitOffset        string    `json:"limit_offset"`
+	LimitDepthLevel    int32     `json:"limit_depth_level"`
+	MarketPrice        string    `json:"market_price"`
+	LastDone           string    `json:"last_done"`
+	MonitorPrice             string    `json:"monitor_price"`
+	SubmittedAmount          string    `json:"submitted_amount"`
+	PlatformDeductionsStatus int32     `json:"platform_deductions_status"`
+	PloyID                   string    `json:"ploy_id"`
+	PloyType                 string    `json:"ploy_type"`
+	TickerSize               string    `json:"ticker_size"`
+	CurrentMillisecond       string    `json:"current_millisecond"`
+	OrgID                    string    `json:"org_id"`
+	Tag                      int32     `json:"tag"`
+	ForceOnlyRTH       int32     `json:"force_only_rth"`
+	DeductionsStatus   int32     `json:"deductions_status"`
+	FreeStatus         int32     `json:"free_status"`
+	Trend              int32     `json:"trend"`
 }
 
 // usRawOrder is the raw deserialization shape before symbol conversion.
 type usRawOrder struct {
-	ID                       string        `json:"id"`
-	AAID                     string        `json:"aaid"`
-	AccountChannel           string        `json:"account_channel"`
-	Action                   int32         `json:"action"`
-	CounterID                string        `json:"counter_id"`
-	UnderlyingCounterID      string        `json:"underlying_counter_id"`
-	Code                     string        `json:"code"`
-	Name                     string        `json:"name"`
-	SecurityType             string        `json:"security_type"`
-	Currency                 string        `json:"currency"`
-	TradeCurrency            string        `json:"trade_currency"`
-	OrderType                string        `json:"order_type"`
-	Status                   string        `json:"status"`
-	Price                    string        `json:"price"`
-	Quantity                 string        `json:"quantity"`
-	ExecutedQty              string        `json:"executed_qty"`
-	ExecutedPrice            string        `json:"executed_price"`
-	ExecutedAmount           string        `json:"executed_amount"`
-	OperateDirection         string        `json:"operate_direction"`
-	TimeInForce              int32         `json:"time_in_force"`
-	GTD                      string        `json:"gtd"`
-	SubmittedAt              unixTimestamp `json:"submitted_at"`
-	UpdatedAt                unixTimestamp `json:"updated_at"`
-	Msg                      string        `json:"msg"`
-	Report                   string        `json:"report"`
-	ContractDirection        string        `json:"contract_direction"`
-	ContractDueDate          string        `json:"contract_due_date"`
-	StrikePrice              string        `json:"strike_price"`
-	TailingAmount            string        `json:"tailing_amount"`
-	TailingPercent           string        `json:"tailing_percent"`
-	TriggerPrice             string        `json:"trigger_price"`
-	TriggerStatus            int32         `json:"trigger_status"`
-	TriggerAt                string        `json:"trigger_at"`
-	TriggerExchange          string        `json:"trigger_exchange"`
-	TriggerLastDone          string        `json:"trigger_last_done"`
-	TriggerCount             int32         `json:"trigger_count"`
-	LotSize                  string        `json:"lot_size"`
-	LimitOffset              string        `json:"limit_offset"`
-	LimitDepthLevel          int32         `json:"limit_depth_level"`
-	MarketPrice              string        `json:"market_price"`
-	LastDone                 string        `json:"last_done"`
-	MonitorPrice             string        `json:"monitor_price"`
-	SubmittedAmount          string        `json:"submitted_amount"`
-	PlatformDeductionsStatus int32         `json:"platform_deductions_status"`
-	PloyID                   string        `json:"ploy_id"`
-	PloyType                 string        `json:"ploy_type"`
-	TickerSize               string        `json:"ticker_size"`
-	CurrentMillisecond       string        `json:"current_millisecond"`
-	OrgID                    string        `json:"org_id"`
-	Tag                      int32         `json:"tag"`
-	ForceOnlyRTH             int32         `json:"force_only_rth"`
-	DeductionsStatus         int32         `json:"deductions_status"`
-	FreeStatus               int32         `json:"free_status"`
-	Trend                    int32         `json:"trend"`
+	ID                  string `json:"id"`
+	AAID                string `json:"aaid"`
+	AccountChannel      string `json:"account_channel"`
+	Action              int32  `json:"action"`
+	CounterID           string `json:"counter_id"`
+	UnderlyingCounterID string `json:"underlying_counter_id"`
+	Code                string `json:"code"`
+	Name                string `json:"name"`
+	SecurityType        string `json:"security_type"`
+	Currency            string `json:"currency"`
+	TradeCurrency       string `json:"trade_currency"`
+	OrderType           string `json:"order_type"`
+	Status              string `json:"status"`
+	Price               string `json:"price"`
+	Quantity            string `json:"quantity"`
+	ExecutedQty         string `json:"executed_qty"`
+	ExecutedPrice       string `json:"executed_price"`
+	ExecutedAmount      string `json:"executed_amount"`
+	OperateDirection    string `json:"operate_direction"`
+	TimeInForce         int32  `json:"time_in_force"`
+	GTD                 string `json:"gtd"`
+	SubmittedAt         unixTimestamp `json:"submitted_at"`
+	UpdatedAt           unixTimestamp `json:"updated_at"`
+	Msg                 string `json:"msg"`
+	Report              string `json:"report"`
+	ContractDirection   string `json:"contract_direction"`
+	ContractDueDate     string `json:"contract_due_date"`
+	StrikePrice         string `json:"strike_price"`
+	TailingAmount       string `json:"tailing_amount"`
+	TailingPercent      string `json:"tailing_percent"`
+	TriggerPrice        string `json:"trigger_price"`
+	TriggerStatus       int32  `json:"trigger_status"`
+	TriggerAt           string `json:"trigger_at"`
+	TriggerExchange     string `json:"trigger_exchange"`
+	TriggerLastDone     string `json:"trigger_last_done"`
+	TriggerCount        int32  `json:"trigger_count"`
+	LotSize             string `json:"lot_size"`
+	LimitOffset         string `json:"limit_offset"`
+	LimitDepthLevel     int32  `json:"limit_depth_level"`
+	MarketPrice         string `json:"market_price"`
+	LastDone            string `json:"last_done"`
+	MonitorPrice              string `json:"monitor_price"`
+	SubmittedAmount           string `json:"submitted_amount"`
+	PlatformDeductionsStatus  int32  `json:"platform_deductions_status"`
+	PloyID                    string `json:"ploy_id"`
+	PloyType                  string `json:"ploy_type"`
+	TickerSize                string `json:"ticker_size"`
+	CurrentMillisecond        string `json:"current_millisecond"`
+	OrgID                     string `json:"org_id"`
+	Tag                       int32  `json:"tag"`
+	ForceOnlyRTH        int32  `json:"force_only_rth"`
+	DeductionsStatus    int32  `json:"deductions_status"`
+	FreeStatus          int32  `json:"free_status"`
+	Trend               int32  `json:"trend"`
 }
 
 // QueryUSOrdersResponse holds the paged list of US orders.
@@ -237,8 +237,8 @@ type USChargeItem struct {
 
 // USChargeDetail holds the fee breakdown for an order.
 type USChargeDetail struct {
-	Currency    string         `json:"currency"`
-	TotalAmount string         `json:"total_amount"`
+	Currency    string        `json:"currency"`
+	TotalAmount string        `json:"total_amount"`
 	Items       []USChargeItem `json:"items"`
 }
 
@@ -266,84 +266,84 @@ type USAttachedOrder struct {
 // submitted_at and done_at are raw unix-second strings (not converted to time.Time,
 // since this struct is also reused for CurrentAttachedOrder which may vary).
 type USOrderDetail struct {
-	ID             string `json:"id"`
-	AAID           string `json:"aaid"`
-	AccountChannel string `json:"account_channel"`
-	Action         int32  `json:"action"`
+	ID                         string           `json:"id"`
+	AAID                       string           `json:"aaid"`
+	AccountChannel             string           `json:"account_channel"`
+	Action                     int32            `json:"action"`
 	// Symbol is the user-facing trading symbol (e.g. "NKE.US"), converted from CounterID.
-	Symbol string `json:"-"`
+	Symbol                     string           `json:"-"`
 	// UnderlyingSymbol is the user-facing underlying symbol (options only), converted from UnderlyingCounterID.
-	UnderlyingSymbol           string            `json:"-"`
-	CounterID                  string            `json:"counter_id"`
-	UnderlyingCounterID        string            `json:"underlying_counter_id"`
-	SecurityType               string            `json:"security_type"`
-	Name                       string            `json:"name"`
-	Currency                   string            `json:"currency"`
-	TradeCurrency              string            `json:"trade_currency"`
-	OrderType                  string            `json:"order_type"`
-	Status                     string            `json:"status"`
-	Price                      string            `json:"price"`
-	Quantity                   string            `json:"quantity"`
-	ExecutedQty                string            `json:"executed_qty"`
-	ExecutedPrice              string            `json:"executed_price"`
-	ExecutedAmount             string            `json:"executed_amount"`
-	OperateDirection           string            `json:"operate_direction"`
-	TimeInForce                int32             `json:"time_in_force"`
-	GTD                        string            `json:"gtd"`
-	Tag                        int32             `json:"tag"`
-	Msg                        string            `json:"msg"`
-	ForceOnlyRTH               int32             `json:"force_only_rth"`
-	SubmittedAt                string            `json:"submitted_at"` // unix seconds string
-	DoneAt                     string            `json:"done_at"`      // unix seconds string
-	TriggerPrice               string            `json:"trigger_price"`
-	TriggerAt                  string            `json:"trigger_at"`
-	TriggerStatus              int32             `json:"trigger_status"`
-	TriggerExchange            string            `json:"trigger_exchange"`
-	TriggerLastDone            string            `json:"trigger_last_done"`
-	TriggerCount               int32             `json:"trigger_count"`
-	TailingAmount              string            `json:"tailing_amount"`
-	TailingPercent             string            `json:"tailing_percent"`
-	LimitOffset                string            `json:"limit_offset"`
-	LimitDepthLevel            int32             `json:"limit_depth_level"`
-	MarketPrice                string            `json:"market_price"`
-	SubmittedAmount            string            `json:"submitted_amount"`
-	EstimatedFee               string            `json:"estimated_fee"`
-	FreeStatus                 int32             `json:"free_status"`
-	FreeAmount                 string            `json:"free_amount"`
-	FreeCurrency               string            `json:"free_currency"`
-	DeductionsStatus           int32             `json:"deductions_status"`
-	DeductionsAmount           string            `json:"deductions_amount"`
-	DeductionsCurrency         string            `json:"deductions_currency"`
-	PlatformDeductionsStatus   int32             `json:"platform_deductions_status"`
-	PlatformDeductionsAmount   string            `json:"platform_deductions_amount"`
-	PlatformDeductionsCurrency string            `json:"platform_deductions_currency"`
-	DisplayAccount             string            `json:"display_account"`
-	SettlementAccount          string            `json:"settlement_account"`
-	SettlementChannel          string            `json:"settlement_channel"`
-	CustomerName               string            `json:"customer_name"`
-	RealName                   string            `json:"real_name"`
-	EnName                     string            `json:"en_name"`
-	JointRealName              string            `json:"joint_real_name"`
-	JointEnName                string            `json:"joint_en_name"`
-	OrgID                      string            `json:"org_id"`
-	BCAN                       string            `json:"bcan"`
-	OpEntrustWay               int32             `json:"op_entrust_way"`
-	OpEntrustWayName           string            `json:"op_entrust_way_name"`
-	Remark                     string            `json:"remark"`
-	Notice                     string            `json:"notice"`
-	ShortSellType              int32             `json:"short_sell_type"`
-	PloyType                   string            `json:"ploy_type"` // API returns string e.g. "0"
-	PloyID                     string            `json:"ploy_id"`
-	PloyStatus                 string            `json:"ploy_status"`
-	Trend                      int32             `json:"trend"`
-	WithdrawalReason           string            `json:"withdrawal_reason"`
-	ActivateOrderType          string            `json:"activate_order_type"`
-	ActivateRTH                int32             `json:"activate_rth"`
-	SubmitPrice                string            `json:"submit_price"`
-	ContractDirection          string            `json:"contract_direction"`
-	StrikePrice                string            `json:"strike_price"`
-	ContractSize               string            `json:"contract_size"`
-	MonitorPrice               string            `json:"monitor_price"`
+	UnderlyingSymbol           string           `json:"-"`
+	CounterID                  string           `json:"counter_id"`
+	UnderlyingCounterID        string           `json:"underlying_counter_id"`
+	SecurityType               string           `json:"security_type"`
+	Name                       string           `json:"name"`
+	Currency                   string           `json:"currency"`
+	TradeCurrency              string           `json:"trade_currency"`
+	OrderType                  string           `json:"order_type"`
+	Status                     string           `json:"status"`
+	Price                      string           `json:"price"`
+	Quantity                   string           `json:"quantity"`
+	ExecutedQty                string           `json:"executed_qty"`
+	ExecutedPrice              string           `json:"executed_price"`
+	ExecutedAmount             string           `json:"executed_amount"`
+	OperateDirection           string           `json:"operate_direction"`
+	TimeInForce                int32            `json:"time_in_force"`
+	GTD                        string           `json:"gtd"`
+	Tag                        int32            `json:"tag"`
+	Msg                        string           `json:"msg"`
+	ForceOnlyRTH               int32            `json:"force_only_rth"`
+	SubmittedAt                string           `json:"submitted_at"` // unix seconds string
+	DoneAt                     string           `json:"done_at"`      // unix seconds string
+	TriggerPrice               string           `json:"trigger_price"`
+	TriggerAt                  string           `json:"trigger_at"`
+	TriggerStatus              int32            `json:"trigger_status"`
+	TriggerExchange            string           `json:"trigger_exchange"`
+	TriggerLastDone            string           `json:"trigger_last_done"`
+	TriggerCount               int32            `json:"trigger_count"`
+	TailingAmount              string           `json:"tailing_amount"`
+	TailingPercent             string           `json:"tailing_percent"`
+	LimitOffset                string           `json:"limit_offset"`
+	LimitDepthLevel            int32            `json:"limit_depth_level"`
+	MarketPrice                string           `json:"market_price"`
+	SubmittedAmount            string           `json:"submitted_amount"`
+	EstimatedFee               string           `json:"estimated_fee"`
+	FreeStatus                 int32            `json:"free_status"`
+	FreeAmount                 string           `json:"free_amount"`
+	FreeCurrency               string           `json:"free_currency"`
+	DeductionsStatus           int32            `json:"deductions_status"`
+	DeductionsAmount           string           `json:"deductions_amount"`
+	DeductionsCurrency         string           `json:"deductions_currency"`
+	PlatformDeductionsStatus   int32            `json:"platform_deductions_status"`
+	PlatformDeductionsAmount   string           `json:"platform_deductions_amount"`
+	PlatformDeductionsCurrency string           `json:"platform_deductions_currency"`
+	DisplayAccount             string           `json:"display_account"`
+	SettlementAccount          string           `json:"settlement_account"`
+	SettlementChannel          string           `json:"settlement_channel"`
+	CustomerName               string           `json:"customer_name"`
+	RealName                   string           `json:"real_name"`
+	EnName                     string           `json:"en_name"`
+	JointRealName              string           `json:"joint_real_name"`
+	JointEnName                string           `json:"joint_en_name"`
+	OrgID                      string           `json:"org_id"`
+	BCAN                       string           `json:"bcan"`
+	OpEntrustWay               int32            `json:"op_entrust_way"`
+	OpEntrustWayName           string           `json:"op_entrust_way_name"`
+	Remark                     string           `json:"remark"`
+	Notice                     string           `json:"notice"`
+	ShortSellType              int32            `json:"short_sell_type"`
+	PloyType                   string           `json:"ploy_type"` // API returns string e.g. "0"
+	PloyID                     string           `json:"ploy_id"`
+	PloyStatus                 string           `json:"ploy_status"`
+	Trend                      int32            `json:"trend"`
+	WithdrawalReason           string           `json:"withdrawal_reason"`
+	ActivateOrderType          string           `json:"activate_order_type"`
+	ActivateRTH                int32            `json:"activate_rth"`
+	SubmitPrice                string           `json:"submit_price"`
+	ContractDirection          string           `json:"contract_direction"`
+	StrikePrice                string           `json:"strike_price"`
+	ContractSize               string           `json:"contract_size"`
+	MonitorPrice               string           `json:"monitor_price"`
 	ButtonControl              USButtonControl   `json:"button_control"`
 	ChargeDetail               *USChargeDetail   `json:"charge_detail"`
 	AttachedOrders             []USAttachedOrder `json:"attached_orders"`
@@ -379,7 +379,7 @@ type USOrderDetailResponse struct {
 // USStockEntry is one stock/equity position in USAssetOverview.
 type USStockEntry struct {
 	// Symbol is the ticker code returned by the API (e.g. "AAPL"). See FullSymbol for the qualified form.
-	Symbol string `json:"symbol"`
+	Symbol                     string `json:"symbol"`
 	// FullSymbol is the user-facing qualified symbol (e.g. "AAPL.US"), converted from CounterID.
 	FullSymbol                 string `json:"-"`
 	AssetType                  string `json:"asset_type"`
@@ -422,17 +422,17 @@ type USCryptoEntry struct {
 	AverageCost string `json:"average_cost"`
 	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT"),
 	// converted from the API's counter_id field (e.g. "VA/BKKT/BTCUSD").
-	Symbol       string `json:"symbol"`
-	Currency     string `json:"currency"`
+	Symbol      string `json:"symbol"`
+	Currency    string `json:"currency"`
 	IndustryName string `json:"industry_name"`
 }
 
 // usRawCryptoEntry is the raw API shape before symbol conversion.
 type usRawCryptoEntry struct {
-	AssetType    string `json:"asset_type"`
-	AverageCost  string `json:"average_cost"`
-	CounterID    string `json:"counter_id"`
-	Currency     string `json:"currency"`
+	AssetType   string `json:"asset_type"`
+	AverageCost string `json:"average_cost"`
+	CounterID   string `json:"counter_id"`
+	Currency    string `json:"currency"`
 	IndustryName string `json:"industry_name"`
 }
 
