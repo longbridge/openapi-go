@@ -89,6 +89,35 @@ func (c *AgentContext) Workspaces(ctx context.Context) (*WorkspacesResponse, err
 //
 // Path: GET /v1/ai/workspaces/{id}/agents
 func (c *AgentContext) Agents(ctx context.Context, workspaceID string, opts *GetAgentsOptions) (*AgentsResponse, error) {
+	path := "/v1/ai/workspaces/" + url.PathEscape(workspaceID) + "/agents"
+	var resp AgentsResponse
+	if err := c.httpClient.Get(ctx, path, agentsQuery(opts), &resp, httplib.WithRequestTimeout(listTimeout)); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// PublicAgents lists all publicly available Agents on the platform (the
+// Explore catalog). Unlike Agents, it is not scoped to a Workspace and
+// returns every published, publicly-shared Agent. opts is optional; pass nil
+// to use the server defaults (page 1, limit 20, no name filter).
+//
+// The returned Agent.UID is the identifier used by Conversation; only Agents
+// with IsPublished set can start conversations.
+//
+// Path: GET /v1/ai/agents
+func (c *AgentContext) PublicAgents(ctx context.Context, opts *GetAgentsOptions) (*AgentsResponse, error) {
+	var resp AgentsResponse
+	if err := c.httpClient.Get(ctx, "/v1/ai/agents", agentsQuery(opts), &resp, httplib.WithRequestTimeout(listTimeout)); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// agentsQuery builds the shared optional query parameters (page / limit /
+// name) for Agents and PublicAgents. A nil opts yields an empty set, i.e. the
+// server defaults.
+func agentsQuery(opts *GetAgentsOptions) url.Values {
 	q := url.Values{}
 	if opts != nil {
 		if opts.Page > 0 {
@@ -101,12 +130,7 @@ func (c *AgentContext) Agents(ctx context.Context, workspaceID string, opts *Get
 			q.Set("name", opts.Name)
 		}
 	}
-	path := "/v1/ai/workspaces/" + url.PathEscape(workspaceID) + "/agents"
-	var resp AgentsResponse
-	if err := c.httpClient.Get(ctx, path, q, &resp, httplib.WithRequestTimeout(listTimeout)); err != nil {
-		return nil, err
-	}
-	return &resp, nil
+	return q
 }
 
 // Conversation asks a question to the specified Agent, blocking until the
