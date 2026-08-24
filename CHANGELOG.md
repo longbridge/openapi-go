@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **Removed all symbol↔counter_id conversions from the SDK** (ports longbridge/openapi PR #562). Every endpoint now sends and receives the user-facing symbol (e.g. `AAPL.US`, `HSI.HK`) directly:
+  - Request query/body parameters `counter_id` / `counter_ids` / `underlying_counter_id` were renamed to `symbol` / `symbols` and carry the user symbol as-is — no more conversion to the internal `ST/US/AAPL` / `IX/HK/HSI` / `ETF/SH/513050` / `VA/BKKT/BTCUSD` forms. Affects `fundamental` (all endpoints incl. the US series and `comparison_symbols` on `ValuationComparison`), `market`, `quote` (`ShortPositions`, `ShortTrades`, `OptionVolume*`, `USCryptoOverview`), `trade` (`USQueryOrders` body `symbols`), `portfolio` (`ProfitAnalysisDetail`, `ProfitAnalysisFlows`), `dca` (`List`, `Create`, `Stats`, `CheckSupport`, `CalcDate`), `sharelist` (`AddSecurities`, `RemoveSecurities`, `SortSecurities`) and `alert`
+  - Response fields previously read from `counter_id` and converted are now read from the server's `symbol` field directly (`ExecutiveGroup`, `ShareholderStock`, `FundHolder`, `OperatingFinancial`, `IndustryRankItem`, `IndustryPeerNode`, asset-allocation items, DCA plans/records, sharelist members, alert groups, US orders/assets — `USStockEntry` reads `full_symbol`, US crypto entries read `symbol`)
+  - `DELETE` endpoints no longer send a JSON body: `alert.Delete` sends `ids` and `sharelist.RemoveSecurities` sends `symbols` as query-string parameters; `sharelist.Delete` sends no body at all
+  - **Removed** the public `counter` package, the internal converter (embedded US-ETF/IX/WT directories) and `quote.QuoteContext.SymbolToCounterIds` / `ResolveCounterIds` (`POST /v1/quote/symbol-to-counter-ids` is no longer called)
+- `fundamental.Ratings` (`GET /v1/quote/ratings`) is temporarily disabled — the endpoint is not yet open; the method is commented out pending release
+- `market.TopMoversResponse.NextParams` is now a plain pagination-cursor `string` instead of `json.RawMessage`; an empty string means there are no more pages
+- Portfolio flows `ExecutedTimestamp` is normalized to a string (server may send int or string; `null` becomes an empty string)
+
 ### Added
 
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order

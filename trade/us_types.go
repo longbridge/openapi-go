@@ -1,11 +1,8 @@
 package trade
 
 import (
-	"encoding/json"
 	"strconv"
 	"time"
-
-	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // unixTimestamp is a time.Time that unmarshals from JSON unix-second values
@@ -65,7 +62,6 @@ type GetUSRealizedPL struct {
 }
 
 // USOrder is one order entry in QueryUSOrdersResponse.
-// counter_id fields are converted to user-facing symbol format.
 type USOrder struct {
 	// OrderID is the unique order identifier (field "id" in raw response).
 	// Use this with USOrderDetail.
@@ -74,9 +70,9 @@ type USOrder struct {
 	AccountChannel string `json:"account_channel"`
 	// Action: 1=buy, 2=sell
 	Action int32 `json:"action"`
-	// Symbol is converted from counter_id (e.g. "VA/BKKT/DOGEUSD" → "DOGEUSD.BKKT")
+	// Symbol is the user-facing trading symbol (e.g. "DOGEUSD.BKKT")
 	Symbol string `json:"symbol"`
-	// UnderlyingSymbol is converted from underlying_counter_id (options only)
+	// UnderlyingSymbol is the user-facing underlying symbol (options only)
 	UnderlyingSymbol string    `json:"underlying_symbol"`
 	Code             string    `json:"code"`
 	Name             string    `json:"name"`
@@ -138,8 +134,8 @@ type usRawOrder struct {
 	AAID                     string        `json:"aaid"`
 	AccountChannel           string        `json:"account_channel"`
 	Action                   int32         `json:"action"`
-	CounterID                string        `json:"counter_id"`
-	UnderlyingCounterID      string        `json:"underlying_counter_id"`
+	Symbol                   string        `json:"symbol"`
+	UnderlyingSymbol         string        `json:"underlying_symbol"`
 	Code                     string        `json:"code"`
 	Name                     string        `json:"name"`
 	SecurityType             string        `json:"security_type"`
@@ -256,9 +252,8 @@ type USAttachedOrder struct {
 	ActivateOrderType   string `json:"activate_order_type"`
 	ActivateRTH         int32  `json:"activate_rth"`
 	SubmitPrice         string `json:"submit_price"`
-	// Symbol is the user-facing trading symbol (e.g. "NKE.US"), converted from CounterID.
-	Symbol    string `json:"-"`
-	CounterID string `json:"counter_id"`
+	// Symbol is the user-facing trading symbol (e.g. "NKE.US").
+	Symbol    string `json:"symbol"`
 	Withdrawn bool   `json:"withdrawn"`
 }
 
@@ -270,12 +265,10 @@ type USOrderDetail struct {
 	AAID           string `json:"aaid"`
 	AccountChannel string `json:"account_channel"`
 	Action         int32  `json:"action"`
-	// Symbol is the user-facing trading symbol (e.g. "NKE.US"), converted from CounterID.
-	Symbol string `json:"-"`
-	// UnderlyingSymbol is the user-facing underlying symbol (options only), converted from UnderlyingCounterID.
-	UnderlyingSymbol           string            `json:"-"`
-	CounterID                  string            `json:"counter_id"`
-	UnderlyingCounterID        string            `json:"underlying_counter_id"`
+	// Symbol is the user-facing trading symbol (e.g. "NKE.US").
+	Symbol string `json:"symbol"`
+	// UnderlyingSymbol is the user-facing underlying symbol (options only).
+	UnderlyingSymbol           string            `json:"underlying_symbol"`
 	SecurityType               string            `json:"security_type"`
 	Name                       string            `json:"name"`
 	Currency                   string            `json:"currency"`
@@ -350,21 +343,6 @@ type USOrderDetail struct {
 	OrderHistories             []USOrderHistory  `json:"order_histories"`
 }
 
-// UnmarshalJSON converts counter_id / underlying_counter_id fields to
-// user-facing Symbol / UnderlyingSymbol after standard JSON deserialization.
-func (o *USOrderDetail) UnmarshalJSON(b []byte) error {
-	type raw USOrderDetail
-	if err := json.Unmarshal(b, (*raw)(o)); err != nil {
-		return err
-	}
-	o.Symbol = counter.IDToSymbol(o.CounterID)
-	o.UnderlyingSymbol = counter.IDToSymbol(o.UnderlyingCounterID)
-	for i := range o.AttachedOrders {
-		o.AttachedOrders[i].Symbol = counter.IDToSymbol(o.AttachedOrders[i].CounterID)
-	}
-	return nil
-}
-
 // USOrderDetailResponse is the response for USOrderDetail.
 // CurrentAttachedOrder is the active bracket/conditional sub-order, or nil.
 // CurrentMillisecond is the server timestamp at response time.
@@ -380,14 +358,13 @@ type USOrderDetailResponse struct {
 type USStockEntry struct {
 	// Symbol is the ticker code returned by the API (e.g. "AAPL"). See FullSymbol for the qualified form.
 	Symbol string `json:"symbol"`
-	// FullSymbol is the user-facing qualified symbol (e.g. "AAPL.US"), converted from CounterID.
-	FullSymbol                 string `json:"-"`
+	// FullSymbol is the user-facing qualified symbol (e.g. "AAPL.US").
+	FullSymbol                 string `json:"full_symbol"`
 	AssetType                  string `json:"asset_type"`
 	Quantity                   string `json:"quantity"`
 	Currency                   string `json:"currency"`
 	AverageCost                string `json:"average_cost"`
 	Market                     string `json:"market"`
-	CounterID                  string `json:"counter_id"`
 	TradeStatus                string `json:"trade_status"`
 	PrevClose                  string `json:"prev_close"`
 	LastDone                   string `json:"last_done"`
@@ -420,34 +397,24 @@ type USCashEntry struct {
 type USCryptoEntry struct {
 	AssetType   string `json:"asset_type"`
 	AverageCost string `json:"average_cost"`
-	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT"),
-	// converted from the API's counter_id field (e.g. "VA/BKKT/BTCUSD").
+	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT").
 	Symbol       string `json:"symbol"`
-	Currency     string `json:"currency"`
-	IndustryName string `json:"industry_name"`
-}
-
-// usRawCryptoEntry is the raw API shape before symbol conversion.
-type usRawCryptoEntry struct {
-	AssetType    string `json:"asset_type"`
-	AverageCost  string `json:"average_cost"`
-	CounterID    string `json:"counter_id"`
 	Currency     string `json:"currency"`
 	IndustryName string `json:"industry_name"`
 }
 
 // usRawAssetOverview is the raw API shape before field conversion.
 type usRawAssetOverview struct {
-	AccountType       string             `json:"account_type"`
-	AssetTimestamp    string             `json:"asset_timestamp"`
-	CashBuyPower      string             `json:"cash_buy_power"`
-	OvernightBuyPower string             `json:"overnight_buy_power"`
-	Currency          string             `json:"currency"`
-	CashList          []USCashEntry      `json:"cash_list"`
-	StockList         []USStockEntry     `json:"stock_list"`
-	OptionList        []interface{}      `json:"option_list"`
-	CryptoList        []usRawCryptoEntry `json:"crypto_list"`
-	MultiLeg          interface{}        `json:"multi_leg"`
+	AccountType       string          `json:"account_type"`
+	AssetTimestamp    string          `json:"asset_timestamp"`
+	CashBuyPower      string          `json:"cash_buy_power"`
+	OvernightBuyPower string          `json:"overnight_buy_power"`
+	Currency          string          `json:"currency"`
+	CashList          []USCashEntry   `json:"cash_list"`
+	StockList         []USStockEntry  `json:"stock_list"`
+	OptionList        []interface{}   `json:"option_list"`
+	CryptoList        []USCryptoEntry `json:"crypto_list"`
+	MultiLeg          interface{}     `json:"multi_leg"`
 }
 
 // USAssetOverview is the US account asset snapshot.

@@ -71,7 +71,6 @@ type SharelistInfo struct {
 // SharelistStock describes a security within a sharelist.
 type SharelistStock struct {
 	// Symbol is the security identifier, e.g. "TSLA.US" or "700.HK".
-	// It is converted from the wire-level counter_id field.
 	Symbol string
 	// Name is the display name of the security.
 	Name string

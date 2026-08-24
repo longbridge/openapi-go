@@ -22,7 +22,7 @@ type DividendList struct {
 
 // DividendItem is a single dividend / distribution event.
 type DividendItem struct {
-	CounterID   string `json:"counter_id"`
+	Symbol      string `json:"symbol"`
 	ID          string `json:"id"`
 	Desc        string `json:"desc"`
 	RecordDate  string `json:"record_date"`
@@ -259,7 +259,7 @@ type IndustryValuationList struct {
 
 // IndustryValuationItem holds valuation data for one peer security.
 type IndustryValuationItem struct {
-	CounterID      string                    `json:"counter_id"`
+	Symbol         string                    `json:"symbol"`
 	Name           string                    `json:"name"`
 	Currency       string                    `json:"currency"`
 	Assets         string                    `json:"assets"`
@@ -350,7 +350,7 @@ type ExecutiveList struct {
 
 // ExecutiveGroup holds executives for one security.
 type ExecutiveGroup struct {
-	CounterID     string         `json:"counter_id"`
+	Symbol        string         `json:"symbol"`
 	ForwardURL    string         `json:"forward_url"`
 	Total         int32          `json:"total"`
 	Professionals []Professional `json:"professionals"`
@@ -391,7 +391,7 @@ type Shareholder struct {
 // ShareholderStock is a security in an institutional shareholder's
 // cross-holdings.
 type ShareholderStock struct {
-	CounterID string `json:"counter_id"`
+	Symbol    string `json:"symbol"`
 	Code      string `json:"code"`
 	Market    string `json:"market"`
 	Chg       string `json:"chg"`
@@ -407,7 +407,7 @@ type FundHolders struct {
 // FundHolder is a fund or ETF that holds the queried security.
 type FundHolder struct {
 	Code          string `json:"code"`
-	CounterID     string `json:"counter_id"`
+	Symbol        string `json:"symbol"`
 	Currency      string `json:"currency"`
 	Name          string `json:"name"`
 	PositionRatio string `json:"position_ratio"`
@@ -462,7 +462,7 @@ type InvestSecurity struct {
 	CompanyName    string `json:"company_name"`
 	CompanyNameEn  string `json:"company_name_en"`
 	CompanyNameZhCN string `json:"company_name_zhcn"`
-	CounterID      string `json:"counter_id"`
+	Symbol         string `json:"symbol"`
 	Currency       string `json:"currency"`
 	PercentOfShares string `json:"percent_of_shares"`
 	SharesRank     string `json:"shares_rank"`
@@ -492,7 +492,7 @@ type OperatingItem struct {
 // report.
 type OperatingFinancial struct {
 	Code       string               `json:"code"`
-	CounterID  string               `json:"counter_id"`
+	Symbol     string               `json:"symbol"`
 	Currency   string               `json:"currency"`
 	Name       string               `json:"name"`
 	Region     string               `json:"region"`
@@ -661,7 +661,7 @@ type IndustryRankGroup struct {
 // IndustryRankItem is one ranked industry item.
 type IndustryRankItem struct {
 	Name          string `json:"name"`
-	CounterID     string `json:"counter_id"`
+	Symbol        string `json:"symbol"`
 	Chg           string `json:"chg"`
 	LeadingName   string `json:"leading_name"`
 	LeadingTicker string `json:"leading_ticker"`
@@ -688,7 +688,7 @@ type IndustryPeersTop struct {
 // IndustryPeerNode is a node in the recursive industry peer chain.
 type IndustryPeerNode struct {
 	Name      string             `json:"name"`
-	CounterID string             `json:"counter_id"`
+	Symbol    string             `json:"symbol"`
 	StockNum  int32              `json:"stock_num"`
 	Chg       string             `json:"chg"`
 	YtdChg    string             `json:"ytd_chg"`
@@ -780,7 +780,7 @@ type AssetAllocationItem struct {
 	Name          string            `json:"name"`
 	Code          string            `json:"code"`
 	PositionRatio string            `json:"position_ratio"`
-	CounterID     string            `json:"counter_id"`
+	Symbol        string            `json:"symbol"`
 	NameLocales   map[string]string `json:"name_locales_map"`
 	HoldingDetail *HoldingDetail    `json:"holding_detail"`
 }

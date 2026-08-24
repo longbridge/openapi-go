@@ -10,10 +10,10 @@ type MarketStatusResponse struct {
 
 // MarketTimeItem is the raw JSON representation of one market's trading status.
 type MarketTimeItem struct {
-	Market           string `json:"market"`
+	Market string `json:"market"`
 	// Raw market trade status code. See market.TradeStatus for the code table.
-	TradeStatus      int32  `json:"trade_status"`
-	Timestamp        string `json:"timestamp"`
+	TradeStatus int32  `json:"trade_status"`
+	Timestamp   string `json:"timestamp"`
 	// Raw delayed market trade status code.
 	DelayTradeStatus int32  `json:"delay_trade_status"`
 	DelayTimestamp   string `json:"delay_timestamp"`
@@ -85,19 +85,19 @@ type AhPremiumIntraday struct {
 
 // AhPremiumKline is one A/H premium data point.
 type AhPremiumKline struct {
-	Aprice       string `json:"aprice"`
-	Apreclose    string `json:"apreclose"`
-	Hprice       string `json:"hprice"`
-	Hpreclose    string `json:"hpreclose"`
-	CurrencyRate string `json:"currency_rate"`
+	Aprice        string `json:"aprice"`
+	Apreclose     string `json:"apreclose"`
+	Hprice        string `json:"hprice"`
+	Hpreclose     string `json:"hpreclose"`
+	CurrencyRate  string `json:"currency_rate"`
 	AhpremiumRate string `json:"ahpremium_rate"`
-	PriceSpread  string `json:"price_spread"`
-	Timestamp    int64  `json:"timestamp"`
+	PriceSpread   string `json:"price_spread"`
+	Timestamp     int64  `json:"timestamp"`
 }
 
 // TradeStatsResponse is the raw JSON response for GET /v1/quote/trades-statistics.
 type TradeStatsResponse struct {
-	Statistics TradeStatistics  `json:"statistics"`
+	Statistics TradeStatistics   `json:"statistics"`
 	Trades     []TradePriceLevel `json:"trades"`
 }
 
@@ -130,7 +130,7 @@ type AnomalyResponse struct {
 
 // AnomalyItem is one market anomaly event.
 type AnomalyItem struct {
-	CounterID    string   `json:"counter_id"`
+	Symbol       string   `json:"symbol"`
 	Name         string   `json:"name"`
 	AlertName    string   `json:"alert_name"`
 	AlertTime    int64    `json:"alert_time"`
@@ -148,7 +148,7 @@ type IndexConstituents struct {
 
 // ConstituentStock is one constituent stock of an index.
 type ConstituentStock struct {
-	CounterID         string   `json:"counter_id"`
+	Symbol            string   `json:"symbol"`
 	Name              string   `json:"name"`
 	LastDone          string   `json:"last_done"`
 	PrevClose         string   `json:"prev_close"`

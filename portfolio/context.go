@@ -216,7 +216,7 @@ func (c *PortfolioContext) ProfitAnalysisDetail(ctx context.Context, opts *Profi
 		return nil, errors.New("opts must not be nil")
 	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(opts.Symbol))
+	q.Set("symbol", opts.Symbol)
 	if ts := dateToUnixOpt(opts.Start); ts != nil {
 		q.Set("start", fmt.Sprintf("%d", *ts))
 	}
@@ -255,7 +255,7 @@ func (c *PortfolioContext) ProfitAnalysisFlows(ctx context.Context, opts *Profit
 		return nil, errors.New("opts must not be nil")
 	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(opts.Symbol))
+	q.Set("symbol", opts.Symbol)
 	q.Set("page", fmt.Sprintf("%d", opts.Page))
 	q.Set("size", fmt.Sprintf("%d", opts.Size))
 	if opts.Derivative {
@@ -344,7 +344,7 @@ func convertProfitAnalysisSublist(j *jsontypes.ProfitAnalysisSublist) *ProfitAna
 			ClearanceTimes:    item.ClearanceTimes,
 			ItemType:          assetTypeFromString(item.ItemType),
 			Currency:          item.Currency,
-			Symbol:            counterIDToSymbol(item.Symbol),
+			Symbol:            item.Symbol,
 			HoldingPeriod:     item.HoldingPeriod,
 			SecurityCode:      item.SecurityCode,
 			Isin:              item.Isin,
@@ -426,7 +426,7 @@ func convertProfitAnalysisFlows(j *jsontypes.ProfitAnalysisFlows) (*ProfitAnalys
 	for _, f := range j.FlowsList {
 		out.FlowsList = append(out.FlowsList, FlowItem{
 			ExecutedDate:      f.ExecutedDate,
-			ExecutedTimestamp: f.ExecutedTimestamp,
+			ExecutedTimestamp: string(f.ExecutedTimestamp),
 			Code:              f.Code,
 			Direction:         flowDirectionFromString(f.Direction),
 			ExecutedQuantity:  decimalFromStr(f.ExecutedQuantity),
@@ -479,24 +479,4 @@ func dateToUnixEndOpt(date string) *int64 {
 	}
 	end := *ts + 86399
 	return &end
-}
-
-// symbolToCounterID converts a symbol like "TSLA.US" to a counter_id like "ST/US/TSLA".
-func symbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
-	}
-	code := symbol[:idx]
-	market := strings.ToUpper(symbol[idx+1:])
-	return fmt.Sprintf("ST/%s/%s", market, code)
-}
-
-// counterIDToSymbol converts a counter_id like "ST/US/TSLA" to a symbol like "TSLA.US".
-func counterIDToSymbol(counterID string) string {
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return fmt.Sprintf("%s.%s", parts[2], parts[1])
-	}
-	return counterID
 }

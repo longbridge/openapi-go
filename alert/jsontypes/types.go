@@ -13,8 +13,8 @@ type AlertList struct {
 
 // AlertSymbolGroup holds all alert items for a single security.
 type AlertSymbolGroup struct {
-	// Symbol is the security identifier (e.g. "700.HK"), decoded from counter_id.
-	Symbol     string           `json:"counter_id"`
+	// Symbol is the security identifier (e.g. "700.HK").
+	Symbol     string           `json:"symbol"`
 	Code       string           `json:"code"`
 	Market     string           `json:"market"`
 	Name       string           `json:"name"`

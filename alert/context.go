@@ -13,7 +13,6 @@ import (
 	"github.com/longbridge/openapi-go/alert/jsontypes"
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
-	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // AlertContext is a client for the Longbridge Price Alert OpenAPI.
@@ -112,10 +111,8 @@ func (c *AlertContext) Update(ctx context.Context, item *AlertItem) error {
 //
 // Path: DELETE /v1/notify/reminders
 func (c *AlertContext) Delete(ctx context.Context, alertIDs []string) error {
-	body := map[string]interface{}{
-		"ids": alertIDs,
-	}
-	return c.httpClient.Call(ctx, "DELETE", "/v1/notify/reminders", nil, body, nil)
+	params := url.Values{"ids": alertIDs}
+	return c.httpClient.Delete(ctx, "/v1/notify/reminders", params, nil)
 }
 
 // --- internal converters ---
@@ -132,7 +129,7 @@ func convertAlertList(j *jsontypes.AlertList) *AlertList {
 
 func convertAlertSymbolGroup(j *jsontypes.AlertSymbolGroup) *AlertSymbolGroup {
 	g := &AlertSymbolGroup{
-		Symbol:     counter.IDToSymbol(j.Symbol),
+		Symbol:     j.Symbol,
 		Code:       j.Code,
 		Market:     j.Market,
 		Name:       j.Name,

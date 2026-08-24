@@ -55,7 +55,7 @@ type ShortPosition struct {
 
 // ShortPositionStats contains short interest data for a security
 type ShortPositionStats struct {
-	Symbol  string           `json:"counter_id"`
+	Symbol  string           `json:"symbol"`
 	Data    []*ShortPosition `json:"data"`
 	Sources int32            `json:"sources"`
 }
@@ -68,7 +68,7 @@ type OptionVolumeStats struct {
 
 // OptionVolumeDailyStat is a single daily option volume data point
 type OptionVolumeDailyStat struct {
-	Symbol                   string `json:"underlying_counter_id"`
+	Symbol                   string `json:"symbol"`
 	Timestamp                string `json:"timestamp"`
 	TotalVolume              string `json:"total_volume"`
 	TotalPutVolume           string `json:"total_put_volume"`

@@ -84,7 +84,7 @@ func (m *MarketContext) BrokerHolding(ctx context.Context, symbol string, period
 	}
 	var resp jsontypes.BrokerHoldingTop
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	params.Set("type", period.toAPIString())
 	if err := m.httpClient.Get(ctx, "/v1/quote/broker-holding", params, &resp); err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (m *MarketContext) BrokerHoldingDetail(ctx context.Context, symbol string) 
 	}
 	var resp jsontypes.BrokerHoldingDetail
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	if err := m.httpClient.Get(ctx, "/v1/quote/broker-holding/detail", params, &resp); err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (m *MarketContext) BrokerHoldingDaily(ctx context.Context, symbol string, b
 	}
 	var resp jsontypes.BrokerHoldingDailyHistory
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	params.Set("parti_number", brokerID)
 	if err := m.httpClient.Get(ctx, "/v1/quote/broker-holding/daily", params, &resp); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (m *MarketContext) BrokerHoldingDaily(ctx context.Context, symbol string, b
 func (m *MarketContext) AhPremium(ctx context.Context, symbol string, period AhPremiumPeriod, count uint32) (*AhPremiumKlines, error) {
 	var resp jsontypes.AhPremiumKlines
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	params.Set("line_type", period.lineType())
 	params.Set("line_num", fmt.Sprintf("%d", count))
 	if err := m.httpClient.Get(ctx, "/v1/quote/ahpremium/klines", params, &resp); err != nil {
@@ -162,7 +162,7 @@ func (m *MarketContext) AhPremium(ctx context.Context, symbol string, period AhP
 func (m *MarketContext) AhPremiumIntraday(ctx context.Context, symbol string) (*AhPremiumIntraday, error) {
 	var resp jsontypes.AhPremiumIntraday
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	params.Set("days", "1")
 	if err := m.httpClient.Get(ctx, "/v1/quote/ahpremium/timeshares", params, &resp); err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (m *MarketContext) AhPremiumIntraday(ctx context.Context, symbol string) (*
 func (m *MarketContext) TradeStats(ctx context.Context, symbol string) (*TradeStatsResponse, error) {
 	var resp jsontypes.TradeStatsResponse
 	params := url.Values{}
-	params.Set("counter_id", symbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	if err := m.httpClient.Get(ctx, "/v1/quote/trades-statistics", params, &resp); err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (m *MarketContext) Anomaly(ctx context.Context, market string) (*AnomalyRes
 	}
 	for _, item := range resp.Changes {
 		out.Changes = append(out.Changes, AnomalyItem{
-			Symbol:       counterIDToSymbol(item.CounterID),
+			Symbol:       item.Symbol,
 			Name:         item.Name,
 			AlertName:    item.AlertName,
 			AlertTime:    item.AlertTime,
@@ -244,7 +244,7 @@ func (m *MarketContext) Anomaly(ctx context.Context, market string) (*AnomalyRes
 func (m *MarketContext) Constituent(ctx context.Context, symbol string) (*IndexConstituents, error) {
 	var resp jsontypes.IndexConstituents
 	params := url.Values{}
-	params.Set("counter_id", indexSymbolToCounterID(symbol))
+	params.Set("symbol", symbol)
 	if err := m.httpClient.Get(ctx, "/v1/quote/index-constituents", params, &resp); err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func (m *MarketContext) Constituent(ctx context.Context, symbol string) (*IndexC
 	}
 	for _, s := range resp.Stocks {
 		out.Stocks = append(out.Stocks, ConstituentStock{
-			Symbol:            counterIDToSymbol(s.CounterID),
+			Symbol:            s.Symbol,
 			Name:              s.Name,
 			LastDone:          parseOptionalDecimal(s.LastDone),
 			PrevClose:         parseOptionalDecimal(s.PrevClose),
@@ -295,7 +295,7 @@ func (m *MarketContext) TopMovers(ctx context.Context, markets []string, sort ui
 	}
 	var raw struct {
 		Events     []map[string]interface{} `json:"events"`
-		NextParams json.RawMessage          `json:"next_params"`
+		NextParams string                   `json:"next_params"`
 	}
 	if err := m.httpClient.Post(ctx, "/v1/quote/market/stock-events", body, &raw); err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (m *MarketContext) TopMovers(ctx context.Context, markets []string, sort ui
 		var stock TopMoversStock
 		if s, ok := e["stock"].(map[string]interface{}); ok {
 			stock = TopMoversStock{
-				Symbol:   counterIDToSymbol(strVal(s, "counter_id")),
+				Symbol:   strVal(s, "symbol"),
 				Code:     strVal(s, "code"),
 				Name:     strVal(s, "name"),
 				FullName: strVal(s, "full_name"),
@@ -408,7 +408,7 @@ func (m *MarketContext) RankList(ctx context.Context, key string, needArticle bo
 	items := make([]*RankListItem, 0, len(raw.Lists))
 	for _, r := range raw.Lists {
 		items = append(items, &RankListItem{
-			Symbol:       counterIDToSymbol(strVal(r, "counter_id")),
+			Symbol:       strVal(r, "symbol"),
 			Code:         strVal(r, "code"),
 			Name:         strVal(r, "name"),
 			LastDone:     strVal(r, "last_done"),
@@ -443,38 +443,6 @@ func (p BrokerHoldingPeriod) toAPIString() string {
 	default:
 		return "rct_1"
 	}
-}
-
-// symbolToCounterID converts a symbol like "700.HK" to a counter ID like "700_HK".
-// This mirrors the Rust symbol_to_counter_id utility.
-func symbolToCounterID(symbol string) string {
-	return strings.Replace(symbol, ".", "_", 1)
-}
-
-// indexSymbolToCounterID converts an index symbol like "HSI.HK" to a counter ID like "IX_HSI_HK".
-// This mirrors the Rust index_symbol_to_counter_id utility.
-func indexSymbolToCounterID(symbol string) string {
-	parts := strings.SplitN(symbol, ".", 2)
-	if len(parts) == 2 {
-		return fmt.Sprintf("IX_%s_%s", parts[0], parts[1])
-	}
-	return symbol
-}
-
-// counterIDToSymbol converts a counter ID back to a symbol.
-// Handles both "ST/US/AAPL" → "AAPL.US" and legacy "700_HK" → "700.HK".
-func counterIDToSymbol(counterID string) string {
-	// Handle ST/MARKET/CODE format (from rank/top-movers endpoints)
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return fmt.Sprintf("%s.%s", parts[2], parts[1])
-	}
-	// Fallback: find the last underscore that separates market suffix
-	idx := strings.LastIndex(counterID, "_")
-	if idx > 0 {
-		return counterID[:idx] + "." + counterID[idx+1:]
-	}
-	return counterID
 }
 
 // strVal extracts a string value from a map[string]interface{}.

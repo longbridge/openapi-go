@@ -3,6 +3,31 @@
 // idiomatic Go types.
 package jsontypes
 
+import "strconv"
+
+// IntOrString unmarshals a JSON value that may be either a number or a
+// string, normalizing it to a string. null becomes the empty string.
+type IntOrString string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (v *IntOrString) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if s == "null" {
+		*v = ""
+		return nil
+	}
+	if len(s) >= 2 && s[0] == '"' {
+		unquoted, err := strconv.Unquote(s)
+		if err != nil {
+			return err
+		}
+		*v = IntOrString(unquoted)
+		return nil
+	}
+	*v = IntOrString(s)
+	return nil
+}
+
 // ── exchange_rate ─────────────────────────────────────────────────
 
 // ExchangeRates is the raw API response for GET /v1/asset/exchange_rates.
@@ -84,7 +109,7 @@ type ProfitAnalysisItem struct {
 	ClearanceTimes     int64  `json:"clearance_times"`
 	ItemType           string `json:"type"`
 	Currency           string `json:"currency"`
-	Symbol             string `json:"counter_id"`
+	Symbol             string `json:"symbol"`
 	HoldingPeriod      string `json:"holding_period"`
 	SecurityCode       string `json:"security_code"`
 	Isin               string `json:"isin"`
@@ -160,12 +185,12 @@ type ProfitAnalysisFlows struct {
 
 // FlowItem is one profit-analysis flow record.
 type FlowItem struct {
-	ExecutedDate      string  `json:"executed_date"`
-	ExecutedTimestamp string  `json:"executed_timestamp"`
-	Code              string  `json:"code"`
-	Direction         string  `json:"direction"`
-	ExecutedQuantity  string  `json:"executed_quantity"`
-	ExecutedPrice     string  `json:"executed_price"`
-	ExecutedCost      string  `json:"executed_cost"`
-	Describe          string  `json:"describe"`
+	ExecutedDate      string      `json:"executed_date"`
+	ExecutedTimestamp IntOrString `json:"executed_timestamp"`
+	Code              string      `json:"code"`
+	Direction         string      `json:"direction"`
+	ExecutedQuantity  string      `json:"executed_quantity"`
+	ExecutedPrice     string      `json:"executed_price"`
+	ExecutedCost      string      `json:"executed_cost"`
+	Describe          string      `json:"describe"`
 }

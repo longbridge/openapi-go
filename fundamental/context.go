@@ -18,10 +18,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go/config"
-	counterpkg "github.com/longbridge/openapi-go/counter"
 	"github.com/longbridge/openapi-go/fundamental/jsontypes"
 	httplib "github.com/longbridge/openapi-go/http"
-	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 // FundamentalContext is a client for the Longbridge Fundamental OpenAPI.
@@ -56,12 +54,6 @@ func NewFromEnv() (*FundamentalContext, error) {
 }
 
 // ─── helpers ───────────────────────────────────────────────────────────────
-
-// symbolToCounterID converts a symbol like "TSLA.US" to a counter_id like
-// "ST/US/TSLA". All symbols are treated as equities (ST prefix).
-func symbolToCounterID(symbol string) string { return counter.SymbolToID(symbol) }
-
-func counterIDToSymbol(counterID string) string { return counter.IDToSymbol(counterID) }
 
 // decimalFromString parses a decimal string; returns nil for empty strings or
 // unparseable values.
@@ -101,7 +93,7 @@ func (c *FundamentalContext) FinancialReport(
 ) (*FinancialReports, error) {
 	kindStr := financialReportKindStr(kind)
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("kind", kindStr)
 	if period != nil {
 		q.Set("report", financialReportPeriodStr(*period))
@@ -159,9 +151,8 @@ func (c *FundamentalContext) InstitutionRating(
 	ctx context.Context,
 	symbol string,
 ) (*InstitutionRating, error) {
-	cid := symbolToCounterID(symbol)
 	q := url.Values{}
-	q.Set("counter_id", cid)
+	q.Set("symbol", symbol)
 
 	type result struct {
 		latest  jsontypes.InstitutionRatingLatest
@@ -202,7 +193,7 @@ func (c *FundamentalContext) InstitutionRatingDetail(
 	symbol string,
 ) (*InstitutionRatingDetail, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.InstitutionRatingDetail
 	if err := c.httpClient.Get(ctx, "/v1/quote/institution-ratings/detail", q, &resp); err != nil {
 		return nil, err
@@ -220,7 +211,7 @@ func (c *FundamentalContext) Dividend(
 	symbol string,
 ) (*DividendList, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.DividendList
 	if err := c.httpClient.Get(ctx, "/v1/quote/dividends", q, &resp); err != nil {
 		return nil, err
@@ -236,7 +227,7 @@ func (c *FundamentalContext) DividendDetail(
 	symbol string,
 ) (*DividendList, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.DividendList
 	if err := c.httpClient.Get(ctx, "/v1/quote/dividends/details", q, &resp); err != nil {
 		return nil, err
@@ -254,7 +245,7 @@ func (c *FundamentalContext) ForecastEps(
 	symbol string,
 ) (*ForecastEps, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.ForecastEps
 	if err := c.httpClient.Get(ctx, "/v1/quote/forecast-eps", q, &resp); err != nil {
 		return nil, err
@@ -272,7 +263,7 @@ func (c *FundamentalContext) Consensus(
 	symbol string,
 ) (*FinancialConsensus, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.FinancialConsensus
 	if err := c.httpClient.Get(ctx, "/v1/quote/financial-consensus-detail", q, &resp); err != nil {
 		return nil, err
@@ -290,7 +281,7 @@ func (c *FundamentalContext) Valuation(
 	symbol string,
 ) (*ValuationData, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("indicator", "pe")
 	q.Set("range", "1")
 	var resp jsontypes.ValuationData
@@ -308,7 +299,7 @@ func (c *FundamentalContext) ValuationHistory(
 	symbol string,
 ) (*ValuationHistoryResponse, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.ValuationHistoryResponse
 	if err := c.httpClient.Get(ctx, "/v1/quote/valuation/detail", q, &resp); err != nil {
 		return nil, err
@@ -326,7 +317,7 @@ func (c *FundamentalContext) IndustryValuation(
 	symbol string,
 ) (*IndustryValuationList, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.IndustryValuationList
 	if err := c.httpClient.Get(ctx, "/v1/quote/industry-valuation-comparison", q, &resp); err != nil {
 		return nil, err
@@ -342,7 +333,7 @@ func (c *FundamentalContext) IndustryValuationDist(
 	symbol string,
 ) (*IndustryValuationDist, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.IndustryValuationDist
 	if err := c.httpClient.Get(ctx, "/v1/quote/industry-valuation-distribution", q, &resp); err != nil {
 		return nil, err
@@ -360,7 +351,7 @@ func (c *FundamentalContext) Company(
 	symbol string,
 ) (*CompanyOverview, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.CompanyOverview
 	if err := c.httpClient.Get(ctx, "/v1/quote/comp-overview", q, &resp); err != nil {
 		return nil, err
@@ -378,7 +369,7 @@ func (c *FundamentalContext) Executive(
 	symbol string,
 ) (*ExecutiveList, error) {
 	q := url.Values{}
-	q.Set("counter_ids", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.ExecutiveList
 	if err := c.httpClient.Get(ctx, "/v1/quote/company-professionals", q, &resp); err != nil {
 		return nil, err
@@ -396,7 +387,7 @@ func (c *FundamentalContext) Shareholder(
 	symbol string,
 ) (*ShareholderList, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.ShareholderList
 	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders", q, &resp); err != nil {
 		return nil, err
@@ -414,7 +405,7 @@ func (c *FundamentalContext) FundHolder(
 	symbol string,
 ) (*FundHolders, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.FundHolders
 	if err := c.httpClient.Get(ctx, "/v1/quote/fund-holders", q, &resp); err != nil {
 		return nil, err
@@ -432,7 +423,7 @@ func (c *FundamentalContext) CorpAction(
 	symbol string,
 ) (*CorpActions, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("req_type", "1")
 	q.Set("version", "3")
 	var resp jsontypes.CorpActions
@@ -452,7 +443,7 @@ func (c *FundamentalContext) InvestRelation(
 	symbol string,
 ) (*InvestRelations, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("count", "0")
 	var resp jsontypes.InvestRelations
 	if err := c.httpClient.Get(ctx, "/v1/quote/invest-relations", q, &resp); err != nil {
@@ -475,7 +466,7 @@ func (c *FundamentalContext) Operating(
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.OperatingList
 	if err := c.httpClient.Get(ctx, "/v1/quote/operatings", q, &resp); err != nil {
 		return nil, err
@@ -493,7 +484,7 @@ func (c *FundamentalContext) Buyback(
 	symbol string,
 ) (*BuybackData, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.BuybackData
 	if err := c.httpClient.Get(ctx, "/v1/quote/buy-backs", q, &resp); err != nil {
 		return nil, err
@@ -503,21 +494,23 @@ func (c *FundamentalContext) Buyback(
 
 // ─── Ratings ──────────────────────────────────────────────────────────────
 
-// Ratings fetches stock ratings for a security.
+// TODO: temporarily disabled — endpoint not yet open (/v1/quote/ratings)
 //
-// Path: GET /v1/quote/ratings
-func (c *FundamentalContext) Ratings(
-	ctx context.Context,
-	symbol string,
-) (*StockRatings, error) {
-	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
-	var resp jsontypes.StockRatings
-	if err := c.httpClient.Get(ctx, "/v1/quote/ratings", q, &resp); err != nil {
-		return nil, err
-	}
-	return convertStockRatings(&resp), nil
-}
+// // Ratings fetches stock ratings for a security.
+// //
+// // Path: GET /v1/quote/ratings
+// func (c *FundamentalContext) Ratings(
+// 	ctx context.Context,
+// 	symbol string,
+// ) (*StockRatings, error) {
+// 	q := url.Values{}
+// 	q.Set("symbol", symbol)
+// 	var resp jsontypes.StockRatings
+// 	if err := c.httpClient.Get(ctx, "/v1/quote/ratings", q, &resp); err != nil {
+// 		return nil, err
+// 	}
+// 	return convertStockRatings(&resp), nil
+// }
 
 // ─── internal converters ──────────────────────────────────────────────────
 
@@ -527,7 +520,7 @@ func convertDividendList(j *jsontypes.DividendList) *DividendList {
 	}
 	for _, item := range j.List {
 		out.List = append(out.List, DividendItem{
-			Symbol:      counterIDToSymbol(item.CounterID),
+			Symbol:      item.Symbol,
 			ID:          item.ID,
 			Desc:        item.Desc,
 			RecordDate:  item.RecordDate,
@@ -773,7 +766,7 @@ func convertIndustryValuationList(j *jsontypes.IndustryValuationList) *IndustryV
 			history = append(history, convertIndustryValuationHistory(h))
 		}
 		out.List = append(out.List, IndustryValuationItem{
-			Symbol:         counterIDToSymbol(item.CounterID),
+			Symbol:         item.Symbol,
 			Name:           item.Name,
 			Currency:       item.Currency,
 			Assets:         decimalFromString(item.Assets),
@@ -867,7 +860,7 @@ func convertExecutiveList(j *jsontypes.ExecutiveList) *ExecutiveList {
 			})
 		}
 		groups = append(groups, ExecutiveGroup{
-			Symbol:        counterIDToSymbol(g.CounterID),
+			Symbol:        g.Symbol,
 			ForwardURL:    g.ForwardURL,
 			Total:         g.Total,
 			Professionals: profs,
@@ -882,7 +875,7 @@ func convertShareholderList(j *jsontypes.ShareholderList) *ShareholderList {
 		stocks := make([]ShareholderStock, 0, len(s.Stocks))
 		for _, st := range s.Stocks {
 			stocks = append(stocks, ShareholderStock{
-				Symbol: counterIDToSymbol(st.CounterID),
+				Symbol: st.Symbol,
 				Code:   st.Code,
 				Market: st.Market,
 				Chg:    st.Chg,
@@ -910,7 +903,7 @@ func convertFundHolders(j *jsontypes.FundHolders) *FundHolders {
 	for _, h := range j.Lists {
 		lists = append(lists, FundHolder{
 			Code:          h.Code,
-			Symbol:        counterIDToSymbol(h.CounterID),
+			Symbol:        h.Symbol,
 			Currency:      h.Currency,
 			Name:          h.Name,
 			PositionRatio: decimalFromStringZero(h.PositionRatio),
@@ -968,7 +961,7 @@ func convertInvestRelations(j *jsontypes.InvestRelations) *InvestRelations {
 			CompanyName:     s.CompanyName,
 			CompanyNameEn:   s.CompanyNameEn,
 			CompanyNameZhCN: s.CompanyNameZhCN,
-			Symbol:          counterIDToSymbol(s.CounterID),
+			Symbol:          s.Symbol,
 			Currency:        s.Currency,
 			PercentOfShares: decimalFromString(s.PercentOfShares),
 			SharesRank:      s.SharesRank,
@@ -1003,7 +996,7 @@ func convertOperatingList(j *jsontypes.OperatingList) *OperatingList {
 			WebURL:  item.WebURL,
 			Financial: OperatingFinancial{
 				Code:     item.Financial.Code,
-				Symbol:   counterIDToSymbol(item.Financial.CounterID),
+				Symbol:   item.Financial.Symbol,
 				Currency: item.Financial.Currency,
 				Name:       item.Financial.Name,
 				Region:     item.Financial.Region,
@@ -1109,7 +1102,7 @@ func (c *FundamentalContext) ShareholderTop(
 	symbol string,
 ) (*ShareholderTopResponse, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/top", q, &resp); err != nil {
 		return nil, err
@@ -1128,7 +1121,7 @@ func (c *FundamentalContext) ShareholderDetail(
 	objectID int64,
 ) (*ShareholderDetailResponse, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("object_id", strconv.FormatInt(objectID, 10))
 	var resp json.RawMessage
 	if err := c.httpClient.Get(ctx, "/v1/quote/shareholders/holding", q, &resp); err != nil {
@@ -1145,29 +1138,24 @@ func (c *FundamentalContext) ShareholderDetail(
 // Path: GET /v1/quote/compare/valuation
 //
 // comparisonSymbols is a list of peer symbols (e.g. ["MSFT.US", "GOOG.US"])
-// that are converted to counter_ids and serialized as a JSON array string in
-// the comparison_counter_ids query parameter.
+// serialized as a JSON array string in the comparison_symbols query parameter.
 func (c *FundamentalContext) ValuationComparison(
 	ctx context.Context,
 	symbol string,
 	currency string,
 	comparisonSymbols []string,
 ) (*ValuationComparisonResponse, error) {
-	counterIDs := make([]string, 0, len(comparisonSymbols))
-	for _, s := range comparisonSymbols {
-		counterIDs = append(counterIDs, symbolToCounterID(s))
-	}
-	counterIDsJSON, err := json.Marshal(counterIDs)
+	comparisonSymbolsJSON, err := json.Marshal(comparisonSymbols)
 	if err != nil {
 		return nil, err
 	}
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	q.Set("currency", currency)
-	q.Set("comparison_counter_ids", string(counterIDsJSON))
+	q.Set("comparison_symbols", string(comparisonSymbolsJSON))
 	var raw struct {
 		List []struct {
-			CounterID   string `json:"counter_id"`
+			Symbol      string `json:"symbol"`
 			Name        string `json:"name"`
 			Currency    string `json:"currency"`
 			MarketValue string `json:"market_value"`
@@ -1204,7 +1192,7 @@ func (c *FundamentalContext) ValuationComparison(
 			})
 		}
 		items = append(items, &ValuationComparisonItem{
-			Symbol:      counterIDToSymbol(it.CounterID),
+			Symbol:      it.Symbol,
 			Name:        it.Name,
 			Currency:    it.Currency,
 			MarketValue: it.MarketValue,
@@ -1227,10 +1215,7 @@ func (c *FundamentalContext) ValuationComparison(
 // ─── EtfAssetAllocation ───────────────────────────────────────────────────
 
 // EtfAssetAllocation fetches the ETF asset allocation (holdings / regional /
-// asset class / industry) for an ETF symbol.
-//
-// The symbol is converted to its counter_id using the directory-aware
-// counter package (so e.g. "QQQ.US" maps to "ETF/US/QQQ").
+// asset class / industry) for an ETF symbol (e.g. "QQQ.US").
 //
 // Path: GET /v1/quote/etf-asset-allocation
 func (c *FundamentalContext) EtfAssetAllocation(
@@ -1238,7 +1223,7 @@ func (c *FundamentalContext) EtfAssetAllocation(
 	symbol string,
 ) (*AssetAllocationResponse, error) {
 	q := url.Values{}
-	q.Set("counter_id", counterpkg.SymbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.AssetAllocationResponse
 	if err := c.httpClient.Get(ctx, "/v1/quote/etf-asset-allocation", q, &resp); err != nil {
 		return nil, err
@@ -1265,15 +1250,11 @@ func convertAssetAllocationResponse(j *jsontypes.AssetAllocationResponse) *Asset
 	for _, g := range j.Info {
 		items := make([]*AssetAllocationItem, 0, len(g.Lists))
 		for _, item := range g.Lists {
-			var symbol string
-			if item.CounterID != "" {
-				symbol = counterIDToSymbol(item.CounterID)
-			}
 			items = append(items, &AssetAllocationItem{
 				Name:          item.Name,
 				Code:          item.Code,
 				PositionRatio: item.PositionRatio,
-				Symbol:        symbol,
+				Symbol:        item.Symbol,
 				NameLocales:   item.NameLocales,
 				HoldingDetail: convertHoldingDetail(item.HoldingDetail),
 			})
@@ -1316,7 +1297,7 @@ func (c *FundamentalContext) BusinessSegments(
 	symbol string,
 ) (*BusinessSegments, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.BusinessSegments
 	if err := c.httpClient.Get(ctx, "/v1/quote/fundamentals/business-segments", q, &resp); err != nil {
 		return nil, err
@@ -1335,7 +1316,7 @@ func (c *FundamentalContext) BusinessSegmentsHistory(
 	cate string,
 ) (*BusinessSegmentsHistory, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	if report != "" {
 		q.Set("report", report)
 	}
@@ -1360,7 +1341,7 @@ func (c *FundamentalContext) InstitutionRatingViews(
 	symbol string,
 ) (*InstitutionRatingViews, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	var resp jsontypes.InstitutionRatingViews
 	if err := c.httpClient.Get(ctx, "/v1/quote/ratings/institutional", q, &resp); err != nil {
 		return nil, err
@@ -1401,25 +1382,19 @@ func (c *FundamentalContext) IndustryRank(
 //
 // Path: GET /v1/quote/industries/peers
 //
-// counterID may be a regular symbol like "AAPL.US" (auto-converted) or an
-// industry counter ID like "BK/US/123" (passed through as-is when it contains
-// a "/").
+// symbol may be a regular security symbol like "AAPL.US" or an industry
+// symbol.
 func (c *FundamentalContext) IndustryPeers(
 	ctx context.Context,
-	counterID string,
+	symbol string,
 	market string,
 	industryID string,
 ) (*IndustryPeersResponse, error) {
-	// pass industry counter IDs (BK/xx/xx, IN/xx/xx, etc.) through as-is
-	cid := counterID
-	if !strings.Contains(counterID, "/") {
-		cid = symbolToCounterID(counterID)
-	}
 	q := url.Values{}
 	q.Set("type", "1")
 	q.Set("market", market)
 	q.Set("industry_id", industryID)
-	q.Set("counter_id", cid)
+	q.Set("symbol", symbol)
 	var resp jsontypes.IndustryPeersResponse
 	if err := c.httpClient.Get(ctx, "/v1/quote/industries/peers", q, &resp); err != nil {
 		return nil, err
@@ -1441,7 +1416,7 @@ func (c *FundamentalContext) FinancialReportSnapshot(
 	fiscalPeriod string,
 ) (*FinancialReportSnapshot, error) {
 	q := url.Values{}
-	q.Set("counter_id", symbolToCounterID(symbol))
+	q.Set("symbol", symbol)
 	if report != "" {
 		q.Set("report", report)
 	}
@@ -1518,7 +1493,7 @@ func convertIndustryRankResponse(j *jsontypes.IndustryRankResponse) *IndustryRan
 		for _, it := range g.Lists {
 			items = append(items, IndustryRankItem{
 				Name:          it.Name,
-				CounterID:     it.CounterID,
+				Symbol:        it.Symbol,
 				Chg:           it.Chg,
 				LeadingName:   it.LeadingName,
 				LeadingTicker: it.LeadingTicker,
@@ -1544,7 +1519,7 @@ func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
 	}
 	return &IndustryPeerNode{
 		Name:      j.Name,
-		CounterID: j.CounterID,
+		Symbol:    j.Symbol,
 		StockNum:  j.StockNum,
 		Chg:       j.Chg,
 		YtdChg:    j.YtdChg,

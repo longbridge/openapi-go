@@ -50,9 +50,8 @@ type SharelistInfo struct {
 
 // SharelistStock describes a security in a sharelist.
 type SharelistStock struct {
-	// CounterID is the raw counter_id from the API (e.g. "ST/US/TSLA").
-	// Use Symbol in the public type instead.
-	CounterID string `json:"counter_id"`
+	// Symbol is the security identifier from the API (e.g. "TSLA.US").
+	Symbol string `json:"symbol"`
 	// Name is the security display name.
 	Name string `json:"name"`
 	// Market, e.g. "HK".

@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/longbridge/openapi-go/internal/counter"
 )
 
 func convertUSOrder(o usRawOrder) USOrder {
@@ -16,8 +14,8 @@ func convertUSOrder(o usRawOrder) USOrder {
 		AAID:                     o.AAID,
 		AccountChannel:           o.AccountChannel,
 		Action:                   o.Action,
-		Symbol:                   counter.IDToSymbol(o.CounterID),
-		UnderlyingSymbol:         counter.IDToSymbol(o.UnderlyingCounterID),
+		Symbol:                   o.Symbol,
+		UnderlyingSymbol:         o.UnderlyingSymbol,
 		Code:                     o.Code,
 		Name:                     o.Name,
 		SecurityType:             o.SecurityType,
@@ -69,13 +67,6 @@ func convertUSOrder(o usRawOrder) USOrder {
 	}
 }
 
-func convertStockList(entries []USStockEntry) []USStockEntry {
-	for i := range entries {
-		entries[i].FullSymbol = counter.IDToSymbol(entries[i].CounterID)
-	}
-	return entries
-}
-
 // QueryUSOrders queries the US order list.
 //
 // Path: POST /v1/us/orders/query
@@ -98,10 +89,10 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 		action = 2
 	}
 
-	// Build counter_ids from Symbol
-	counterIDs := []string{}
+	// Build symbols from Symbol
+	symbols := []string{}
 	if req.Symbol != "" {
-		counterIDs = append(counterIDs, counter.SymbolToID(req.Symbol))
+		symbols = append(symbols, req.Symbol)
 	}
 
 	// Apply defaults
@@ -126,7 +117,7 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 		"action":          action,
 		"start_at":        startAt,
 		"end_at":          endAt,
-		"counter_ids":     counterIDs,
+		"symbols":         symbols,
 		"security_types":  []string{},
 		"query_type":      req.QueryType,
 		"page":            page,
@@ -164,7 +155,6 @@ func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOr
 // USAssetOverview returns the full US account asset snapshot, including stock,
 // option, multi-leg, and crypto positions together with purchasing power.
 //
-// counter_id fields in crypto positions are converted to user-facing symbols.
 // asset_timestamp is converted from Unix seconds to time.Time.
 //
 // Path: GET /v1/us/assets/overview
@@ -177,16 +167,6 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 	if err := c.opts.httpClient.Get(ctx, "/v1/us/assets/overview", nil, &raw); err != nil {
 		return nil, err
 	}
-	cryptoList := make([]USCryptoEntry, 0, len(raw.CryptoList))
-	for _, e := range raw.CryptoList {
-		cryptoList = append(cryptoList, USCryptoEntry{
-			AssetType:    e.AssetType,
-			AverageCost:  e.AverageCost,
-			Symbol:       counter.IDToSymbol(e.CounterID),
-			Currency:     e.Currency,
-			IndustryName: e.IndustryName,
-		})
-	}
 	var ts time.Time
 	if secs, err := strconv.ParseInt(raw.AssetTimestamp, 10, 64); err == nil {
 		ts = time.Unix(secs, 0).UTC()
@@ -198,9 +178,9 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 		OvernightBuyPower: raw.OvernightBuyPower,
 		Currency:          raw.Currency,
 		CashList:          raw.CashList,
-		StockList:         convertStockList(raw.StockList),
+		StockList:         raw.StockList,
 		OptionList:        raw.OptionList,
-		CryptoList:        cryptoList,
+		CryptoList:        raw.CryptoList,
 		MultiLeg:          raw.MultiLeg,
 	}, nil
 }

@@ -12,28 +12,28 @@ type DcaList struct {
 
 // DcaPlan is the raw JSON representation of a single DCA plan.
 type DcaPlan struct {
-	PlanID             string `json:"plan_id"`
-	Status             string `json:"status"`
-	CounterID          string `json:"counter_id"`
-	MemberID           string `json:"member_id"`
-	Aaid               string `json:"aaid"`
-	AccountChannel     string `json:"account_channel"`
-	DisplayAccount     string `json:"display_account"`
-	Market             string `json:"market"`
-	PerInvestAmount    string `json:"per_invest_amount"`
-	InvestFrequency    string `json:"invest_frequency"`
-	InvestDayOfWeek    string `json:"invest_day_of_week"`
-	InvestDayOfMonth   string `json:"invest_day_of_month"`
-	AllowMarginFinance bool   `json:"allow_margin_finance"`
+	PlanID             string      `json:"plan_id"`
+	Status             string      `json:"status"`
+	Symbol             string      `json:"symbol"`
+	MemberID           string      `json:"member_id"`
+	Aaid               string      `json:"aaid"`
+	AccountChannel     string      `json:"account_channel"`
+	DisplayAccount     string      `json:"display_account"`
+	Market             string      `json:"market"`
+	PerInvestAmount    string      `json:"per_invest_amount"`
+	InvestFrequency    string      `json:"invest_frequency"`
+	InvestDayOfWeek    string      `json:"invest_day_of_week"`
+	InvestDayOfMonth   string      `json:"invest_day_of_month"`
+	AllowMarginFinance bool        `json:"allow_margin_finance"`
 	AlterHours         json.Number `json:"alter_hours"` // API returns int or string
-	CreatedAt          string `json:"created_at"`
-	UpdatedAt          string `json:"updated_at"`
-	NextTrdDate        string `json:"next_trd_date"`
-	StockName          string `json:"stock_name"`
-	CumAmount          string `json:"cum_amount"`
-	IssueNumber        int64  `json:"issue_number"`
-	AverageCost        string `json:"average_cost"`
-	CumProfit          string `json:"cum_profit"`
+	CreatedAt          string      `json:"created_at"`
+	UpdatedAt          string      `json:"updated_at"`
+	NextTrdDate        string      `json:"next_trd_date"`
+	StockName          string      `json:"stock_name"`
+	CumAmount          string      `json:"cum_amount"`
+	IssueNumber        int64       `json:"issue_number"`
+	AverageCost        string      `json:"average_cost"`
+	CumProfit          string      `json:"cum_profit"`
 }
 
 // DcaStats is the raw JSON response for DCA statistics.
@@ -54,7 +54,7 @@ type DcaSupportList struct {
 
 // DcaSupportInfo is the raw JSON representation of DCA support for a security.
 type DcaSupportInfo struct {
-	CounterID            string `json:"counter_id"`
+	Symbol               string `json:"symbol"`
 	SupportRegularSaving bool   `json:"support_regular_saving"`
 }
 
@@ -75,7 +75,7 @@ type DcaHistoryRecord struct {
 	ExecutedPrice  string `json:"executed_price"`
 	ExecutedAmount string `json:"executed_amount"`
 	RejectedReason string `json:"rejected_reason"`
-	CounterID      string `json:"counter_id"`
+	Symbol         string `json:"symbol"`
 }
 
 // DcaCreateResult is the raw JSON response for create/update DCA plan.
