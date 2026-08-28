@@ -55,6 +55,29 @@ func NewFromEnv() (*FundamentalContext, error) {
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
+// symbolToCounterID converts a user-facing symbol (e.g. "700.HK", "AAPL.US",
+// ".DJI.US") to the backend counter-id form (e.g. "ST/HK/700", "ST/US/AAPL",
+// "IX/US/DJI").
+//
+// TODO: temporary shim used only by FundamentalContext.ValuationComparison
+// while the gateway does not yet accept the comparison_symbols parameter.
+// Remove it once the gateway converts the symbols itself. This is a naive
+// best-effort conversion: dotted-index symbols (leading ".") map to the "IX/"
+// prefix and everything else to "ST/", so ETF / warrant peers may resolve to
+// the wrong prefix — acceptable because valuation peers are virtually always
+// equities.
+func symbolToCounterID(symbol string) string {
+	i := strings.LastIndex(symbol, ".")
+	if i < 0 {
+		return symbol
+	}
+	code, market := symbol[:i], strings.ToUpper(symbol[i+1:])
+	if strings.HasPrefix(code, ".") {
+		return "IX/" + market + "/" + code[1:]
+	}
+	return "ST/" + market + "/" + code
+}
+
 // decimalFromString parses a decimal string; returns nil for empty strings or
 // unparseable values.
 func decimalFromString(s string) *decimal.Decimal {
@@ -987,17 +1010,17 @@ func convertOperatingList(j *jsontypes.OperatingList) *OperatingList {
 			})
 		}
 		items = append(items, OperatingItem{
-			ID:      item.ID,
-			Report:  item.Report,
-			Title:   item.Title,
-			Txt:     item.Txt,
-			Latest:  item.Latest,
+			ID:       item.ID,
+			Report:   item.Report,
+			Title:    item.Title,
+			Txt:      item.Txt,
+			Latest:   item.Latest,
 			Keywords: item.Keywords,
-			WebURL:  item.WebURL,
+			WebURL:   item.WebURL,
 			Financial: OperatingFinancial{
-				Code:     item.Financial.Code,
-				Symbol:   item.Financial.Symbol,
-				Currency: item.Financial.Currency,
+				Code:       item.Financial.Code,
+				Symbol:     item.Financial.Symbol,
+				Currency:   item.Financial.Currency,
 				Name:       item.Financial.Name,
 				Region:     item.Financial.Region,
 				Report:     item.Financial.Report,
@@ -1137,22 +1160,32 @@ func (c *FundamentalContext) ShareholderDetail(
 //
 // Path: GET /v1/quote/compare/valuation
 //
-// comparisonSymbols is a list of peer symbols (e.g. ["MSFT.US", "GOOG.US"])
-// serialized as a JSON array string in the comparison_symbols query parameter.
+// comparisonSymbols is a list of peer symbols (e.g. ["MSFT.US", "GOOG.US"]).
+//
+// TODO: the gateway does not yet accept the comparison_symbols parameter (user
+// symbols) and answers 500 for any non-empty peer list. As a stopgap the peer
+// symbols are converted to counter-ids locally and sent as the legacy
+// comparison_counter_ids parameter. Once the gateway supports
+// comparison_symbols, drop this local conversion and send the user symbols
+// straight through as comparison_symbols — the public API is unchanged.
 func (c *FundamentalContext) ValuationComparison(
 	ctx context.Context,
 	symbol string,
 	currency string,
 	comparisonSymbols []string,
 ) (*ValuationComparisonResponse, error) {
-	comparisonSymbolsJSON, err := json.Marshal(comparisonSymbols)
+	comparisonCounterIDs := make([]string, len(comparisonSymbols))
+	for i, s := range comparisonSymbols {
+		comparisonCounterIDs[i] = symbolToCounterID(s)
+	}
+	comparisonCounterIDsJSON, err := json.Marshal(comparisonCounterIDs)
 	if err != nil {
 		return nil, err
 	}
 	q := url.Values{}
 	q.Set("symbol", symbol)
 	q.Set("currency", currency)
-	q.Set("comparison_symbols", string(comparisonSymbolsJSON))
+	q.Set("comparison_counter_ids", string(comparisonCounterIDsJSON))
 	var raw struct {
 		List []struct {
 			Symbol      string `json:"symbol"`
@@ -1518,12 +1551,12 @@ func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
 		}
 	}
 	return &IndustryPeerNode{
-		Name:      j.Name,
-		Symbol:    j.Symbol,
-		StockNum:  j.StockNum,
-		Chg:       j.Chg,
-		YtdChg:    j.YtdChg,
-		Next:      next,
+		Name:     j.Name,
+		Symbol:   j.Symbol,
+		StockNum: j.StockNum,
+		Chg:      j.Chg,
+		YtdChg:   j.YtdChg,
+		Next:     next,
 	}
 }
 
