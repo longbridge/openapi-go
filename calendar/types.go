@@ -73,7 +73,7 @@ type CalendarDateGroup struct {
 
 // CalendarEventInfo represents one financial calendar event.
 type CalendarEventInfo struct {
-	// Security symbol (converted from counter_id)
+	// Security symbol
 	Symbol string
 	// Market identifier, e.g. "HK"
 	Market string

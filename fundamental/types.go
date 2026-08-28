@@ -1111,8 +1111,8 @@ type IndustryRankGroup struct {
 type IndustryRankItem struct {
 	// Industry / sector name.
 	Name string
-	// Counter ID of the industry.
-	CounterID string
+	// Symbol of the industry.
+	Symbol string
 	// Change percentage.
 	Chg string
 	// Name of the leading stock.
@@ -1149,8 +1149,8 @@ type IndustryPeersTop struct {
 type IndustryPeerNode struct {
 	// Node name.
 	Name string
-	// Counter ID.
-	CounterID string
+	// Node symbol.
+	Symbol string
 	// Number of stocks in this node.
 	StockNum int32
 	// Change percentage.
@@ -1261,7 +1261,7 @@ type ValuationHistoryPoint struct {
 
 // ValuationComparisonItem is one security in the valuation comparison.
 type ValuationComparisonItem struct {
-	// Symbol — converted from counter_id (e.g. "AAPL.US")
+	// Symbol — security symbol (e.g. "AAPL.US")
 	Symbol      string
 	Name        string
 	Currency    string
@@ -1327,8 +1327,8 @@ type AssetAllocationItem struct {
 	Code string
 	// PositionRatio is the position ratio (e.g. "0.0861114").
 	PositionRatio string
-	// Symbol is the security symbol (holdings only, e.g. "NVDA.US"), converted
-	// from the API's counter_id. Empty for non-holdings groups.
+	// Symbol is the security symbol (holdings only, e.g. "NVDA.US").
+	// Empty for non-holdings groups.
 	Symbol string
 	// NameLocales maps a locale to the localized name (e.g. "zh-CN" → "英伟达").
 	NameLocales map[string]string

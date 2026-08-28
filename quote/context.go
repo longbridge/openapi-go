@@ -13,9 +13,7 @@ import (
 
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/config"
-	counterpkg "github.com/longbridge/openapi-go/counter"
 	"github.com/longbridge/openapi-go/http"
-	"github.com/longbridge/openapi-go/internal/counter"
 	"github.com/longbridge/openapi-go/internal/util"
 	"github.com/longbridge/openapi-go/longbridge"
 	"github.com/longbridge/openapi-go/quote/jsontypes"
@@ -545,13 +543,12 @@ func (c *QuoteContext) ShortPositions(ctx context.Context, symbol string, count 
 		path = "/v1/quote/short-positions/hk"
 	}
 	values := url.Values{}
-	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("symbol", symbol)
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	values.Set("count", fmt.Sprintf("%d", count))
-	// Response: {"counter_id": "ST/US/AAPL", "data": [{...}]}
+	// Response: {"symbol": "AAPL.US", "data": [{...}]} — only `data` is used.
 	var outer struct {
-		CounterID string                       `json:"counter_id"`
-		Data      []map[string]json.RawMessage `json:"data"`
+		Data []map[string]json.RawMessage `json:"data"`
 	}
 	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
 		return nil, err
@@ -602,7 +599,7 @@ func (c *QuoteContext) OptionVolumeDaily(ctx context.Context, symbol string, sta
 	result := make([]*DailyOptionVolume, 0, len(resp.Stats))
 	for _, s := range resp.Stats {
 		result = append(result, &DailyOptionVolume{
-			Symbol:                   counter.IDToSymbol(s.Symbol),
+			Symbol:                   s.Symbol,
 			Timestamp:                s.Timestamp,
 			TotalVolume:              s.TotalVolume,
 			TotalPutVolume:           s.TotalPutVolume,
@@ -696,7 +693,6 @@ func New(opt ...Option) (*QuoteContext, error) {
 	return tc, nil
 }
 
-
 // ShortTrades returns short trade records for a HK or US security.
 //
 // The endpoint is automatically chosen based on the symbol suffix:
@@ -704,7 +700,7 @@ func New(opt ...Option) (*QuoteContext, error) {
 //   - ".US" → GET /v1/quote/short-trades/us
 func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uint32) (*ShortTradesResponse, error) {
 	values := url.Values{}
-	values.Set("counter_id", quoteSymbolToCounterID(symbol))
+	values.Set("symbol", symbol)
 	values.Set("last_timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	values.Set("page_size", fmt.Sprintf("%d", count))
 
@@ -712,10 +708,9 @@ func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uin
 	if strings.HasSuffix(strings.ToUpper(symbol), ".US") {
 		path = "/v1/quote/short-trades/us"
 	}
-	// Response: {"counter_id": "ST/HK/700", "data": [{...}]}
+	// Response: {"symbol": "00700.HK", "data": [{...}]} — only `data` is used.
 	var outer struct {
-		CounterID string                       `json:"counter_id"`
-		Data      []map[string]json.RawMessage `json:"data"`
+		Data []map[string]json.RawMessage `json:"data"`
 	}
 	if err := c.opts.httpClient.Get(ctx, path, values, &outer); err != nil {
 		return nil, err
@@ -734,74 +729,6 @@ func (c *QuoteContext) ShortTrades(ctx context.Context, symbol string, count uin
 		})
 	}
 	return &ShortTradesResponse{Data: items}, nil
-}
-
-// SymbolToCounterIds batch-converts symbols to counter IDs via the remote API.
-//
-// It returns a map of symbol → counter_id (e.g. "DRAM.US" → "ETF/US/DRAM").
-// Symbols the backend does not recognize are omitted from the result.
-//
-// Path: POST /v1/quote/symbol-to-counter-ids
-func (c *QuoteContext) SymbolToCounterIds(ctx context.Context, symbols []string) (map[string]string, error) {
-	body := map[string]interface{}{
-		"ticker_regions": symbols,
-	}
-	var resp struct {
-		List map[string]string `json:"list"`
-	}
-	if err := c.opts.httpClient.Post(ctx, "/v1/quote/symbol-to-counter-ids", body, &resp); err != nil {
-		return nil, err
-	}
-	if resp.List == nil {
-		resp.List = map[string]string{}
-	}
-	return resp.List, nil
-}
-
-// ResolveCounterIds resolves counter IDs for symbols, local-first with remote
-// fallback.
-//
-// Symbols found in the embedded ETF / index / warrant directory (or in the
-// local cache of previous remote resolutions) are resolved without network
-// access. The remaining symbols are resolved in one batch via
-// SymbolToCounterIds and the results are persisted to the local cache for
-// subsequent lookups. Symbols the backend does not recognize fall back to the
-// default "ST/" conversion (and are not cached).
-func (c *QuoteContext) ResolveCounterIds(ctx context.Context, symbols []string) (map[string]string, error) {
-	result := make(map[string]string, len(symbols))
-	var unknown []string
-	for _, symbol := range symbols {
-		if counterID, ok := counterpkg.LookupCounterID(symbol); ok {
-			result[symbol] = counterID
-		} else {
-			unknown = append(unknown, symbol)
-		}
-	}
-	if len(unknown) > 0 {
-		resolved, err := c.SymbolToCounterIds(ctx, unknown)
-		if err != nil {
-			return nil, err
-		}
-		cacheIDs := make([]string, 0, len(resolved))
-		for _, id := range resolved {
-			cacheIDs = append(cacheIDs, id)
-		}
-		counterpkg.CacheCounterIDs(cacheIDs)
-		for _, symbol := range unknown {
-			if counterID, ok := resolved[symbol]; ok {
-				result[symbol] = counterID
-			} else {
-				result[symbol] = counterpkg.SymbolToCounterID(symbol)
-			}
-		}
-	}
-	return result, nil
-}
-
-// quoteSymbolToCounterID converts a user-facing symbol to its internal counter_id,
-// resolving ETF/index/warrant prefixes (e.g. "SPY.US" → "ETF/US/SPY").
-func quoteSymbolToCounterID(symbol string) string {
-	return counter.SymbolToID(symbol)
 }
 
 // rawStr extracts a string value from a map of raw JSON values.

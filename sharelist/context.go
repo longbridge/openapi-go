@@ -21,7 +21,6 @@ import (
 
 	"github.com/longbridge/openapi-go/config"
 	httplib "github.com/longbridge/openapi-go/http"
-	"github.com/longbridge/openapi-go/internal/counter"
 	"github.com/longbridge/openapi-go/sharelist/jsontypes"
 )
 
@@ -129,7 +128,7 @@ func (c *SharelistContext) Create(ctx context.Context, name string, description 
 func (c *SharelistContext) Delete(ctx context.Context, id int64) error {
 	path := fmt.Sprintf("/v1/sharelists/%d", id)
 	var resp interface{}
-	return c.httpClient.Delete(ctx, path, nil, &resp, httplib.WithBody(map[string]interface{}{}))
+	return c.httpClient.Delete(ctx, path, nil, &resp)
 }
 
 // AddSecurities adds one or more securities to a sharelist.
@@ -137,10 +136,9 @@ func (c *SharelistContext) Delete(ctx context.Context, id int64) error {
 //
 // Path: POST /v1/sharelists/{id}/items
 func (c *SharelistContext) AddSecurities(ctx context.Context, id int64, symbols []string) error {
-	counterIDs := symbolsToCounterIDs(symbols)
 	path := fmt.Sprintf("/v1/sharelists/%d/items", id)
 	body := map[string]interface{}{
-		"counter_ids": counterIDs,
+		"symbols": strings.Join(symbols, ","),
 	}
 	var resp interface{}
 	return c.httpClient.Post(ctx, path, body, &resp)
@@ -151,12 +149,11 @@ func (c *SharelistContext) AddSecurities(ctx context.Context, id int64, symbols 
 //
 // Path: DELETE /v1/sharelists/{id}/items
 func (c *SharelistContext) RemoveSecurities(ctx context.Context, id int64, symbols []string) error {
-	counterIDs := symbolsToCounterIDs(symbols)
 	path := fmt.Sprintf("/v1/sharelists/%d/items", id)
+	params := url.Values{}
+	params.Set("symbols", strings.Join(symbols, ","))
 	var resp interface{}
-	return c.httpClient.Delete(ctx, path, nil, &resp, httplib.WithBody(map[string]interface{}{
-		"counter_ids": counterIDs,
-	}))
+	return c.httpClient.Delete(ctx, path, params, &resp)
 }
 
 // SortSecurities reorders the securities in a sharelist.
@@ -165,41 +162,13 @@ func (c *SharelistContext) RemoveSecurities(ctx context.Context, id int64, symbo
 //
 // Path: POST /v1/sharelists/{id}/items/sort
 func (c *SharelistContext) SortSecurities(ctx context.Context, id int64, symbols []string) error {
-	counterIDs := symbolsToCounterIDs(symbols)
 	path := fmt.Sprintf("/v1/sharelists/%d/items/sort", id)
 	body := map[string]interface{}{
-		"counter_ids": counterIDs,
+		"symbols": strings.Join(symbols, ","),
 	}
 	var resp interface{}
 	return c.httpClient.Post(ctx, path, body, &resp)
 }
-
-// --- symbol <-> counter_id helpers ---
-
-// symbolToCounterID converts a symbol like "TSLA.US" to a counter_id like
-// "ST/US/TSLA". This mirrors the Rust symbol_to_counter_id helper. Unlike the
-// Rust implementation, ETF detection via an embedded CSV is not performed; all
-// symbols are treated as equities (ST prefix).
-func symbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
-	}
-	code := symbol[:idx]
-	market := strings.ToUpper(symbol[idx+1:])
-	return fmt.Sprintf("ST/%s/%s", market, code)
-}
-
-// symbolsToCounterIDs converts a slice of symbols to a comma-joined
-// counter_ids string as expected by the API.
-func symbolsToCounterIDs(symbols []string) string {
-	ids := make([]string, 0, len(symbols))
-	for _, s := range symbols {
-		ids = append(ids, symbolToCounterID(s))
-	}
-	return strings.Join(ids, ",")
-}
-
 
 // --- internal converters ---
 
@@ -258,7 +227,7 @@ func convertSharelistInfo(j *jsontypes.SharelistInfo) (*SharelistInfo, error) {
 
 func convertSharelistStock(j *jsontypes.SharelistStock) SharelistStock {
 	return SharelistStock{
-		Symbol:                  counter.IDToSymbol(j.CounterID),
+		Symbol:                  j.Symbol,
 		Name:                    j.Name,
 		Market:                  j.Market,
 		Code:                    j.Code,

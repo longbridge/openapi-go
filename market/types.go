@@ -9,14 +9,14 @@ import (
 
 // RankListItem is one item in the popularity rank list.
 type RankListItem struct {
-	// Symbol — converted from counter_id (e.g. "MU.US")
+	// Symbol, e.g. "MU.US"
 	Symbol string
 	// Code — ticker code (e.g. "MU")
-	Code string
-	Name         string
-	LastDone     string
+	Code     string
+	Name     string
+	LastDone string
 	// Chg — price change as decimal ratio (e.g. 0.0252 = +2.52%)
-	Chg          string
+	Chg string
 	// Change — absolute price change
 	Change       string
 	Inflow       string
@@ -33,7 +33,7 @@ type RankListItem struct {
 
 // TopMoversStock holds stock info for a top-movers event.
 type TopMoversStock struct {
-	// Symbol — converted from counter_id
+	// Symbol, e.g. "NVDA.US"
 	Symbol   string
 	Code     string
 	Name     string
@@ -367,8 +367,9 @@ type ConstituentStock struct {
 // TopMoversResponse is the response for MarketContext.TopMovers.
 type TopMoversResponse struct {
 	Events []*TopMoversEvent
-	// NextParams — pagination cursor; pass to next call to get next page
-	NextParams json.RawMessage
+	// NextParams — pagination cursor; pass as-is to the next call to get the
+	// next page; empty string means no more pages
+	NextParams string
 }
 
 // RankCategoriesResponse holds the raw data for rank categories from

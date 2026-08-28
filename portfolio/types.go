@@ -143,7 +143,7 @@ type ProfitAnalysisItem struct {
 	ItemType AssetType
 	// Currency.
 	Currency string
-	// Security symbol (converted from counter_id).
+	// Security symbol.
 	Symbol string
 	// Holding period display string.
 	HoldingPeriod string

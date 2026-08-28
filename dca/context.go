@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -46,29 +45,6 @@ func NewFromEnv() (*DCAContext, error) {
 		return nil, errors.Wrap(err, "load config from env error")
 	}
 	return NewFromCfg(cfg)
-}
-
-// symbolToCounterID converts a Longbridge symbol (e.g. "700.HK") to the
-// counter_id format expected by the DCA API (e.g. "ST/HK/700").
-// Symbols without a dot separator are returned unchanged.
-func symbolToCounterID(symbol string) string {
-	idx := strings.LastIndex(symbol, ".")
-	if idx < 0 {
-		return symbol
-	}
-	code := symbol[:idx]
-	market := strings.ToUpper(symbol[idx+1:])
-	return fmt.Sprintf("ST/%s/%s", market, code)
-}
-
-// counterIDToSymbol converts a counter_id (e.g. "ST/HK/700" or "ETF/US/SPY")
-// back to a Longbridge symbol (e.g. "700.HK" or "SPY.US").
-func counterIDToSymbol(counterID string) string {
-	parts := strings.SplitN(counterID, "/", 3)
-	if len(parts) == 3 {
-		return fmt.Sprintf("%s.%s", parts[2], parts[1])
-	}
-	return counterID
 }
 
 // decimalFromString parses a decimal string; returns nil for empty strings.
@@ -115,7 +91,7 @@ func convertPlan(j *jsontypes.DcaPlan) *DcaPlan {
 	return &DcaPlan{
 		PlanID:             j.PlanID,
 		Status:             statusFromString(j.Status),
-		Symbol:             counterIDToSymbol(j.CounterID),
+		Symbol:             j.Symbol,
 		MemberID:           j.MemberID,
 		Aaid:               j.Aaid,
 		AccountChannel:     j.AccountChannel,
@@ -158,7 +134,7 @@ func (d *DCAContext) List(ctx context.Context, status *DCAStatus, symbol *string
 		params.Set("status", status.String())
 	}
 	if symbol != nil {
-		params.Set("counter_id", symbolToCounterID(*symbol))
+		params.Set("symbol", *symbol)
 	}
 
 	var resp jsontypes.DcaList
@@ -197,7 +173,7 @@ func (d *DCAContext) Create(ctx context.Context, symbol string, amount string, f
 		allowMargin = 1
 	}
 	body := map[string]interface{}{
-		"counter_id":           symbolToCounterID(symbol),
+		"symbol":               symbol,
 		"per_invest_amount":    amount,
 		"invest_frequency":     frequency.String(),
 		"allow_margin_finance": allowMargin,
@@ -335,7 +311,7 @@ func (d *DCAContext) History(ctx context.Context, planID string, page int, limit
 			ExecutedPrice:  decimalFromString(r.ExecutedPrice),
 			ExecutedAmount: decimalFromString(r.ExecutedAmount),
 			RejectedReason: r.RejectedReason,
-			Symbol:         counterIDToSymbol(r.CounterID),
+			Symbol:         r.Symbol,
 		})
 	}
 	return &DcaHistoryResponse{
@@ -353,7 +329,7 @@ func (d *DCAContext) Stats(ctx context.Context, symbol *string) (*DcaStats, erro
 	}
 	params := url.Values{}
 	if symbol != nil {
-		params.Set("counter_id", symbolToCounterID(*symbol))
+		params.Set("symbol", *symbol)
 	}
 
 	var resp jsontypes.DcaStats
@@ -382,12 +358,8 @@ func (d *DCAContext) CheckSupport(ctx context.Context, symbols []string) ([]*Dca
 	if err := d.checkAP("/v1/dailycoins/batch-check-support"); err != nil {
 		return nil, err
 	}
-	counterIDs := make([]string, len(symbols))
-	for i, s := range symbols {
-		counterIDs[i] = symbolToCounterID(s)
-	}
 	body := map[string]interface{}{
-		"counter_ids": counterIDs,
+		"symbols": symbols,
 	}
 
 	var resp jsontypes.DcaSupportList
@@ -397,7 +369,7 @@ func (d *DCAContext) CheckSupport(ctx context.Context, symbols []string) ([]*Dca
 	infos := make([]*DcaSupportInfo, 0, len(resp.Infos))
 	for _, info := range resp.Infos {
 		infos = append(infos, &DcaSupportInfo{
-			Symbol:               counterIDToSymbol(info.CounterID),
+			Symbol:               info.Symbol,
 			SupportRegularSaving: info.SupportRegularSaving,
 		})
 	}
@@ -418,7 +390,7 @@ func (d *DCAContext) CalcDate(ctx context.Context, symbol string, frequency DCAF
 		return nil, err
 	}
 	body := map[string]interface{}{
-		"counter_id":       symbolToCounterID(symbol),
+		"symbol":           symbol,
 		"invest_frequency": frequency.String(),
 	}
 	if opts != nil {

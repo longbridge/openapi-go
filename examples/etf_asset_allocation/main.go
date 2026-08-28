@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/longbridge/openapi-go/config"
-	"github.com/longbridge/openapi-go/counter"
 	"github.com/longbridge/openapi-go/fundamental"
 	"github.com/longbridge/openapi-go/oauth"
 )
@@ -28,9 +27,6 @@ func main() {
 	ctx := context.Background()
 
 	const symbol = "QQQ.US"
-	fmt.Printf("%s -> counter_id %s (is_etf=%v)\n",
-		symbol, counter.SymbolToCounterID(symbol), counter.IsETF(symbol))
-
 	resp, err := fctx.EtfAssetAllocation(ctx, symbol)
 	if err != nil {
 		log.Fatal(err)

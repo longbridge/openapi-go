@@ -24,8 +24,8 @@ type CalendarDateGroup struct {
 
 // CalendarEventInfo represents one financial calendar event.
 type CalendarEventInfo struct {
-	// Security symbol (mapped from counter_id by the API)
-	Symbol string `json:"counter_id"`
+	// Security symbol
+	Symbol string `json:"symbol"`
 	// Market, e.g. "HK"
 	Market string `json:"market"`
 	// Event content description
