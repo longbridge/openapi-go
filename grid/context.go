@@ -1,7 +1,7 @@
 // Package grid provides a client for the Longbridge grid trading OpenAPI.
 // It supports submitting, replacing, querying, and controlling
-// (cancel / suspend / restart) grid trading orders, as well as recording the
-// strategy risk-disclosure questionnaire and fetching order-window info.
+// (cancel / suspend / restart) grid trading orders, as well as fetching
+// order-window info.
 package grid
 
 import (
@@ -153,17 +153,6 @@ func (c *GridContext) Restart(ctx context.Context, orderId string) (err error) {
 func (c *GridContext) gridAction(ctx context.Context, path string, orderId string) (err error) {
 	body := jsontypes.GridOrderIdBody{OrderId: orderId}
 	return c.httpClient.Post(ctx, path, body, nil)
-}
-
-// SubmitStrategyQuestionnaire records the user's consent to the strategy
-// risk disclosure required before using grid trading. The body sent is
-// {"type": "strategy", "items": {"agree": "true"}}.
-func (c *GridContext) SubmitStrategyQuestionnaire(ctx context.Context) (err error) {
-	body := jsontypes.SubmitStrategyQuestionnaire{
-		Type:  "strategy",
-		Items: map[string]string{"agree": "true"},
-	}
-	return c.httpClient.Post(ctx, "/v1/record/questionnaire", body, nil)
 }
 
 // SymbolInfo returns the security (symbol) info used to build a grid order
