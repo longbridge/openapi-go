@@ -58,13 +58,6 @@ type GridOrderIdsBody struct {
 	OrderIds []string `json:"order_ids"`
 }
 
-// SubmitStrategyQuestionnaire is the request body for the strategy
-// risk-disclosure questionnaire record.
-type SubmitStrategyQuestionnaire struct {
-	Type  string            `json:"type"`
-	Items map[string]string `json:"items"`
-}
-
 // SubmitGridOrderResponse is the response for submit grid trading order.
 type SubmitGridOrderResponse struct {
 	OrderId string `json:"order_id"`
