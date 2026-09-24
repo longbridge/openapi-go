@@ -119,9 +119,12 @@ const (
 
 // Warrant status
 const (
-	WarrantSuspend    WarrantStatus = iota + 2 // can't trade
-	WarrantPapareList                          // wait to be listed
-	WarrantNormal                              // Tradable
+	// WarrantStatusUnknown is the fallback for an unrecognized status discriminant
+	// (the server sends 0 for some placeholder rows that carry no expiry date).
+	WarrantStatusUnknown WarrantStatus = 0
+	WarrantSuspend       WarrantStatus = 2 // can't trade
+	WarrantPapareList    WarrantStatus = 3 // wait to be listed
+	WarrantNormal        WarrantStatus = 4 // Tradable
 )
 
 const (
@@ -445,13 +448,15 @@ type WarrantFilter struct {
 
 // WarrantInfo is info of warrant asset
 type WarrantInfo struct {
-	Symbol            string
-	Name              string
-	LastDone          *decimal.Decimal
-	ChangeRate        *decimal.Decimal
-	ChangeVal         *decimal.Decimal
-	Volume            int64
-	Turnover          *decimal.Decimal
+	Symbol     string
+	Name       string
+	LastDone   *decimal.Decimal
+	ChangeRate *decimal.Decimal
+	ChangeVal  *decimal.Decimal
+	Volume     int64
+	Turnover   *decimal.Decimal
+	// ExpiryDate is empty for placeholder rows the server returns without an
+	// expiry (format [year][month][day] otherwise).
 	ExpiryDate        string
 	StrikePrice       *decimal.Decimal
 	UpperStrikePrice  *decimal.Decimal
@@ -664,11 +669,24 @@ type SecurityCalcIndex struct {
 	ConversionRatio       *decimal.Decimal
 	BalancePoint          *decimal.Decimal
 	OpenInterest          int64
-	Delta                 *decimal.Decimal
-	Gamma                 *decimal.Decimal
-	Theta                 *decimal.Decimal
-	Vega                  *decimal.Decimal
-	Rho                   *decimal.Decimal
+	// Delta measures the expected change in option price for a $1 move in the
+	// underlying asset price.
+	Delta *decimal.Decimal
+	// Gamma measures the expected change in Delta for a $1 move in the underlying
+	// asset price.
+	Gamma *decimal.Decimal
+	// Theta measures the expected change in option price as one day passes; the
+	// raw value has been divided by 365 to convert to a daily value, representing
+	// the impact of one day's time decay on the option price.
+	Theta *decimal.Decimal
+	// Vega measures the expected change in option price when implied volatility
+	// (IV) moves by 1 (i.e. 100%); divide the raw value by 100 to get the expected
+	// price change per 1% move in IV.
+	Vega *decimal.Decimal
+	// Rho measures the expected change in option price when the risk-free interest
+	// rate moves by 1 (i.e. 100%); divide the raw value by 100 to get the expected
+	// price change per 1% move in the interest rate.
+	Rho *decimal.Decimal
 }
 
 // Security is base info contains symbol and name

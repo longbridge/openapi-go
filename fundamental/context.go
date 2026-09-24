@@ -919,11 +919,27 @@ func convertCorpActionLive(j *jsontypes.CorpActionLive) *CorpActionLive {
 	}
 	return &CorpActionLive{
 		ID:        j.ID,
-		Status:    json.RawMessage(j.Status),
+		Status:    normalizeJSONString(j.Status),
 		StartedAt: j.StartedAt,
 		Name:      j.Name,
 		Icon:      j.Icon,
 	}
+}
+
+// normalizeJSONString reduces a raw JSON scalar (which the server may send as
+// either a quoted string or a bare number) to a plain string. A quoted string
+// is unquoted; a bare value is returned as-is. An empty/null value yields "".
+func normalizeJSONString(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err == nil {
+			return s
+		}
+	}
+	return string(raw)
 }
 
 func convertCorpActions(j *jsontypes.CorpActions) *CorpActions {
@@ -1528,13 +1544,16 @@ func convertIndustryPeerNode(j *jsontypes.IndustryPeerNode) *IndustryPeerNode {
 }
 
 func convertIndustryPeersResponse(j *jsontypes.IndustryPeersResponse) *IndustryPeersResponse {
-	return &IndustryPeersResponse{
-		Top: IndustryPeersTop{
-			Name:   j.Top.Name,
-			Market: j.Top.Market,
-		},
+	resp := &IndustryPeersResponse{
 		Chain: convertIndustryPeerNode(j.Chain),
 	}
+	if j.Top != nil {
+		resp.Top = &IndustryPeersTop{
+			Name:   j.Top.Name,
+			Market: j.Top.Market,
+		}
+	}
+	return resp
 }
 
 func convertSnapshotForecastMetric(j *jsontypes.SnapshotForecastMetric) *SnapshotForecastMetric {

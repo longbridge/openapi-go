@@ -8,6 +8,7 @@ type Execution struct {
 	TradeDoneAt int64  `json:"trade_done_at,string"`
 	Quantity    string `json:"quantity"`
 	Price       string `json:"price"`
+	Side        string `json:"side"`
 }
 
 // Executions has a Execution list

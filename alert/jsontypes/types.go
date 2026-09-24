@@ -1,8 +1,6 @@
 package jsontypes
 
 import (
-	"encoding/json"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -27,12 +25,19 @@ type AlertSymbolGroup struct {
 
 // AlertItem is a single price-alert configuration.
 type AlertItem struct {
-	ID          string          `json:"id"`
-	IndicatorID string          `json:"indicator_id"`
-	Enabled     bool            `json:"enabled"`
-	Frequency   int             `json:"frequency"`
-	Scope       int             `json:"scope"`
-	Text        string          `json:"text"`
-	State       []int           `json:"state"`
-	ValueMap    json.RawMessage `json:"value_map"`
+	ID          string        `json:"id"`
+	IndicatorID string        `json:"indicator_id"`
+	Enabled     bool          `json:"enabled"`
+	Frequency   int           `json:"frequency"`
+	Scope       int           `json:"scope"`
+	Text        string        `json:"text"`
+	State       []int         `json:"state"`
+	ValueMap    AlertValueMap `json:"value_map"`
+}
+
+// AlertValueMap is the raw wire type for an alert's trigger threshold. Both fields
+// arrive as JSON strings; exactly one is populated depending on the condition.
+type AlertValueMap struct {
+	Price *string `json:"price,omitempty"`
+	Chg   *string `json:"chg,omitempty"`
 }

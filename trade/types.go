@@ -165,6 +165,8 @@ type Execution struct {
 	TradeDoneAt time.Time
 	Quantity    string
 	Price       *decimal.Decimal
+	// Side is the buy/sell direction of the fill.
+	Side OrderSide
 }
 
 // Executions has a Execution list

@@ -756,9 +756,9 @@ type CorpActionItem struct {
 type CorpActionLive struct {
 	// Live stream ID.
 	ID string
-	// Status (raw JSON; API may return int or string).
-	// 1=preview, 2=live, 3=ended, 4=replay, 5=processing.
-	Status json.RawMessage
+	// Status normalized to a string (the server may send it as either an integer
+	// or a string; e.g. "2"). 1=preview, 2=live, 3=ended, 4=replay, 5=processing.
+	Status string
 	// Start time.
 	StartedAt string
 	// Stream title.
@@ -1131,8 +1131,8 @@ type IndustryRankItem struct {
 
 // IndustryPeersResponse is the response for FundamentalContext.IndustryPeers.
 type IndustryPeersResponse struct {
-	// Top-level industry node info.
-	Top IndustryPeersTop
+	// Top-level industry node info (nil when the server returns no data).
+	Top *IndustryPeersTop
 	// Root peer chain node (nil if no data).
 	Chain *IndustryPeerNode
 }
@@ -1420,14 +1420,14 @@ type Macroeconomic struct {
 	ForecastValue string
 	RevisedValue  string
 	NextReleaseAt *time.Time
-	Unit       string
-	UnitPrefix string
+	Unit          string
+	UnitPrefix    string
 }
 
 // MacroeconomicResponse is the response for FundamentalContext.Macroeconomic.
 type MacroeconomicResponse struct {
-	Info  MacroeconomicIndicator
-	Data  []Macroeconomic
+	Info MacroeconomicIndicator
+	Data []Macroeconomic
 	// Count is the total number of historical data points.
 	Count int32
 }
