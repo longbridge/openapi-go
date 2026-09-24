@@ -1,8 +1,6 @@
 package alert
 
 import (
-	"encoding/json"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -76,6 +74,16 @@ type AlertItem struct {
 	Text string
 	// State tracks the current trigger state.
 	State []int
-	// ValueMap holds the threshold values as raw JSON (e.g. {"price":"600"}).
-	ValueMap json.RawMessage
+	// ValueMap holds the alert's threshold value. Exactly one field is populated
+	// depending on the condition: Price for price alerts, Chg for percentage alerts.
+	ValueMap AlertValueMap
+}
+
+// AlertValueMap is the trigger threshold of a price alert. Exactly one field is
+// populated depending on the alert condition.
+type AlertValueMap struct {
+	// Price is the absolute-price threshold (price-rise / price-fall alerts).
+	Price *decimal.Decimal
+	// Chg is the percentage-change threshold (percentage-rise / -fall alerts).
+	Chg *float64
 }

@@ -25,6 +25,9 @@ type (
 	ChargeCategoryCode   string
 	Currency             string
 	AttachedOrderType    string // Attached order type (take-profit / stop-loss / bracket)
+	MultiLegStrategy     string // Multi-leg option combination strategy
+	MultiLegPosition     string // Multi-leg leg position direction (long / short)
+	ContractDirection    string // Option contract type (call / put)
 )
 
 const (
@@ -130,6 +133,28 @@ const (
 	AttachedOrderTypeProfitTaker AttachedOrderType = "PROFIT_TAKER" // Take profit
 	AttachedOrderTypeStopLoss    AttachedOrderType = "STOP_LOSS"    // Stop loss
 	AttachedOrderTypeBracket     AttachedOrderType = "BRACKET"      // Bracket order (profit-taker + stop-loss)
+
+	// Multi-leg strategy
+	MultiLegStrategyUnknown            MultiLegStrategy = "Unknown"
+	MultiLegStrategyCoveredCall        MultiLegStrategy = "CoveredCall"        // Covered call (covered stock)
+	MultiLegStrategyCoveredPut         MultiLegStrategy = "CoveredPut"         // Covered put (covered stock)
+	MultiLegStrategyVerticalCallSpread MultiLegStrategy = "VerticalCallSpread" // Vertical call spread
+	MultiLegStrategyVerticalPutSpread  MultiLegStrategy = "VerticalPutSpread"  // Vertical put spread
+	MultiLegStrategyCollar             MultiLegStrategy = "Collar"             // Collar
+	MultiLegStrategyStraddle           MultiLegStrategy = "Straddle"           // Straddle
+	MultiLegStrategyStrangle           MultiLegStrategy = "Strangle"           // Strangle
+	MultiLegStrategyCalendarCallSpread MultiLegStrategy = "CalendarCallSpread" // Calendar (horizontal) call spread
+	MultiLegStrategyCalendarPutSpread  MultiLegStrategy = "CalendarPutSpread"  // Calendar (horizontal) put spread
+
+	// Multi-leg position direction
+	MultiLegPositionUnknown MultiLegPosition = "Unknown"
+	MultiLegPositionLong    MultiLegPosition = "LONG"
+	MultiLegPositionShort   MultiLegPosition = "SHORT"
+
+	// Option contract type
+	ContractDirectionUnknown ContractDirection = "Unknown"
+	ContractDirectionCall    ContractDirection = "C"
+	ContractDirectionPut     ContractDirection = "P"
 )
 
 // Execution is execution details
@@ -140,6 +165,8 @@ type Execution struct {
 	TradeDoneAt time.Time
 	Quantity    string
 	Price       *decimal.Decimal
+	// Side is the buy/sell direction of the fill.
+	Side OrderSide
 }
 
 // Executions has a Execution list
@@ -188,6 +215,28 @@ type Order struct {
 	OutsideRth       OutsideRTH
 	Remark           string
 	AttachedOrders   []AttachedOrderDetail
+	// MultiLeg is present only for multi-leg option combination orders.
+	MultiLeg *MultiLegInfo
+}
+
+// MultiLegInfo is multi-leg option combination order information.
+type MultiLegInfo struct {
+	Strategy     MultiLegStrategy // Multi-leg strategy
+	StrategyName string           // Strategy name
+	MultilegId   string           // Multi-leg combination ID
+	Code         string           // Multi-leg combination code
+	Legs         []MultiLegOrderLeg
+}
+
+// MultiLegOrderLeg is a single leg of a multi-leg combination order.
+type MultiLegOrderLeg struct {
+	Symbol            string // Option symbol, in ticker.region format
+	Side              OrderSide
+	Position          MultiLegPosition
+	RatioQuantity     decimal.Decimal
+	StrikePrice       *decimal.Decimal
+	ExpireDate        string // Option expiry date, format YYYY-MM-DD
+	ContractDirection ContractDirection
 }
 
 // AttachedOrderDetail is an attached (take-profit / stop-loss) sub-order of a bracket order.
@@ -285,6 +334,8 @@ type OrderDetail struct {
 	// ChargeDetail is nil for attached (take-profit / stop-loss) sub-orders.
 	ChargeDetail   *OrderChargeDetail
 	AttachedOrders []AttachedOrderDetail
+	// MultiLeg is present only for multi-leg option combination orders.
+	MultiLeg *MultiLegInfo
 }
 
 // AccountBalances has a AccountBalance list
@@ -410,6 +461,8 @@ type PushOrderChanged struct {
 	TriggerStatus    TriggerStatus
 	UpdatedAt        string
 	Remark           string
+	// MultiLeg is present only for multi-leg option combination orders.
+	MultiLeg *MultiLegInfo
 }
 
 // SubResponse is subscribe function response

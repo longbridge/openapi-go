@@ -84,3 +84,20 @@ type OptionVolumeDailyStat struct {
 type OptionVolumeDaily struct {
 	Stats []*OptionVolumeDailyStat `json:"stats"`
 }
+
+// OptionChainContractList is the response for QuoteContext.OptionChainInfoByDate
+// (GET /v1/gemini/option/option_chain_list).
+type OptionChainContractList struct {
+	List []*OptionChainContract `json:"list"`
+}
+
+// OptionChainContract is the raw wire type for a single option chain contract entry.
+type OptionChainContract struct {
+	Symbol       string `json:"symbol"`
+	ExpiryDate   string `json:"expiry_date"`
+	StrikePrice  string `json:"strike_price"`
+	Direction    string `json:"direction"`
+	OptionType   string `json:"option_type"`
+	StandardAttr string `json:"standard_attr"`
+	DaysToExpiry int32  `json:"days_to_expiry"`
+}

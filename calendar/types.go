@@ -51,6 +51,25 @@ func (c CalendarCategory) String() string {
 	return "report"
 }
 
+// CalendarPageDirection is the pagination direction for FinanceCalendar, sent as
+// the `next` query parameter.
+type CalendarPageDirection int
+
+const (
+	// CalendarPageDirectionLater pages towards later dates.
+	CalendarPageDirectionLater CalendarPageDirection = iota
+	// CalendarPageDirectionEarlier pages towards earlier dates.
+	CalendarPageDirectionEarlier
+)
+
+// String returns the API string representation ("later" / "earlier").
+func (d CalendarPageDirection) String() string {
+	if d == CalendarPageDirectionEarlier {
+		return "earlier"
+	}
+	return "later"
+}
+
 // CalendarEventsResponse is the top-level response from the finance_calendar endpoint.
 type CalendarEventsResponse struct {
 	// Start date of the query window, e.g. "2025-05-01"

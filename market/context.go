@@ -343,39 +343,31 @@ func (m *MarketContext) TopMovers(ctx context.Context, markets []string, sort ui
 //
 // Path: GET /v1/quote/market/rank/categories
 func (m *MarketContext) RankCategories(ctx context.Context) (*RankCategoriesResponse, error) {
-	var raw map[string]interface{}
+	var raw jsontypes.RankCategoriesResponse
 	if err := m.httpClient.Get(ctx, "/v1/quote/market/rank/categories", url.Values{}, &raw); err != nil {
 		return nil, err
 	}
-	// Strip "ib_" prefix from all key fields so callers get clean keys
-	// that can be passed back to RankList without the prefix.
-	if firstTags, ok := raw["first_tags"].([]interface{}); ok {
-		for _, t := range firstTags {
-			tag, ok := t.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			if k, ok := tag["key"].(string); ok {
-				tag["key"] = strings.TrimPrefix(k, "ib_")
-			}
-			if subs, ok := tag["second_tags"].([]interface{}); ok {
-				for _, s := range subs {
-					sub, ok := s.(map[string]interface{})
-					if !ok {
-						continue
-					}
-					if sk, ok := sub["key"].(string); ok {
-						sub["key"] = strings.TrimPrefix(sk, "ib_")
-					}
-				}
-			}
+	// Strip the "ib_" prefix from every key so callers get clean keys that can be
+	// passed straight back to RankList.
+	resp := &RankCategoriesResponse{
+		Categories: make([]RankCategory, 0, len(raw.FirstTags)),
+	}
+	for _, tag := range raw.FirstTags {
+		cat := RankCategory{
+			Key:           strings.TrimPrefix(tag.Key, "ib_"),
+			Name:          tag.Name,
+			SubCategories: make([]RankSubCategory, 0, len(tag.SecondTags)),
 		}
+		for _, sub := range tag.SecondTags {
+			cat.SubCategories = append(cat.SubCategories, RankSubCategory{
+				Key:    strings.TrimPrefix(sub.Key, "ib_"),
+				Name:   sub.Name,
+				Market: sub.Market,
+			})
+		}
+		resp.Categories = append(resp.Categories, cat)
 	}
-	b, err := json.Marshal(raw)
-	if err != nil {
-		return nil, err
-	}
-	return &RankCategoriesResponse{Data: json.RawMessage(b)}, nil
+	return resp, nil
 }
 
 // RankList returns the ranked stock list for a given rank key.

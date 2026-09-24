@@ -372,10 +372,27 @@ type TopMoversResponse struct {
 	NextParams string
 }
 
-// RankCategoriesResponse holds the raw data for rank categories from
+// RankCategoriesResponse holds the rank categories from
 // GET /v1/quote/market/rank/categories.
 type RankCategoriesResponse struct {
-	Data json.RawMessage `json:"data"`
+	// Categories are the top-level rank categories.
+	Categories []RankCategory
+}
+
+// RankCategory is a top-level rank category. Its Key values have the "ib_"
+// prefix stripped so they can be passed directly to RankList.
+type RankCategory struct {
+	Key           string
+	Name          string
+	SubCategories []RankSubCategory
+}
+
+// RankSubCategory is a rank sub-category carried under a RankCategory.
+type RankSubCategory struct {
+	// Key is passed directly to RankList (the "ib_" prefix is already stripped).
+	Key    string
+	Name   string
+	Market string
 }
 
 // RankListResponse is the response for MarketContext.RankList.

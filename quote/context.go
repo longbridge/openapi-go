@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/config"
@@ -286,16 +287,53 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 	return c.core.OptionChainExpiryDateList(ctx, symbol)
 }
 
-// OptionChainInfoByDate obtain a list of option securities by the option chain expiry date.
-// Reference: https://open.longbridge.com/en/docs/quote/pull/optionchain-date-strike
+// OptionChainInfoByDate obtains a list of option contracts by the option chain expiry date.
+//
+// This calls GET /v1/gemini/option/option_chain_list. Every contract is an independent
+// entry — calls and puts are not paired — so filter on Direction to separate them.
+//
+// standardOnly filters out the legacy contracts produced by corporate actions (e.g.
+// BABA2261218C10000.US) server-side; when false the parameter is omitted and the endpoint
+// returns everything.
 //
 // Example:
 //
 //	qctx, err := quote.NewFromEnv()
 //	date := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
-//	list, err := qctx.OptionChainInfoByDate(context.Background(), "AAPL.US", &date)
-func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string, expiryDate *time.Time) (strikePriceInfos []*StrikePriceInfo, err error) {
-	return c.core.OptionChainInfoByDate(ctx, symbol, expiryDate)
+//	list, err := qctx.OptionChainInfoByDate(context.Background(), "AAPL.US", date, false)
+func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string, expiryDate time.Time, standardOnly bool) (contracts []*OptionChainContract, err error) {
+	values := url.Values{}
+	values.Set("symbol", symbol)
+	values.Set("expiry_date", util.FormatDateSimple(&expiryDate))
+	// `false` and an omitted parameter mean the same thing to the endpoint, so send
+	// nothing rather than standard_only=false.
+	if standardOnly {
+		values.Set("standard_only", "true")
+	}
+	var resp jsontypes.OptionChainContractList
+	if err = c.opts.httpClient.Get(ctx, "/v1/gemini/option/option_chain_list", values, &resp); err != nil {
+		return
+	}
+	contracts = make([]*OptionChainContract, 0, len(resp.List))
+	for _, row := range resp.List {
+		contract := &OptionChainContract{
+			Symbol:       row.Symbol,
+			Direction:    OptionDirection(row.Direction),
+			OptionType:   OptionExpiryCycleType(row.OptionType),
+			StandardAttr: OptionStandardAttr(row.StandardAttr),
+			DaysToExpiry: row.DaysToExpiry,
+		}
+		if dt, e := util.ParseDateSimple(row.ExpiryDate); e == nil {
+			contract.ExpiryDate = &dt
+		}
+		if row.StrikePrice != "" {
+			if price, e := decimal.NewFromString(row.StrikePrice); e == nil {
+				contract.StrikePrice = &price
+			}
+		}
+		contracts = append(contracts, contract)
+	}
+	return
 }
 
 // WarrantIssuers obtain the warrant issuer IDs data (which can be synchronized once a day).

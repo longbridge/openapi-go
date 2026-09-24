@@ -675,7 +675,7 @@ type IndustryRankItem struct {
 // IndustryPeersResponse is the raw response for
 // GET /v1/quote/industries/peers.
 type IndustryPeersResponse struct {
-	Top   IndustryPeersTop  `json:"top"`
+	Top   *IndustryPeersTop `json:"top"`
 	Chain *IndustryPeerNode `json:"chain"`
 }
 
