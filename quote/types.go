@@ -346,12 +346,57 @@ type OptionExtend struct {
 	UnderlyingSymbol     string
 }
 
-// StrikePriceInfo is strike price details
-type StrikePriceInfo struct {
-	Price      *decimal.Decimal
-	CallSymbol string
-	PutSymbol  string
-	Standard   bool
+// OptionDirection is the contract direction of an option (call / put).
+type OptionDirection string
+
+const (
+	OptionDirectionUnknown OptionDirection = "Unknown"
+	OptionDirectionPut     OptionDirection = "P"
+	OptionDirectionCall    OptionDirection = "C"
+)
+
+// OptionExpiryCycleType is the special expiration cycle of an option contract.
+// The server sends an empty string for a standard monthly option.
+type OptionExpiryCycleType string
+
+const (
+	OptionExpiryCycleTypeUnknown   OptionExpiryCycleType = "Unknown"
+	OptionExpiryCycleTypeMonthly   OptionExpiryCycleType = "" // Standard monthly option
+	OptionExpiryCycleTypeWeekly    OptionExpiryCycleType = "W"
+	OptionExpiryCycleTypeQuarterly OptionExpiryCycleType = "Q"
+)
+
+// OptionStandardAttr marks whether an option contract is a legacy contract left
+// over from a corporate action (e.g. a stock split or a merger).
+type OptionStandardAttr string
+
+const (
+	OptionStandardAttrUnknown OptionStandardAttr = "Unknown"
+	OptionStandardAttrNormal  OptionStandardAttr = "" // A normal, active contract
+	OptionStandardAttrOld     OptionStandardAttr = "old"
+)
+
+// OptionChainContract is a single option contract entry from OptionChainInfoByDate.
+//
+// Every contract is an independent entry: calls and puts are not paired, so a
+// strike price listed on one side only yields a single entry. Filter on Direction
+// to separate calls from puts.
+type OptionChainContract struct {
+	// Option contract code, in ticker.region format
+	Symbol string
+	// Expiry date, in US Eastern time
+	ExpiryDate *time.Time
+	// Strike price
+	StrikePrice *decimal.Decimal
+	// Contract direction (call / put)
+	Direction OptionDirection
+	// Special expiration cycle of the contract
+	OptionType OptionExpiryCycleType
+	// Whether the contract is a legacy contract left over from a corporate action
+	StandardAttr OptionStandardAttr
+	// Number of days remaining until the option expires, updated daily at midnight
+	// ET; 0 for options expiring today, negative for already-expired contracts
+	DaysToExpiry int32
 }
 
 // WarrantExtend is warrant extended properties
