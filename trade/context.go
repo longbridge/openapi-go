@@ -207,6 +207,24 @@ func (c *TradeContext) SubmitOrder(ctx context.Context, params *SubmitOrder) (or
 	return resp.OrderId, nil
 }
 
+// SubmitMultiLeg submits a multi-leg option combination order (vertical spreads,
+// straddles, strangles, collars, etc.) whose legs are placed together as a single
+// strategy order.
+// Reference: https://open.longbridge.com/en/docs/trade/order/submit_multileg
+func (c *TradeContext) SubmitMultiLeg(ctx context.Context, params *SubmitMultiLegOrder) (orderId string, err error) {
+	var jsonbody jsontypes.SubmitMultiLegOrder
+	err = util.Copy(&jsonbody, params)
+	if err != nil {
+		return
+	}
+	resp := &jsontypes.SubmitOrderResponse{}
+	err = c.opts.httpClient.Post(ctx, "/v1/trade/order/multileg", jsonbody, resp)
+	if err != nil {
+		return
+	}
+	return resp.OrderId, nil
+}
+
 // WithdrawOrder to close an open order. It is same as CancelOrder function.
 // Reference: https://open.longbridge.com/en/docs/trade/order/withdraw
 // Example:
