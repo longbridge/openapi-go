@@ -17,6 +17,7 @@
 ### Added
 
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
+- **`OrderStatus` gains `OrderDelayedNotReported`** (`"DelayedNotReported"`, ports longbridge/openapi #595) — 监控中 (时间条件单), the state a time-conditional order sits in before it is reported to the exchange. Previously this wire value fell through to an unrecognized status, making monitored time-conditional orders indistinguishable from a genuinely unknown status in `TodayOrders` / `HistoryOrders` / `OrderDetail` and the order-changed push
 
 ## [v0.27.0] - 2026-08-14
 
