@@ -98,9 +98,13 @@ func (c *SignalContext) SecurityFacts(ctx context.Context, opts *SecurityFactsOp
 
 func convertSignal(j *jsontypes.Signal) *Signal {
 	s := &Signal{}
-	// util.Copy carries the scalar fields, the string-typed enums, and the
-	// unix-millisecond CreatedAt/UpdatedAt -> time.Time conversion.
+	// util.Copy carries the scalar fields and the string-typed enums. The
+	// millisecond timestamps arrive as either a string or a number and use
+	// distinct wire field names (CreatedAtMs / UpdatedAtMs), so util.Copy leaves
+	// CreatedAt / UpdatedAt untouched and we convert them explicitly.
 	_ = util.Copy(s, j)
+	s.CreatedAt = j.CreatedAtMs.Time()
+	s.UpdatedAt = j.UpdatedAtMs.Time()
 	return s
 }
 

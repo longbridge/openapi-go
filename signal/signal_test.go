@@ -16,7 +16,7 @@ func TestConvertSignal(t *testing.T) {
 		"analysis_price": 12.5,
 		"json_data": "{\"k\":1}",
 		"created_at": 1783674041337,
-		"updated_at": 1783674041337
+		"updated_at": "1783674041337"
 	}`
 	var j jsontypes.Signal
 	if err := json.Unmarshal([]byte(raw), &j); err != nil {
@@ -38,6 +38,10 @@ func TestConvertSignal(t *testing.T) {
 	// 1783674041337 ms = 2026-07-21T... — must land in 2026, proving ms (not s) handling.
 	if got := s.CreatedAt.UTC().Year(); got != 2026 {
 		t.Fatalf("created_at year = %d (ms not decoded as milliseconds?)", got)
+	}
+	// updated_at came as a JSON string — must decode identically to the number form.
+	if !s.UpdatedAt.Equal(s.CreatedAt) {
+		t.Fatalf("updated_at (string form) = %s, want == created_at %s", s.UpdatedAt, s.CreatedAt)
 	}
 	if s.JsonData != `{"k":1}` {
 		t.Fatalf("json_data = %q", s.JsonData)
