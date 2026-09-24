@@ -21,6 +21,13 @@ type AllExecutionsResponse struct {
 	Trades  []*Execution `json:"trades"`
 }
 
+// HistoryExecutionsResponse is the response for get history executions request.
+// has_more drives client-side pagination through the `page` query parameter.
+type HistoryExecutionsResponse struct {
+	HasMore bool         `json:"has_more"`
+	Trades  []*Execution `json:"trades"`
+}
+
 type SubmitOrderResponse struct {
 	OrderId string `json:"order_id"`
 }

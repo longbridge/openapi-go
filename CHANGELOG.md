@@ -21,6 +21,10 @@
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
 - **Multi-leg option orders** (ports longbridge/openapi #575, #589, #590) — new `TradeContext.SubmitMultiLeg` (`POST /v1/trade/order/multileg`) submits a multi-leg option combination order (vertical spreads, straddles, strangles, collars, calendar spreads, etc.) whose legs are placed together as a single strategy order. Takes `Side`, `OrderType`, `SubmittedQuantity`, `Strategy` (`MultiLegStrategy`), a list of `SubmitMultiLegOrderLeg` (`Symbol` + `RatioQuantity`), and optional `SubmittedPrice` / `Remark` / `ClientRequestId`; returns the order ID like `SubmitOrder`. `Order`, `OrderDetail`, and the `PushOrderChanged` order-changed push gain an optional `MultiLeg *MultiLegInfo` field — present only for multi-leg orders — carrying `Strategy`, `StrategyName`, `MultilegId`, `Code`, and the combination `Legs` (each with `Symbol`, `Side`, `Position`, `RatioQuantity`, `StrikePrice`, `ExpireDate`, `ContractDirection`). New enums `MultiLegStrategy` (`CoveredCall` … `Strangle`, plus `CalendarCallSpread` / `CalendarPutSpread`), `MultiLegPosition` (`LONG` / `SHORT`), and `ContractDirection` (`C` / `P`)
 
+### Changed
+
+- **`TradeContext.HistoryExecutions` now pages through all results** (ports longbridge/openapi #591). The endpoint caps each response at 1000 records; the method walks the `page` query parameter (1-based) until `has_more` is false, deduping by `trade_id` and stopping early if a page adds nothing new (guarding against the gateway ignoring `page`), bounded to 1000 pages. Previously it issued a single request and silently returned only the first page
+
 ## [v0.27.0] - 2026-08-14
 
 ### Added
