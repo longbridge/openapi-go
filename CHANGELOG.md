@@ -16,6 +16,11 @@
 
 ### Added
 
+- **Fund (mutual fund)** — new `fund.FundContext` for the fund channel (ports longbridge/openapi), mirroring the Rust core field-for-field across 28 methods:
+  - Catalog / market data: `HotFunds` (`GET /v1/fund/hot-funds`), `Funds` (`POST /v1/fund/funds`), `Filters` (`GET /v1/fund/filters`), `Detail` (`GET /v1/fund/funds/{symbol}`), `Analysis` / `AnalysisDetail` / `Trend` / `PerformanceComparison` (`.../analysis`, `.../analysis/detail`, `.../trend`, `.../performance/comparison`), `AnnualReturns` / `QuarterlyReturns` (`.../returns/annual`, `.../returns/quarterly`), `Performance` (`.../performance`), `Nav` / `NavHistory` / `NavRange` (`.../nav`, `.../nav-history`, `.../nav-range`), `Holdings` (`.../holdings`) and `StockHoldings` (`.../stock-holdings`, reverse lookup)
+  - User positions: `Positions` (`GET /v1/asset/funds`), `Position` (`.../{symbol}`), `PositionPerformance` / `PositionProfits` / `PositionNav` / `PositionDividends` (`.../{symbol}/performance`, `/profits`, `/nav-history`, `/dividends`)
+  - Orders & trading: `Orders` (`GET /v1/fund/orders`), `Order` (`.../{order_id}`), `Transactions` (`GET /v1/fund/transactions`), `ValidateOrder` (`POST /v1/fund/orders/validate`), `SubmitOrder` (`POST /v1/fund/orders`) and `CancelOrder` (`POST /v1/fund/orders/{order_id}/cancel`)
+  - The fund identifier is passed as `symbol`; numeric-string fields are kept as `string` and unix-second timestamps as `int64`; server-defined "any" structures (fund filters, analysis ability/cost blocks, trend / comparison performance series) are preserved as `json.RawMessage`
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
 
 ## [v0.27.0] - 2026-08-14
