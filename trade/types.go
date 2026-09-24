@@ -81,6 +81,9 @@ const (
 	OrderCanceledStatus       OrderStatus = "CanceledStatus"
 	OrderExpiredStatus        OrderStatus = "ExpiredStatus"
 	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
+	// OrderDelayedNotReported is 监控中 (时间条件单) — the state a time-conditional
+	// order sits in before it is reported to the exchange.
+	OrderDelayedNotReported OrderStatus = "DelayedNotReported"
 
 	// Outside RTH
 	OutsideRTHOnly            OutsideRTH = "RTH_ONLY"          // Regular trading hour only
