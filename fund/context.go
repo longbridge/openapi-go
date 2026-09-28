@@ -355,7 +355,7 @@ func (c *FundContext) Transactions(ctx context.Context, params *GetFundTransacti
 // ValidateOrder validates a fund order before submitting.
 func (c *FundContext) ValidateOrder(ctx context.Context, params *ValidateFundOrder) (validation *FundOrderValidation, err error) {
 	body := jsontypes.ValidateFundOrderBody{
-		Symbol:         params.Symbol,
+		CounterID:      params.CounterID,
 		Action:         params.Action,
 		Currency:       params.Currency,
 		Amount:         params.Amount,
@@ -376,7 +376,7 @@ func (c *FundContext) ValidateOrder(ctx context.Context, params *ValidateFundOrd
 // SubmitOrder submits a fund order (buy / sell).
 func (c *FundContext) SubmitOrder(ctx context.Context, params *SubmitFundOrder) (order *FundOrderSubmitResponse, err error) {
 	body := jsontypes.SubmitFundOrderBody{
-		Symbol:         params.Symbol,
+		CounterID:      params.CounterID,
 		Action:         params.Action,
 		Currency:       params.Currency,
 		Amount:         params.Amount,

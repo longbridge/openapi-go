@@ -20,7 +20,7 @@ type GetFundsBody struct {
 
 // ValidateFundOrderBody is the request body for validating a fund order.
 type ValidateFundOrderBody struct {
-	Symbol         string `json:"symbol"`
+	CounterID      string `json:"counter_id"`
 	Action         string `json:"action"`
 	Currency       string `json:"currency"`
 	Amount         string `json:"amount,omitempty"`
@@ -32,7 +32,7 @@ type ValidateFundOrderBody struct {
 
 // SubmitFundOrderBody is the request body for submitting a fund order.
 type SubmitFundOrderBody struct {
-	Symbol         string `json:"symbol"`
+	CounterID      string `json:"counter_id"`
 	Action         string `json:"action"`
 	Currency       string `json:"currency"`
 	Amount         string `json:"amount,omitempty"`

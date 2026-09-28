@@ -77,14 +77,14 @@ type GetFundPositionDividends struct {
 
 // GetFundOrders is the request for the fund orders list.
 type GetFundOrders struct {
-	Symbols  []string // optional, filter by fund symbols (query key "symbol")
-	Actions  string   // optional, comma-separated actions
-	States   string   // optional, comma-separated states
-	Currency string   // optional
-	Start    int64    // optional, range start (unix seconds)
-	End      int64    // optional, range end (unix seconds)
-	Page     int32    // optional
-	Size     int32    // optional
+	CounterIDs []string // optional, filter by fund counter_ids (query key "counter_id")
+	Actions    string   // optional, comma-separated actions
+	States     string   // optional, comma-separated states
+	Currency   string   // optional
+	Start      int64    // optional, range start (unix seconds)
+	End        int64    // optional, range end (unix seconds)
+	Page       int32    // optional
+	Size       int32    // optional
 }
 
 // GetFundTransactions is the request for the fund transactions (cash-flow) list.
@@ -100,10 +100,10 @@ type GetFundTransactions struct {
 }
 
 // ValidateFundOrder is the request for validating a fund order before
-// submitting. Symbol, Action and Currency are required; the remaining fields
+// submitting. CounterID, Action and Currency are required; the remaining fields
 // are optional (nil pointers are omitted).
 type ValidateFundOrder struct {
-	Symbol         string // required, fund symbol
+	CounterID      string // required, fund counter_id
 	Action         string // required, buy / sell
 	Currency       string // required
 	Amount         string // optional, for amount-based orders
@@ -114,10 +114,10 @@ type ValidateFundOrder struct {
 }
 
 // SubmitFundOrder is the request for submitting a fund order (buy / sell).
-// Symbol, Action and Currency are required; the remaining fields are optional
+// CounterID, Action and Currency are required; the remaining fields are optional
 // (nil pointers are omitted).
 type SubmitFundOrder struct {
-	Symbol         string // required, fund symbol
+	CounterID      string // required, fund counter_id
 	Action         string // required, buy / sell
 	Currency       string // required
 	Amount         string // optional, for amount-based orders

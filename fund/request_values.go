@@ -105,7 +105,7 @@ func (r *GetFundPositionDividends) Values() url.Values {
 func (r *GetFundOrders) Values() url.Values {
 	p := newParams()
 	if r != nil {
-		p.AddMulti("symbol", r.Symbols)
+		p.AddMulti("counter_id", r.CounterIDs)
 		p.Add("actions", r.Actions)
 		p.Add("states", r.States)
 		p.Add("currency", r.Currency)
