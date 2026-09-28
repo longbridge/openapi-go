@@ -123,7 +123,7 @@ type FundNavValue struct {
 	Currency            string `json:"currency"`
 	DateFormat          string `json:"date_format"`
 	Isin                string `json:"isin"`
-	LastUpdateTime      int64  `json:"last_update_time"`
+	LastUpdateTime      Int64  `json:"last_update_time"`
 	Value               string `json:"value"`
 	ValueFormat         string `json:"value_format"`
 }
@@ -359,7 +359,7 @@ type FundPerformance struct {
 	PerformanceTotalYtd          int32  `json:"performance_total_ytd"`
 	SevenDaysAnnualized          string `json:"seven_days_annualized"`
 	TenThousandPrice             string `json:"ten_thousand_price"`
-	UpdateTime                   int64  `json:"update_time"`
+	UpdateTime                   Int64  `json:"update_time"`
 }
 
 // FundHolding is a single fund holding (top-10 holdings).
@@ -405,7 +405,7 @@ type FundPosition struct {
 	HoldingUnits     string `json:"holding_units"`
 	Name             string `json:"name"`
 	RecentProfit     string `json:"recent_profit"`
-	RecentTradingDay int64  `json:"recent_trading_day"`
+	RecentTradingDay Int64  `json:"recent_trading_day"`
 	SumRecentProfit  string `json:"sum_recent_profit"`
 }
 
@@ -414,19 +414,19 @@ type FundPositions struct {
 	AccountChannel          string          `json:"account_channel"`
 	List                    []*FundPosition `json:"list"`
 	PendingBuyOrders        string          `json:"pending_buy_orders"`
-	RecentTradingDay        int64           `json:"recent_trading_day"`
+	RecentTradingDay        Int64           `json:"recent_trading_day"`
 	SoldPendingCreditOrders string          `json:"sold_pending_credit_orders"`
 }
 
 // FundDatedValue is a dated value point.
 type FundDatedValue struct {
-	Date  int64  `json:"date"`
+	Date  Int64  `json:"date"`
 	Value string `json:"value"`
 }
 
 // FundUnitValue is a fund unit-value point (position view).
 type FundUnitValue struct {
-	Date            int64  `json:"date"`
+	Date            Int64  `json:"date"`
 	DayIncreaseRate string `json:"day_increase_rate"`
 	TotalValue      string `json:"total_value"`
 	UnitValue       string `json:"unit_value"`
@@ -446,7 +446,7 @@ type FundPositionDetailValues struct {
 	ProfitAmountAccumTd     string `json:"profit_amount_accum_td"`
 	ProfitAmountAccumTdRate string `json:"profit_amount_accum_td_rate"`
 	RecentProfit            string `json:"recent_profit"`
-	RecentTradingday        int64  `json:"recent_tradingday"`
+	RecentTradingday        Int64  `json:"recent_tradingday"`
 	RecentUnitValue         string `json:"recent_unit_value"`
 	SoldPendingConfirmUnits string `json:"sold_pending_confirm_units"`
 }
@@ -478,14 +478,14 @@ type FundPositionPerformance struct {
 	PerformanceReturnThreeYears  string `json:"performance_return_three_years"`
 	PerformanceReturnTwoYears    string `json:"performance_return_two_years"`
 	PerformanceReturnYtd         string `json:"performance_return_ytd"`
-	UpdateTime                   int64  `json:"update_time"`
+	UpdateTime                   Int64  `json:"update_time"`
 }
 
 // FundPositionProfits is the user's cumulative profit for a held fund.
 type FundPositionProfits struct {
 	Currency       string            `json:"currency"`
 	HistoryValue   []*FundDatedValue `json:"history_value"`
-	LastUpdateTime int64             `json:"last_update_time"`
+	LastUpdateTime Int64             `json:"last_update_time"`
 	SumProfit      string            `json:"sum_profit"`
 }
 
@@ -495,7 +495,7 @@ type FundPositionNav struct {
 	ChangePercent  string `json:"change_percent"`
 	CounterId      string `json:"counter_id"`
 	CounterName    string `json:"counter_name"`
-	LastUpdateTime int64  `json:"last_update_time"`
+	LastUpdateTime Int64  `json:"last_update_time"`
 	Value          string `json:"value"`
 }
 
@@ -504,7 +504,7 @@ type FundDividend struct {
 	Amount    string `json:"amount"`
 	CounterId string `json:"counter_id"`
 	Currency  string `json:"currency"`
-	Date      int64  `json:"date"`
+	Date      Int64  `json:"date"`
 	DivMethod string `json:"div_method"`
 	Name      string `json:"name"`
 }
@@ -513,7 +513,7 @@ type FundDividend struct {
 type FundDividends struct {
 	Currency     string          `json:"currency"`
 	DivCashInfos []*FundDividend `json:"div_cash_infos"`
-	LastestDate  int64           `json:"lastest_date"`
+	LastestDate  Int64           `json:"lastest_date"`
 	TotalDivCash string          `json:"total_div_cash"`
 }
 
@@ -522,10 +522,10 @@ type FundOrder struct {
 	Action      string `json:"action"`
 	Amount      string `json:"amount"`
 	CounterId   string `json:"counter_id"`
-	CreatedAt   int64  `json:"created_at"`
+	CreatedAt   Int64  `json:"created_at"`
 	Currency    string `json:"currency"`
 	FundName    string `json:"fund_name"`
-	Id          int64  `json:"id"`
+	Id          Int64  `json:"id"`
 	IsAuto      bool   `json:"is_auto"`
 	NetWorth    string `json:"net_worth"`
 	ProductType string `json:"product_type"`
@@ -555,25 +555,25 @@ type FundOrderStage struct {
 
 // FundOrderInfo is the full information of a fund order.
 type FundOrderInfo struct {
-	Aaid           int64  `json:"aaid"`
+	Aaid           Int64  `json:"aaid"`
 	AccountChannel string `json:"account_channel"`
 	Action         string `json:"action"`
 	Amount         string `json:"amount"`
 	Channel        string `json:"channel"`
 	CounterId      string `json:"counter_id"`
-	CreatedAt      int64  `json:"created_at"`
+	CreatedAt      Int64  `json:"created_at"`
 	Currency       string `json:"currency"`
 	DividendOption string `json:"dividend_option"`
-	EqAt           int64  `json:"eq_at"`
+	EqAt           Int64  `json:"eq_at"`
 	Fee            string `json:"fee"`
 	FundName       string `json:"fund_name"`
 	FundSource     string `json:"fund_source"`
 	Histories      string `json:"histories"`
-	Id             int64  `json:"id"`
+	Id             Int64  `json:"id"`
 	Message        string `json:"message"`
 	NetWorth       string `json:"net_worth"`
-	PriceAt        int64  `json:"price_at"`
-	ProcessedAt    int64  `json:"processed_at"`
+	PriceAt        Int64  `json:"price_at"`
+	ProcessedAt    Int64  `json:"processed_at"`
 	ProductType    string `json:"product_type"`
 	Repurchaseable bool   `json:"repurchaseable"`
 	SaleProceeds   string `json:"sale_proceeds"`
@@ -587,9 +587,9 @@ type FundOrderInfo struct {
 	TDescription   string `json:"t_description"`
 	TimePartition  string `json:"time_partition"`
 	TotalAmount    string `json:"total_amount"`
-	TransactionAt  int64  `json:"transaction_at"`
+	TransactionAt  Int64  `json:"transaction_at"`
 	Units          string `json:"units"`
-	WithdrawAt     int64  `json:"withdraw_at"`
+	WithdrawAt     Int64  `json:"withdraw_at"`
 	Withdrawable   bool   `json:"withdrawable"`
 }
 
@@ -604,12 +604,12 @@ type FundOrderDetail struct {
 type FundTransaction struct {
 	Amount              string `json:"amount"`
 	Category            string `json:"category"`
-	CreatedAt           int64  `json:"created_at"`
+	CreatedAt           Int64  `json:"created_at"`
 	Currency            string `json:"currency"`
 	Description         string `json:"description"`
-	DetailCreatedAt     int64  `json:"detail_created_at"`
+	DetailCreatedAt     Int64  `json:"detail_created_at"`
 	DetailType          string `json:"detail_type"`
-	DoneAt              int64  `json:"done_at"`
+	DoneAt              Int64  `json:"done_at"`
 	QuantityDescription string `json:"quantity_description"`
 	RedirectPage        string `json:"redirect_page"`
 	RedirectPageV2      string `json:"redirect_page_v2"`
@@ -634,9 +634,9 @@ type FundOrderSubmitResponse struct {
 	Action    string `json:"action"`
 	Amount    string `json:"amount"`
 	CounterId string `json:"counter_id"`
-	CreatedAt int64  `json:"created_at"`
+	CreatedAt Int64  `json:"created_at"`
 	FundName  string `json:"fund_name"`
-	Id        int64  `json:"id"`
+	Id        Int64  `json:"id"`
 	Msg       string `json:"msg"`
 	Status    int32  `json:"status"`
 	Units     string `json:"units"`

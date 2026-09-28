@@ -3,12 +3,15 @@
 // filters, detail, analysis, trend, returns, performance, net value,
 // holdings), the user's fund positions, and fund orders / trading.
 //
-// The fund identifier is exposed as symbol (e.g. a fund code); the gateway
-// converts it to the backend counter_id.
+// The fund identifier is exposed as counter_id (e.g. UT/FD/HK0000384492).
+// Because it contains "/" it cannot live in the URL path, so the single-fund
+// endpoints target a fixed sub-path and carry the identifier as the counter_id
+// query parameter.
 package fund
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -47,6 +50,30 @@ func NewFromEnv() (*FundContext, error) {
 		return nil, errors.Wrap(err, "load config from env error")
 	}
 	return NewFromCfg(cfg)
+}
+
+// withCounterID returns vals with the counter_id query parameter set. The fund
+// identifier (e.g. UT/FD/HK0000384492) contains "/", so it travels as a query
+// parameter rather than a URL path segment.
+func withCounterID(counterID string, vals url.Values) url.Values {
+	if vals == nil {
+		vals = url.Values{}
+	}
+	vals.Set("counter_id", counterID)
+	return vals
+}
+
+// withCounterIDs sets the JSON-array counter_ids query parameter used by the
+// batch endpoints (latest NAV, daily performance, held fund performance). The
+// single counter_id is wrapped into a one-element JSON array to match the
+// backend contract — sending the scalar counter_id makes the backend fail.
+func withCounterIDs(counterID string, vals url.Values) url.Values {
+	if vals == nil {
+		vals = url.Values{}
+	}
+	b, _ := json.Marshal([]string{counterID})
+	vals.Set("counter_ids", string(b))
+	return vals
 }
 
 // ----- fund catalog / market data -----
@@ -89,10 +116,9 @@ func (c *FundContext) Filters(ctx context.Context) (filters *FundFilters, err er
 }
 
 // Detail returns the fund detail.
-func (c *FundContext) Detail(ctx context.Context, symbol string) (detail *FundDetail, err error) {
+func (c *FundContext) Detail(ctx context.Context, counterID string) (detail *FundDetail, err error) {
 	resp := &jsontypes.FundDetail{}
-	path := fmt.Sprintf("/v1/fund/funds/%s", symbol)
-	if err = c.httpClient.Get(ctx, path, url.Values{}, resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/detail", withCounterID(counterID, url.Values{}), resp); err != nil {
 		return
 	}
 	detail = &FundDetail{}
@@ -101,10 +127,9 @@ func (c *FundContext) Detail(ctx context.Context, symbol string) (detail *FundDe
 }
 
 // Analysis returns the fund analysis (level 1).
-func (c *FundContext) Analysis(ctx context.Context, symbol string, params *GetFundAnalysis) (analysis *FundAnalysis, err error) {
+func (c *FundContext) Analysis(ctx context.Context, counterID string, params *GetFundAnalysis) (analysis *FundAnalysis, err error) {
 	resp := &jsontypes.FundAnalysis{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/analysis", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/analysis", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	analysis = &FundAnalysis{}
@@ -113,10 +138,9 @@ func (c *FundContext) Analysis(ctx context.Context, symbol string, params *GetFu
 }
 
 // AnalysisDetail returns the fund analysis detail (level 2).
-func (c *FundContext) AnalysisDetail(ctx context.Context, symbol string, params *GetFundAnalysis) (detail *FundAnalysisDetail, err error) {
+func (c *FundContext) AnalysisDetail(ctx context.Context, counterID string, params *GetFundAnalysis) (detail *FundAnalysisDetail, err error) {
 	resp := &jsontypes.FundAnalysisDetail{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/analysis/detail", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/analysis/detail", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	detail = &FundAnalysisDetail{}
@@ -125,10 +149,9 @@ func (c *FundContext) AnalysisDetail(ctx context.Context, symbol string, params 
 }
 
 // Trend returns the fund trend chart.
-func (c *FundContext) Trend(ctx context.Context, symbol string, params *GetFundAnalysis) (trend *FundTrend, err error) {
+func (c *FundContext) Trend(ctx context.Context, counterID string, params *GetFundAnalysis) (trend *FundTrend, err error) {
 	resp := &jsontypes.FundTrend{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/trend", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/trend", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	trend = &FundTrend{}
@@ -137,10 +160,9 @@ func (c *FundContext) Trend(ctx context.Context, symbol string, params *GetFundA
 }
 
 // AnnualReturns returns the fund annual returns.
-func (c *FundContext) AnnualReturns(ctx context.Context, symbol string, params *FundPage) (returns []*FundAnnualReturn, err error) {
+func (c *FundContext) AnnualReturns(ctx context.Context, counterID string, params *FundPage) (returns []*FundAnnualReturn, err error) {
 	resp := &jsontypes.AnnualReturnsResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/returns/annual", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/returns/annual", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&returns, resp.List)
@@ -148,10 +170,9 @@ func (c *FundContext) AnnualReturns(ctx context.Context, symbol string, params *
 }
 
 // QuarterlyReturns returns the fund quarterly returns.
-func (c *FundContext) QuarterlyReturns(ctx context.Context, symbol string, params *FundPage) (returns []*FundQuarterlyReturn, err error) {
+func (c *FundContext) QuarterlyReturns(ctx context.Context, counterID string, params *FundPage) (returns []*FundQuarterlyReturn, err error) {
 	resp := &jsontypes.QuarterlyReturnsResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/returns/quarterly", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/returns/quarterly", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&returns, resp.List)
@@ -159,10 +180,9 @@ func (c *FundContext) QuarterlyReturns(ctx context.Context, symbol string, param
 }
 
 // Performance returns the fund performance figures.
-func (c *FundContext) Performance(ctx context.Context, symbol string) (performance []*FundPerformance, err error) {
+func (c *FundContext) Performance(ctx context.Context, counterID string) (performance []*FundPerformance, err error) {
 	resp := &jsontypes.PerformanceResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/performance", symbol)
-	if err = c.httpClient.Get(ctx, path, url.Values{}, resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/performance", withCounterIDs(counterID, url.Values{}), resp); err != nil {
 		return
 	}
 	err = util.Copy(&performance, resp.Value)
@@ -170,10 +190,9 @@ func (c *FundContext) Performance(ctx context.Context, symbol string) (performan
 }
 
 // PerformanceComparison returns the fund performance comparison.
-func (c *FundContext) PerformanceComparison(ctx context.Context, symbol string, params *GetFundAnalysis) (comparison *FundPerformanceComparison, err error) {
+func (c *FundContext) PerformanceComparison(ctx context.Context, counterID string, params *GetFundAnalysis) (comparison *FundPerformanceComparison, err error) {
 	resp := &jsontypes.FundPerformanceComparison{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/performance/comparison", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/performance/comparison", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	comparison = &FundPerformanceComparison{}
@@ -182,10 +201,9 @@ func (c *FundContext) PerformanceComparison(ctx context.Context, symbol string, 
 }
 
 // Nav returns the fund latest net value.
-func (c *FundContext) Nav(ctx context.Context, symbol string) (nav []*FundNavValue, err error) {
+func (c *FundContext) Nav(ctx context.Context, counterID string) (nav []*FundNavValue, err error) {
 	resp := &jsontypes.NavResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/nav", symbol)
-	if err = c.httpClient.Get(ctx, path, url.Values{}, resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/nav", withCounterIDs(counterID, url.Values{}), resp); err != nil {
 		return
 	}
 	err = util.Copy(&nav, resp.Value)
@@ -193,10 +211,9 @@ func (c *FundContext) Nav(ctx context.Context, symbol string) (nav []*FundNavVal
 }
 
 // NavHistory returns the fund historical net value (paged).
-func (c *FundContext) NavHistory(ctx context.Context, symbol string, params *FundPage) (nav []*FundNavValue, err error) {
+func (c *FundContext) NavHistory(ctx context.Context, counterID string, params *FundPage) (nav []*FundNavValue, err error) {
 	resp := &jsontypes.NavHistoryResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/nav-history", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/nav-history", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&nav, resp.HistoryValue)
@@ -204,10 +221,9 @@ func (c *FundContext) NavHistory(ctx context.Context, symbol string, params *Fun
 }
 
 // NavRange returns the fund historical net value by relative time range.
-func (c *FundContext) NavRange(ctx context.Context, symbol string, params *FundNavRange) (nav []*FundNavValue, err error) {
+func (c *FundContext) NavRange(ctx context.Context, counterID string, params *FundNavRange) (nav []*FundNavValue, err error) {
 	resp := &jsontypes.NavHistoryResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/nav-range", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/nav-range", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&nav, resp.HistoryValue)
@@ -215,10 +231,9 @@ func (c *FundContext) NavRange(ctx context.Context, symbol string, params *FundN
 }
 
 // Holdings returns a fund's top-10 holdings.
-func (c *FundContext) Holdings(ctx context.Context, symbol string, params *GetFundHoldings) (holdings *FundHoldings, err error) {
+func (c *FundContext) Holdings(ctx context.Context, counterID string, params *GetFundHoldings) (holdings *FundHoldings, err error) {
 	resp := &jsontypes.FundHoldings{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/holdings", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/holdings", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	holdings = &FundHoldings{}
@@ -227,10 +242,9 @@ func (c *FundContext) Holdings(ctx context.Context, symbol string, params *GetFu
 }
 
 // StockHoldings returns the stocks held by a fund (reverse lookup).
-func (c *FundContext) StockHoldings(ctx context.Context, symbol string, params *GetFundStockHoldings) (holdings []*FundStockHolding, err error) {
+func (c *FundContext) StockHoldings(ctx context.Context, counterID string, params *GetFundStockHoldings) (holdings []*FundStockHolding, err error) {
 	resp := &jsontypes.StockHoldingsResponse{}
-	path := fmt.Sprintf("/v1/fund/funds/%s/stock-holdings", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/fund/funds/stock-holdings", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&holdings, resp.Lists)
@@ -251,10 +265,9 @@ func (c *FundContext) Positions(ctx context.Context, params *GetFundPositions) (
 }
 
 // Position returns the user's single fund position detail.
-func (c *FundContext) Position(ctx context.Context, symbol string, params *GetFundPosition) (detail *FundPositionDetail, err error) {
+func (c *FundContext) Position(ctx context.Context, counterID string, params *GetFundPosition) (detail *FundPositionDetail, err error) {
 	resp := &jsontypes.FundPositionDetail{}
-	path := fmt.Sprintf("/v1/asset/funds/%s", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/asset/funds/detail", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	detail = &FundPositionDetail{}
@@ -263,10 +276,9 @@ func (c *FundContext) Position(ctx context.Context, symbol string, params *GetFu
 }
 
 // PositionPerformance returns the performance figures of a held fund.
-func (c *FundContext) PositionPerformance(ctx context.Context, symbol string) (performance []*FundPositionPerformance, err error) {
+func (c *FundContext) PositionPerformance(ctx context.Context, counterID string) (performance []*FundPositionPerformance, err error) {
 	resp := &jsontypes.PositionPerformanceResponse{}
-	path := fmt.Sprintf("/v1/asset/funds/%s/performance", symbol)
-	if err = c.httpClient.Get(ctx, path, url.Values{}, resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/asset/funds/performance", withCounterIDs(counterID, url.Values{}), resp); err != nil {
 		return
 	}
 	err = util.Copy(&performance, resp.Value)
@@ -274,10 +286,9 @@ func (c *FundContext) PositionPerformance(ctx context.Context, symbol string) (p
 }
 
 // PositionProfits returns the cumulative-profit series of a held fund.
-func (c *FundContext) PositionProfits(ctx context.Context, symbol string, params *GetFundPositionProfits) (profits *FundPositionProfits, err error) {
+func (c *FundContext) PositionProfits(ctx context.Context, counterID string, params *GetFundPositionProfits) (profits *FundPositionProfits, err error) {
 	resp := &jsontypes.FundPositionProfits{}
-	path := fmt.Sprintf("/v1/asset/funds/%s/profits", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/asset/funds/profits", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	profits = &FundPositionProfits{}
@@ -286,10 +297,9 @@ func (c *FundContext) PositionProfits(ctx context.Context, symbol string, params
 }
 
 // PositionNav returns the net-value history of a held fund.
-func (c *FundContext) PositionNav(ctx context.Context, symbol string, params *FundNavRange) (nav []*FundPositionNav, err error) {
+func (c *FundContext) PositionNav(ctx context.Context, counterID string, params *FundNavRange) (nav []*FundPositionNav, err error) {
 	resp := &jsontypes.PositionNavResponse{}
-	path := fmt.Sprintf("/v1/asset/funds/%s/nav-history", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/asset/funds/nav-history", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	err = util.Copy(&nav, resp.HistoryValue)
@@ -297,10 +307,9 @@ func (c *FundContext) PositionNav(ctx context.Context, symbol string, params *Fu
 }
 
 // PositionDividends returns the dividend records of a held fund.
-func (c *FundContext) PositionDividends(ctx context.Context, symbol string, params *GetFundPositionDividends) (dividends *FundDividends, err error) {
+func (c *FundContext) PositionDividends(ctx context.Context, counterID string, params *GetFundPositionDividends) (dividends *FundDividends, err error) {
 	resp := &jsontypes.FundDividends{}
-	path := fmt.Sprintf("/v1/asset/funds/%s/dividends", symbol)
-	if err = c.httpClient.Get(ctx, path, params.Values(), resp); err != nil {
+	if err = c.httpClient.Get(ctx, "/v1/asset/funds/dividends", withCounterID(counterID, params.Values()), resp); err != nil {
 		return
 	}
 	dividends = &FundDividends{}
