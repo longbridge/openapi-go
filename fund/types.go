@@ -87,59 +87,59 @@ type FundAssetAllocation struct {
 
 // FundDetail is a fund detail.
 type FundDetail struct {
-	AdditionalPurchaseAmount   string              `json:"additional_purchase_amount"`
-	AffirmDay                  int32               `json:"affirm_day"`
-	AmountAffirmDay            string              `json:"amount_affirm_day"`
-	AssetAllocation            FundAssetAllocation `json:"asset_allocation"`
-	AssetClass                 int32               `json:"asset_class"`
-	AssetClassName             string              `json:"asset_class_name"`
-	BillPurchaseRate           string              `json:"bill_purchase_rate"`
-	Channel                    string              `json:"channel"`
-	ClosePeriod                string              `json:"close_period"`
-	Code                       string              `json:"code"`
-	Currency                   string              `json:"currency"`
-	CutOffTime                 string              `json:"cut_off_time"`
-	Derivatives                bool                `json:"derivatives"`
-	DoneDay                    int32               `json:"done_day"`
-	ExcessReturnFee            string              `json:"excess_return_fee"`
-	GstRate                    string              `json:"gst_rate"`
-	Introduce                  string              `json:"introduce"`
-	IsCashPlus                 bool                `json:"is_cash_plus"`
-	IsComplex                  bool                `json:"is_complex"`
-	IsNewCashPlus              bool                `json:"is_new_cash_plus"`
-	IsYinghebao                bool                `json:"is_yinghebao"`
-	Isin                       string              `json:"isin"`
-	ManageRate                 string              `json:"manage_rate"`
-	Manager                    string              `json:"manager"`
-	MinHoldCash                string              `json:"min_hold_cash"`
-	MinHoldShare               string              `json:"min_hold_share"`
-	MinSellShare               string              `json:"min_sell_share"`
-	MonthRaiseDay              string              `json:"month_raise_day"`
-	Name                       string              `json:"name"`
-	NavDeadline                string              `json:"nav_deadline"`
-	NoLoad                     bool                `json:"no_load"`
-	OpenDate                   string              `json:"open_date"`
-	OpenPeriod                 string              `json:"open_period"`
-	Product                    string              `json:"product"`
-	ProductInformationLocals   string              `json:"product_information_locals"`
-	Profile                    string              `json:"profile"`
-	Purchasable                int32               `json:"purchasable"`
-	PurchaseAffirmDay          string              `json:"purchase_affirm_day"`
-	PurchaseAmount             string              `json:"purchase_amount"`
-	PurchaseRate               string              `json:"purchase_rate"`
-	Rating                     int32               `json:"rating"`
-	Redeemable                 int32               `json:"redeemable"`
-	RedemptionAdvanceDay       string              `json:"redemption_advance_day"`
-	RedemptionAmount           string              `json:"redemption_amount"`
-	RedemptionClosePeriodShows string              `json:"redemption_close_period_shows"`
-	RedemptionDoneDay          string              `json:"redemption_done_day"`
-	RedemptionOpenDayShows     string              `json:"redemption_open_day_shows"`
-	RiskLevel                  int32               `json:"risk_level"`
-	RiskLevelName              string              `json:"risk_level_name"`
-	VerifyStatus               int32               `json:"verify_status"`
-	VirtualCurrency            bool                `json:"virtual_currency"`
-	YearToDateYield            string              `json:"year_to_date_yield"`
-	YtdYieldType               int32               `json:"ytd_yield_type"`
+	AdditionalPurchaseAmount   string               `json:"additional_purchase_amount"`
+	AffirmDay                  int32                `json:"affirm_day"`
+	AmountAffirmDay            string               `json:"amount_affirm_day"`
+	AssetAllocation            *FundAssetAllocation `json:"asset_allocation"`
+	AssetClass                 int32                `json:"asset_class"`
+	AssetClassName             string               `json:"asset_class_name"`
+	BillPurchaseRate           string               `json:"bill_purchase_rate"`
+	Channel                    string               `json:"channel"`
+	ClosePeriod                string               `json:"close_period"`
+	Code                       string               `json:"code"`
+	Currency                   string               `json:"currency"`
+	CutOffTime                 string               `json:"cut_off_time"`
+	Derivatives                bool                 `json:"derivatives"`
+	DoneDay                    int32                `json:"done_day"`
+	ExcessReturnFee            string               `json:"excess_return_fee"`
+	GstRate                    string               `json:"gst_rate"`
+	Introduce                  string               `json:"introduce"`
+	IsCashPlus                 bool                 `json:"is_cash_plus"`
+	IsComplex                  bool                 `json:"is_complex"`
+	IsNewCashPlus              bool                 `json:"is_new_cash_plus"`
+	IsYinghebao                bool                 `json:"is_yinghebao"`
+	Isin                       string               `json:"isin"`
+	ManageRate                 string               `json:"manage_rate"`
+	Manager                    string               `json:"manager"`
+	MinHoldCash                string               `json:"min_hold_cash"`
+	MinHoldShare               string               `json:"min_hold_share"`
+	MinSellShare               string               `json:"min_sell_share"`
+	MonthRaiseDay              string               `json:"month_raise_day"`
+	Name                       string               `json:"name"`
+	NavDeadline                string               `json:"nav_deadline"`
+	NoLoad                     bool                 `json:"no_load"`
+	OpenDate                   string               `json:"open_date"`
+	OpenPeriod                 string               `json:"open_period"`
+	Product                    string               `json:"product"`
+	ProductInformationLocals   string               `json:"product_information_locals"`
+	Profile                    string               `json:"profile"`
+	Purchasable                int32                `json:"purchasable"`
+	PurchaseAffirmDay          string               `json:"purchase_affirm_day"`
+	PurchaseAmount             string               `json:"purchase_amount"`
+	PurchaseRate               string               `json:"purchase_rate"`
+	Rating                     int32                `json:"rating"`
+	Redeemable                 int32                `json:"redeemable"`
+	RedemptionAdvanceDay       string               `json:"redemption_advance_day"`
+	RedemptionAmount           string               `json:"redemption_amount"`
+	RedemptionClosePeriodShows string               `json:"redemption_close_period_shows"`
+	RedemptionDoneDay          string               `json:"redemption_done_day"`
+	RedemptionOpenDayShows     string               `json:"redemption_open_day_shows"`
+	RiskLevel                  int32                `json:"risk_level"`
+	RiskLevelName              string               `json:"risk_level_name"`
+	VerifyStatus               int32                `json:"verify_status"`
+	VirtualCurrency            bool                 `json:"virtual_currency"`
+	YearToDateYield            string               `json:"year_to_date_yield"`
+	YtdYieldType               int32                `json:"ytd_yield_type"`
 }
 
 // FundAnalysis is a fund analysis (level 1). The ability / cost fields are
@@ -174,11 +174,11 @@ type FundTrendContrast struct {
 
 // FundTrend is a fund trend chart.
 type FundTrend struct {
-	ActualPeriod                int32             `json:"actual_period"`
-	AvailablePeriods            []int32           `json:"available_periods"`
-	CategoryAveragePerformances []json.RawMessage `json:"category_average_performances"`
-	ContrastPerformances        FundTrendContrast `json:"contrast_performances"`
-	FundPerformances            []json.RawMessage `json:"fund_performances"`
+	ActualPeriod                int32              `json:"actual_period"`
+	AvailablePeriods            []int32            `json:"available_periods"`
+	CategoryAveragePerformances []json.RawMessage  `json:"category_average_performances"`
+	ContrastPerformances        *FundTrendContrast `json:"contrast_performances"`
+	FundPerformances            []json.RawMessage  `json:"fund_performances"`
 }
 
 // FundNamedContrast is a named contrast performance series.
@@ -344,9 +344,9 @@ type FundPositionDetailValues struct {
 
 // FundPositionDetail is the detail of a single fund position.
 type FundPositionDetail struct {
-	DetailValues FundPositionDetailValues `json:"detail_values"`
-	SumProfit    []*FundDatedValue        `json:"sum_profit"`
-	UtValue      []*FundUnitValue         `json:"ut_value"`
+	DetailValues *FundPositionDetailValues `json:"detail_values"`
+	SumProfit    []*FundDatedValue         `json:"sum_profit"`
+	UtValue      []*FundUnitValue          `json:"ut_value"`
 }
 
 // FundPositionPerformance holds the performance figures for a held fund.
@@ -487,7 +487,7 @@ type FundOrderInfo struct {
 // FundOrderDetail is a fund order detail.
 type FundOrderDetail struct {
 	Keywords []*FundOrderKeyword `json:"keywords"`
-	Order    FundOrderInfo       `json:"order"`
+	Order    *FundOrderInfo      `json:"order"`
 	Stages   []*FundOrderStage   `json:"stages"`
 }
 
