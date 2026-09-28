@@ -2,9 +2,10 @@
 // fund) API. These types match the exact JSON field names returned by the
 // Longbridge API. Use the parent fund package for the idiomatic Go types.
 //
-// Numeric fields that arrive as strings on the wire are kept as string to
-// preserve the exact server formatting; unix-second timestamps are kept as
-// int64. Server-defined "any" structures are kept as json.RawMessage.
+// Numeric int64 fields use the string-tolerant Int64 type, since the backend
+// may send them as either a JSON number or a quoted string; unix-second
+// timestamps are Int64 as well. Server-defined "any" structures are kept as
+// json.RawMessage.
 package jsontypes
 
 import "encoding/json"
