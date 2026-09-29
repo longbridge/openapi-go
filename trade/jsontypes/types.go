@@ -1,5 +1,7 @@
 package jsontypes
 
+import "encoding/json"
+
 // Execution is execution details
 type Execution struct {
 	OrderId     string `json:"order_id"`
@@ -149,13 +151,30 @@ type FundPositionChannel struct {
 
 // FundPosition is fund position details
 type FundPosition struct {
-	Symbol               string `json:"symbol"`
+	CounterID            string `json:"counter_id"`
 	CurrentNetAssetValue string `json:"current_net_asset_value"`
 	NetAssetValueDay     int64  `json:"net_asset_value_day,string"` // timestamp
 	SymbolName           string `json:"symbol_name"`
 	Currency             string `json:"currency"`
 	CostNetAssetValue    string `json:"cost_net_asset_value"`
 	HoldingUnits         string `json:"holding_units"`
+}
+
+// UnmarshalJSON accepts the fund identifier under either the new `counter_id`
+// key or the legacy `symbol` key (which carried the ISIN) during the transition.
+func (f *FundPosition) UnmarshalJSON(data []byte) error {
+	type alias FundPosition
+	aux := struct {
+		LegacySymbol string `json:"symbol"`
+		*alias
+	}{alias: (*alias)(f)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if f.CounterID == "" {
+		f.CounterID = aux.LegacySymbol
+	}
+	return nil
 }
 
 // StockPositions has a StockPosition list

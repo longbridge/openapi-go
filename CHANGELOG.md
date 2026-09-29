@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `trade.FundPosition` — the fund identifier field is renamed from `Symbol` (which carried the ISIN) to `CounterID`, matching the Rust core and the fund channel. It now holds the full fund `counter_id` (e.g. `UT/FD/HK0000384492`); the ISIN is the last `/`-separated segment. The wire type reads the new `counter_id` key and still accepts the legacy `symbol` key during the transition.
+
 ## [v0.28.0] - 2026-09-28
 
 ### Breaking changes
