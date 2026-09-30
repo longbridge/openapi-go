@@ -371,7 +371,7 @@ type FundPositionChannel struct {
 
 // FundPosition is fund position details
 type FundPosition struct {
-	Symbol               string
+	CounterID            string
 	CurrentNetAssetValue *decimal.Decimal
 	NetAssetValueDay     int64
 	SymbolName           string
