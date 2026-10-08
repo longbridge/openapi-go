@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Forex (currency exchange)** — new `forex.ForexContext` for the currency-exchange channel (ports longbridge/openapi), mirroring the Rust core across 3 methods: `Quote` (`POST /v1/forex/quote`), `SubmitOrder` (`POST /v1/forex/order`) and `Order` (`GET /v1/forex/order`). The flow is asynchronous: a successful `SubmitOrder` only means the order was accepted, so callers poll `Order` by `client_order_id` until it reaches a terminal state. The order state is the integer-coded `ForexOrderStatus` enum (`ForexOrderProcessing` / `ForexOrderSuccess` / `ForexOrderFailed`); the quote `Rate` is a `decimal.Decimal`, while the order's `Rate` / `FromAmount` / `ToAmount` are `*decimal.Decimal` (nil until the order is filled — they arrive empty on the wire). `Rate` follows the standard currency-pair convention (`1 BASE = Rate QUOTE`), independent of the request's from/to direction; `ExpireAt` is Unix milliseconds via the string-tolerant `jsontypes.Int64`. Provide at most one of `GetForexQuote.Amount` / `TargetAmount`; the server validates the choice. Business error codes `603001`–`603010` surface as the standard API error
+
 ## [v0.29.0] - 2026-09-30
 
 ### Breaking changes
