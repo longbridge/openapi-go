@@ -455,6 +455,26 @@ func (c *TradeContext) EstimateMaxPurchaseQuantity(ctx context.Context, params *
 	return
 }
 
+// EstimateMultiLegAvailableQuantity estimates a US multi-leg option combination's
+// maximum tradable quantity and margin impact before submitting the order.
+//
+// Because the request carries a legs array it is a POST with a JSON body
+// (unlike the scalar single-leg EstimateMaxPurchaseQuantity, which is a GET).
+func (c *TradeContext) EstimateMultiLegAvailableQuantity(ctx context.Context, params *GetEstimateMultiLegAvailableQuantity) (resp EstimateMultiLegAvailableQuantityResponse, err error) {
+	var jsonbody jsontypes.EstimateMultiLegAvailableQuantity
+	err = util.Copy(&jsonbody, params)
+	if err != nil {
+		return
+	}
+	var r jsontypes.EstimateMultiLegAvailableQuantityResponse
+	err = c.opts.httpClient.Post(ctx, "/v1/trade/estimate/multileg", jsonbody, &r)
+	if err != nil {
+		return
+	}
+	err = util.Copy(&resp, r)
+	return
+}
+
 // Close
 func (c *TradeContext) Close() error {
 	if c.core == nil {

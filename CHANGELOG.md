@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Trade: estimate multi-leg option trading info** — new `trade.TradeContext.EstimateMultiLegAvailableQuantity` (`POST /v1/trade/estimate/multileg`, ports longbridge/openapi) estimating a US option combination strategy's maximum tradable quantity and margin impact before submitting. Takes `Side`, `OrderType`, `SubmittedQuantity`, `Strategy` (`MultiLegStrategy`), the combination `Legs` (each an `EstimateMultiLegOrderLeg` — symbol plus a reserved `Side`), and an optional `SubmittedPrice`; returns `MaxOpenQty`, `UnitMargin`, `InitialMarginChange` and `MaintenanceMarginChange` as `decimal.Decimal`. Because the request carries a legs array it is a POST with a JSON body, unlike the scalar single-leg `EstimateMaxPurchaseQuantity` (a GET).
+
 ## [v0.29.0] - 2026-09-30
 
 ### Breaking changes
