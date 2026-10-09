@@ -115,6 +115,28 @@ type SubmitMultiLegOrderLeg struct {
 	RatioQuantity decimal.Decimal // Leg ratio quantity, must be positive
 }
 
+// GetEstimateMultiLegAvailableQuantity is the request for
+// TradeContext.EstimateMultiLegAvailableQuantity — a pre-trade estimate of a US
+// multi-leg option combination's maximum tradable quantity and margin impact.
+//
+// Only the US market is supported; all legs must share the same underlying and
+// settlement currency, each leg must be an option or the underlying stock, and
+// duplicate legs (same symbol and side) are rejected.
+type GetEstimateMultiLegAvailableQuantity struct {
+	Side              OrderSide                  // required, order side of the combination
+	OrderType         OrderType                  // required
+	SubmittedQuantity decimal.Decimal            // required, number of combinations
+	Strategy          MultiLegStrategy           // required
+	Legs              []EstimateMultiLegOrderLeg // required
+	SubmittedPrice    decimal.Decimal            // required for limit order types such as LO
+}
+
+// EstimateMultiLegOrderLeg is a single leg of the combination for the estimate.
+type EstimateMultiLegOrderLeg struct {
+	Symbol string    // Option or underlying-stock symbol, in ticker.region format
+	Side   OrderSide // optional, reserved field, not in use for now
+}
+
 // SubmitAttachedParams is attached order (take-profit / stop-loss) parameters for SubmitOrder.
 type SubmitAttachedParams struct {
 	AttachedOrderType AttachedOrderType // required

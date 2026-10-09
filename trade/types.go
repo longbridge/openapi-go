@@ -494,3 +494,12 @@ type EstimateMaxPurchaseQuantityResponse struct {
 	CashMaxQty   int64 // Cash available quantity
 	MarginMaxQty int64 // Margin available quantity
 }
+
+// EstimateMultiLegAvailableQuantityResponse is the estimated tradable quantity
+// and margin impact of a multi-leg option combination.
+type EstimateMultiLegAvailableQuantityResponse struct {
+	MaxOpenQty              decimal.Decimal // Maximum open quantity of the combination
+	UnitMargin              decimal.Decimal // Margin required per combination unit
+	InitialMarginChange     decimal.Decimal // Change of the initial margin after placing the order (after minus before)
+	MaintenanceMarginChange decimal.Decimal // Change of the maintenance margin after placing the order (after minus before)
+}

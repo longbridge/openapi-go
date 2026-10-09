@@ -308,6 +308,32 @@ type SubmitMultiLegOrderLeg struct {
 	RatioQuantity string `json:"ratio_quantity"`
 }
 
+// EstimateMultiLegAvailableQuantity is the raw wire type for the multi-leg
+// estimate request body.
+type EstimateMultiLegAvailableQuantity struct {
+	Side              string                     `json:"side"`
+	OrderType         string                     `json:"order_type"`
+	SubmittedQuantity string                     `json:"submitted_quantity"`
+	Strategy          string                     `json:"strategy"`
+	Legs              []EstimateMultiLegOrderLeg `json:"legs"`
+	SubmittedPrice    string                     `json:"submitted_price,omitempty"`
+}
+
+// EstimateMultiLegOrderLeg is the raw wire type for a single leg of the estimate.
+type EstimateMultiLegOrderLeg struct {
+	Symbol string `json:"symbol"`
+	Side   string `json:"side,omitempty"`
+}
+
+// EstimateMultiLegAvailableQuantityResponse is the raw wire type for the
+// multi-leg estimate response.
+type EstimateMultiLegAvailableQuantityResponse struct {
+	MaxOpenQty              string `json:"max_open_qty"`
+	UnitMargin              string `json:"unit_margin"`
+	InitialMarginChange     string `json:"initial_margin_change"`
+	MaintenanceMarginChange string `json:"maintenance_margin_change"`
+}
+
 // SubmitAttachedParams is the raw wire type for attached order (take-profit / stop-loss) parameters on submit.
 type SubmitAttachedParams struct {
 	AttachedOrderType      string `json:"attached_order_type"`
