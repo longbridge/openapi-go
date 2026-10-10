@@ -16,7 +16,6 @@ import (
 	"github.com/longbridge/openapi-go/config"
 	"github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/internal/util"
-	"github.com/longbridge/openapi-go/log"
 	"github.com/longbridge/openapi-go/longbridge"
 	"github.com/longbridge/openapi-go/quote/jsontypes"
 )
@@ -51,7 +50,10 @@ type QuoteContext struct {
 	core *core
 }
 
-// Profile obtain the user quote profile
+// Profile obtain the user quote profile.
+//
+// With TransportHTTP the profile is fetched on first use, which dials the
+// quote WebSocket; nil is returned if that fails.
 func (c *QuoteContext) Profile() *UserProfile {
 	return c.core.Profile()
 }
@@ -164,7 +166,7 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 //	brokers, err := qctx.Brokers(context.Background(), "AAPL.HK")
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
 	// Broker queue via WebSocket is served only by the AP data center.
-	if err = c.opts.httpClient.CheckRegion("quote/brokers (WebSocket)", "AP"); err != nil {
+	if err = c.opts.httpClient.CheckRegion("quote/brokers", "AP"); err != nil {
 		return
 	}
 	return c.core.Brokers(ctx, symbol)
@@ -718,18 +720,10 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 	)
 }
 
-// transportFromConfig parses the configured quote transport, falling back to
-// the default (with a warning) for an unknown value.
+// transportFromConfig passes the configured quote transport through;
+// WithTransport validates it.
 func transportFromConfig(value string) Transport {
-	if value == "" {
-		return ""
-	}
-	transport, ok := ParseTransport(value)
-	if !ok {
-		log.Warnf("invalid quote transport %q, using ws", value)
-		return ""
-	}
-	return transport
+	return Transport(value)
 }
 
 // New return QuoteContext with option.

@@ -7,6 +7,7 @@ import (
 	_ "time/tzdata" // New York rules must resolve even without a system tz database
 
 	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
+	"google.golang.org/protobuf/proto"
 )
 
 // Keeps HTTP-transport quote data aligned with the WebSocket's US overnight
@@ -106,6 +107,79 @@ func dropOvernight(candlesticks []*quotev1.Candlestick) ([]*quotev1.Candlestick,
 // wall-clock time, inclusive) in the direction fixed by the caller.
 type candlestickFetch func(ctx context.Context, anchor time.Time, count int32) ([]*quotev1.Candlestick, error)
 
+// historyFetch issues one history-candlestick request and returns the raw page.
+type historyFetch func(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest) ([]*quotev1.Candlestick, error)
+
+// windowTarget is the number of bars the WebSocket would return for `req`
+// given the raw page, or 0 if the page is not capped (nothing to top up).
+func windowTarget(req *quotev1.SecurityHistoryCandlestickRequest, raw []*quotev1.Candlestick) int {
+	switch req.GetQueryType() {
+	case quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET:
+		// A page shorter than `count` is either all the data there is or the
+		// server's cap; either way it is the window the WebSocket would return.
+		target := len(raw)
+		if count := int(req.GetOffsetRequest().GetCount()); count < target {
+			target = count
+		}
+		return target
+	case quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE:
+		// A date range is served newest-first and capped at a fixed number of
+		// bars. With a start date, the window is capped only if it did not
+		// reach the first bar of that day (midnight New York, where the
+		// overnight session begins); without one, a page at least as long as
+		// the request cap is taken as capped.
+		if start := req.GetDateRequest().GetStartDate(); start != "" {
+			bound := newYorkMidnight(start)
+			if !bound.IsZero() && rawEdge(raw, false) > bound.Unix() {
+				return len(raw)
+			}
+			return 0
+		}
+		if len(raw) >= maxHistoryCandlesticks {
+			return len(raw)
+		}
+	}
+	return 0
+}
+
+// alignCandlesticks drops overnight bars from a raw HTTP page for a US equity
+// `CandlestickTradeSessionAll` query and tops the window up with offset
+// queries issued through `fetch` so it covers the bars the WebSocket returns.
+func alignCandlesticks(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest, raw []*quotev1.Candlestick, fetch historyFetch) ([]*quotev1.Candlestick, error) {
+	if req.GetTradeSession() != int32(CandlestickTradeSessionAll) || !isUSEquitySymbol(req.GetSymbol()) {
+		return raw, nil
+	}
+	kept, dropped := dropOvernight(raw)
+	target := windowTarget(req, raw)
+	if dropped == 0 || target <= len(kept) {
+		return kept, nil
+	}
+
+	forward := req.GetQueryType() == quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET &&
+		req.GetOffsetRequest().GetDirection() == quotev1.Direction_FORWARD
+	var bound time.Time
+	if req.GetQueryType() == quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE {
+		bound = newYorkMidnight(req.GetDateRequest().GetStartDate())
+	}
+	direction := quotev1.Direction_BACKWARD
+	if forward {
+		direction = quotev1.Direction_FORWARD
+	}
+	page := func(ctx context.Context, anchor time.Time, count int32) ([]*quotev1.Candlestick, error) {
+		next := proto.Clone(req).(*quotev1.SecurityHistoryCandlestickRequest)
+		next.QueryType = quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET
+		next.DateRequest = nil
+		next.OffsetRequest = &quotev1.SecurityHistoryCandlestickRequest_OffsetQuery{
+			Direction: direction,
+			Date:      anchor.Format("20060102"),
+			Minute:    anchor.Format("1504"),
+			Count:     count,
+		}
+		return fetch(ctx, next)
+	}
+	return refillCandlesticks(ctx, forward, kept, rawEdge(raw, forward), target, bound, page)
+}
+
 // refillCandlesticks tops up a capped candlestick window after overnight bars
 // were dropped.
 //
@@ -123,15 +197,18 @@ func refillCandlesticks(
 	bound time.Time,
 	fetch candlestickFetch,
 ) ([]*quotev1.Candlestick, error) {
+	stalled := false
 	for round := 0; round < maxRefillRounds; round++ {
 		if len(candlesticks) >= target || cursor == 0 {
 			break
 		}
 		need := target - len(candlesticks)
-		// Over-fetch: roughly a third of a US day is overnight, and the anchor
-		// bar itself comes back and is discarded.
+		// Over-fetch a little for the anchor bar (returned and discarded) and
+		// scattered overnight bars. The overnight session is one contiguous
+		// 20:00–04:00 block, so once a page yields nothing the cursor is
+		// inside it: jump with a full page rather than inching through it.
 		count := need + need/2 + 1
-		if count > maxHistoryCandlesticks {
+		if stalled || count > maxHistoryCandlesticks {
 			count = maxHistoryCandlesticks
 		}
 		raw, err := fetch(ctx, newYorkLocal(cursor), int32(count))
@@ -156,6 +233,7 @@ func refillCandlesticks(
 			filtered = append(filtered, candlestick)
 		}
 
+		stalled = len(filtered) == 0
 		if forward {
 			if len(filtered) > need {
 				filtered = filtered[:need]

@@ -81,12 +81,19 @@ func WithEnableOvernight(enable bool) Option {
 }
 
 // WithTransport selects the transport for the quote pull (request/response)
-// APIs; see Transport. An empty value keeps the default, TransportWebSocket.
+// APIs; see Transport. An empty value keeps the default, TransportWebSocket;
+// an unknown value is ignored with a warning.
 func WithTransport(transport Transport) Option {
 	return func(o *Options) {
-		if transport != "" {
-			o.transport = transport
+		if transport == "" {
+			return
 		}
+		parsed, ok := ParseTransport(string(transport))
+		if !ok {
+			log.Warnf("invalid quote transport %q, using %s", transport, o.transport)
+			return
+		}
+		o.transport = parsed
 	}
 }
 

@@ -9,7 +9,6 @@ import (
 	protocol "github.com/longbridge/openapi-protocol/go"
 	"github.com/longbridge/openapi-protocol/go/client"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/longbridge/openapi-go"
 	"github.com/longbridge/openapi-go/http"
@@ -38,6 +37,9 @@ type core struct {
 }
 
 func newCore(opts *Options) (*core, error) {
+	if opts.httpClient == nil {
+		return nil, errors.New("quote: http client is required (use WithHttpClient)")
+	}
 	core := &core{
 		opts:            opts,
 		transport:       opts.transport,
@@ -445,71 +447,19 @@ func (c *core) historyCandlesticks(ctx context.Context, req *quotev1.SecurityHis
 // alignHistoryCandlesticks applies the WebSocket's US overnight rule to a raw
 // HTTP candlestick page (see overnight.go): overnight bars are dropped and a
 // count / range-capped window is topped up so it covers the same bars the
-// WebSocket would return.
+// WebSocket would return. The top-up pages with offset queries through
+// c.do; a failure there fails the call.
 func (c *core) alignHistoryCandlesticks(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest, raw []*quotev1.Candlestick) ([]*quotev1.Candlestick, error) {
-	if !c.alignsOvernight() ||
-		req.GetTradeSession() != int32(CandlestickTradeSessionAll) ||
-		!isUSEquitySymbol(req.GetSymbol()) {
+	if !c.alignsOvernight() {
 		return raw, nil
 	}
-	kept, dropped := dropOvernight(raw)
-	if dropped == 0 {
-		return kept, nil
-	}
-
-	forward := false
-	target := 0
-	var bound time.Time
-	switch req.GetQueryType() {
-	case quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET:
-		// A page shorter than `count` is either all the data there is or the
-		// server's cap; either way it is the window the WebSocket would return.
-		offset := req.GetOffsetRequest()
-		forward = offset.GetDirection() == quotev1.Direction_FORWARD
-		target = len(raw)
-		if int(offset.GetCount()) < target {
-			target = int(offset.GetCount())
-		}
-	case quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE:
-		// A date range is served newest-first and capped at a fixed number of
-		// bars. With a start date, the window is capped only if it did not
-		// reach the first bar of that day (midnight New York, where the
-		// overnight session begins); without one, a page at least as long as
-		// the request cap is taken as capped.
-		if start := req.GetDateRequest().GetStartDate(); start != "" {
-			bound = newYorkMidnight(start)
-			if !bound.IsZero() && rawEdge(raw, false) > bound.Unix() {
-				target = len(raw)
-			}
-		} else if len(raw) >= maxHistoryCandlesticks {
-			target = len(raw)
-		}
-	}
-	if target <= len(kept) {
-		return kept, nil
-	}
-
-	direction := quotev1.Direction_BACKWARD
-	if forward {
-		direction = quotev1.Direction_FORWARD
-	}
-	fetch := func(ctx context.Context, anchor time.Time, count int32) ([]*quotev1.Candlestick, error) {
-		page := proto.Clone(req).(*quotev1.SecurityHistoryCandlestickRequest)
-		page.QueryType = quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET
-		page.DateRequest = nil
-		page.OffsetRequest = &quotev1.SecurityHistoryCandlestickRequest_OffsetQuery{
-			Direction: direction,
-			Date:      anchor.Format("20060102"),
-			Minute:    anchor.Format("1504"),
-			Count:     count,
-		}
+	return alignCandlesticks(ctx, req, raw, func(ctx context.Context, page *quotev1.SecurityHistoryCandlestickRequest) ([]*quotev1.Candlestick, error) {
 		var ret quotev1.SecurityCandlestickResponse
 		if err := c.do(ctx, quotev1.Command_QueryHistoryCandlestick, page, &ret); err != nil {
 			return nil, err
 		}
 		return ret.GetCandlesticks(), nil
-	}
-	return refillCandlesticks(ctx, forward, kept, rawEdge(raw, forward), target, bound, fetch)
+	})
 }
 
 func (c *core) OptionChainExpiryDateList(ctx context.Context, symbol string) (times []time.Time, err error) {
