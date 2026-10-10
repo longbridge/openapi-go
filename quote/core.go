@@ -9,22 +9,65 @@ import (
 	protocol "github.com/longbridge/openapi-protocol/go"
 	"github.com/longbridge/openapi-protocol/go/client"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/longbridge/openapi-go"
+	"github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/internal/util"
 	"github.com/longbridge/openapi-go/log"
 )
 
 type core struct {
-	client        client.Client
+	opts            *Options
+	transport       Transport
+	enableOvernight bool
+	language        string
+	httpClient      *http.Client
+
+	// WebSocket client; nil until dialed (see ws). Guarded by wsMu.
+	client          client.Client
+	wsMu            sync.Mutex
+	pendingHandlers []func(client.Client)
+
 	url           string
 	mu            sync.Mutex
 	subscriptions map[string][]SubType
 	store         *store
+	profileMu     sync.Mutex
 	userProfile   *UserProfile
 }
 
 func newCore(opts *Options) (*core, error) {
+	core := &core{
+		opts:            opts,
+		transport:       opts.transport,
+		enableOvernight: opts.enableOvernight,
+		language:        string(opts.language),
+		httpClient:      opts.httpClient,
+		url:             opts.quoteURL,
+		subscriptions:   make(map[string][]SubType),
+		store:           newStore(),
+	}
+	if core.transport == TransportHTTP {
+		// Pull APIs go over HTTP; the WebSocket is dialed lazily by ws() and
+		// the profile fetched by Profile().
+		return core, nil
+	}
+	if _, err := core.ws(context.Background()); err != nil {
+		return nil, err
+	}
+	var err error
+	core.userProfile, err = core.queryProfile(context.Background(), core.language)
+	if err != nil {
+		return nil, err
+	}
+	return core, nil
+}
+
+// dial connects and authenticates the quote WebSocket and queries the user
+// quote profile. Callers hold wsMu.
+func (c *core) dial(ctx context.Context) (client.Client, error) {
+	opts := c.opts
 	getOTP := func() (otp string, err error) {
 		otp, err = opts.httpClient.GetOTPV2(context.Background())
 		if err != nil {
@@ -42,7 +85,7 @@ func newCore(opts *Options) (*core, error) {
 	}
 	cl := client.New(clientOpts...)
 
-	err := cl.Dial(context.Background(), opts.quoteURL,
+	err := cl.Dial(ctx, opts.quoteURL,
 		&protocol.Handshake{
 			Version:  1,
 			Codec:    protocol.CodecProtobuf,
@@ -60,16 +103,10 @@ func newCore(opts *Options) (*core, error) {
 		return nil, err
 	}
 
-	core := &core{
-		client:        cl,
-		url:           opts.quoteURL,
-		subscriptions: make(map[string][]SubType),
-		store:         newStore(),
-	}
-	core.client.AfterReconnected(func() {
+	cl.AfterReconnected(func() {
 		resubFlag := true
 
-		if err := core.resubscribe(context.Background()); err != nil {
+		if err := c.resubscribe(context.Background()); err != nil {
 			log.Errorf("faield to do sub, err: %v", err)
 			resubFlag = false
 		}
@@ -77,27 +114,25 @@ func newCore(opts *Options) (*core, error) {
 			fn(resubFlag)
 		}
 	})
-	core.userProfile, err = core.queryProfile(context.Background(), string(opts.language))
-	if err != nil {
-		return nil, err
-	}
-	return core, nil
+	return cl, nil
 }
 
 func (c *core) SetQuoteHandler(f func(*PushQuote)) {
-	c.client.Subscribe(uint32(quotev1.Command_PushQuoteData), parsePushQuoteFunc(f, c))
+	c.withClient(func(cl client.Client) { cl.Subscribe(uint32(quotev1.Command_PushQuoteData), parsePushQuoteFunc(f, c)) })
 }
 
 func (c *core) SetTradeHandler(f func(*PushTrade)) {
-	c.client.Subscribe(uint32(quotev1.Command_PushTradeData), parsePushTradeFunc(f, c))
+	c.withClient(func(cl client.Client) { cl.Subscribe(uint32(quotev1.Command_PushTradeData), parsePushTradeFunc(f, c)) })
 }
 
 func (c *core) SetDepthHandler(f func(*PushDepth)) {
-	c.client.Subscribe(uint32(quotev1.Command_PushDepthData), parsePushDepthFunc(f, c))
+	c.withClient(func(cl client.Client) { cl.Subscribe(uint32(quotev1.Command_PushDepthData), parsePushDepthFunc(f, c)) })
 }
 
 func (c *core) SetBrokersHandler(f func(*PushBrokers)) {
-	c.client.Subscribe(uint32(quotev1.Command_PushBrokersData), parsePushBrokersFunc(f, c))
+	c.withClient(func(cl client.Client) {
+		cl.Subscribe(uint32(quotev1.Command_PushBrokersData), parsePushBrokersFunc(f, c))
+	})
 }
 
 func (c *core) Subscribe(ctx context.Context, symbols []string, subTypes []SubType, isFirstPush bool) (err error) {
@@ -116,7 +151,7 @@ func (c *core) doSubscirbe(ctx context.Context, symbols []string, subTypes []Sub
 	if err != nil {
 		return
 	}
-	_, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_Subscribe), Body: req})
+	err = c.wsDo(ctx, quotev1.Command_Subscribe, req, nil)
 	if err != nil {
 		return
 	}
@@ -137,7 +172,7 @@ func (c *core) Unsubscribe(ctx context.Context, unSubAll bool, symbols []string,
 	if err != nil {
 		return
 	}
-	_, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_Unsubscribe), Body: req})
+	err = c.wsDo(ctx, quotev1.Command_Unsubscribe, req, nil)
 	if err != nil {
 		return
 	}
@@ -163,6 +198,18 @@ func (c *core) resubscribe(ctx context.Context) error {
 }
 
 func (c *core) Profile() *UserProfile {
+	c.profileMu.Lock()
+	defer c.profileMu.Unlock()
+	if c.userProfile == nil {
+		// With TransportHTTP the profile is only fetched on demand; this
+		// dials the WebSocket if it is not connected yet.
+		profile, err := c.queryProfile(context.Background(), c.language)
+		if err != nil {
+			log.Errorf("failed to query quote profile: %v", err)
+			return nil
+		}
+		c.userProfile = profile
+	}
 	return c.userProfile
 }
 
@@ -170,14 +217,8 @@ func (c *core) queryProfile(ctx context.Context, lang string) (quoteProfile *Use
 	req := &quotev1.UserQuoteProfileRequest{
 		Language: lang,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryUserQuoteProfile), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.UserQuoteProfileResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryUserQuoteProfile, req, &ret); err != nil {
 		return
 	}
 	quoteProfile = &UserProfile{}
@@ -188,14 +229,8 @@ func (c *core) queryProfile(ctx context.Context, lang string) (quoteProfile *Use
 
 func (c *core) Subscriptions(ctx context.Context) (subscriptions map[string][]SubType, err error) {
 	req := &quotev1.SubscriptionRequest{}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_Subscription), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SubscriptionResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_Subscription, req, &ret); err != nil {
 		return
 	}
 	subscriptions = make(map[string][]SubType, len(ret.GetSubList()))
@@ -214,14 +249,8 @@ func (c *core) StaticInfo(ctx context.Context, symbols []string) (staticInfos []
 	req := &quotev1.MultiSecurityRequest{
 		Symbol: symbols,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QuerySecurityStaticInfo), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityStaticInfoResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QuerySecurityStaticInfo, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&staticInfos, ret.GetSecuStaticInfo())
@@ -232,15 +261,15 @@ func (c *core) Quote(ctx context.Context, symbols []string) (quotes []*SecurityQ
 	req := &quotev1.MultiSecurityRequest{
 		Symbol: symbols,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QuerySecurityQuote), Body: req})
-	if err != nil {
+	var ret quotev1.SecurityQuoteResponse
+	if err = c.do(ctx, quotev1.Command_QuerySecurityQuote, req, &ret); err != nil {
 		return
 	}
-	var ret quotev1.SecurityQuoteResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
-		return
+	if c.alignsOvernight() {
+		// See overnight.go: HTTP always returns overnight quotes.
+		for _, q := range ret.GetSecuQuote() {
+			q.OverNightQuote = nil
+		}
 	}
 	err = util.Copy(&quotes, ret.GetSecuQuote())
 	return
@@ -250,14 +279,8 @@ func (c *core) OptionQuote(ctx context.Context, symbols []string) (optionQuotes 
 	req := &quotev1.MultiSecurityRequest{
 		Symbol: symbols,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryOptionQuote), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.OptionQuoteResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryOptionQuote, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&optionQuotes, ret.GetSecuQuote())
@@ -268,14 +291,8 @@ func (c *core) WarrantQuote(ctx context.Context, symbols []string) (warrantQuote
 	req := &quotev1.MultiSecurityRequest{
 		Symbol: symbols,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryWarrantQuote), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.WarrantQuoteResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryWarrantQuote, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&warrantQuotes, ret.GetSecuQuote())
@@ -286,14 +303,8 @@ func (c *core) Depth(ctx context.Context, symbol string) (securityDepth *Securit
 	req := &quotev1.SecurityRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryDepth), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityDepthResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryDepth, req, &ret); err != nil {
 		return
 	}
 	securityDepth = &SecurityDepth{}
@@ -305,14 +316,8 @@ func (c *core) Brokers(ctx context.Context, symbol string) (securityBorkers *Sec
 	req := &quotev1.SecurityRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryBrokers), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityBrokersResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryBrokers, req, &ret); err != nil {
 		return
 	}
 	securityBorkers = &SecurityBrokers{}
@@ -321,14 +326,8 @@ func (c *core) Brokers(ctx context.Context, symbol string) (securityBorkers *Sec
 }
 
 func (c *core) Participants(ctx context.Context) (infos []*ParticipantInfo, err error) {
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryParticipantBrokerIds)})
-	if err != nil {
-		return
-	}
 	var ret quotev1.ParticipantBrokerIdsResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryParticipantBrokerIds, nil, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&infos, ret.GetParticipantBrokerNumbers())
@@ -340,14 +339,8 @@ func (c *core) Trades(ctx context.Context, symbol string, count int32) (trades [
 		Symbol: symbol,
 		Count:  count,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryTrade), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityTradeResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryTrade, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&trades, ret.GetTrades())
@@ -358,17 +351,22 @@ func (c *core) Intraday(ctx context.Context, symbol string) (lines []*IntradayLi
 	req := &quotev1.SecurityIntradayRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryIntraday), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityIntradayResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryIntraday, req, &ret); err != nil {
 		return
 	}
-	err = util.Copy(&lines, ret.GetLines())
+	raw := ret.GetLines()
+	if c.alignsOvernight() && isUSEquitySymbol(symbol) {
+		// See overnight.go: HTTP always returns the overnight session.
+		kept := make([]*quotev1.Line, 0, len(raw))
+		for _, line := range raw {
+			if !isUSOvernight(line.GetTimestamp()) {
+				kept = append(kept, line)
+			}
+		}
+		raw = kept
+	}
+	err = util.Copy(&lines, raw)
 	return
 }
 
@@ -379,14 +377,8 @@ func (c *core) Candlesticks(ctx context.Context, symbol string, period Period, c
 		Count:      count,
 		AdjustType: quotev1.AdjustType(adjustType),
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryCandlestick), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityCandlestickResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryCandlestick, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&sticks, ret.GetCandlesticks())
@@ -438,32 +430,94 @@ func (c *core) HistoryCandlesticksByDate(ctx context.Context, symbol string, per
 }
 
 func (c *core) historyCandlesticks(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest) (sticks []*Candlestick, err error) {
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryHistoryCandlestick), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityCandlestickResponse
-	err = res.Unmarshal(&ret)
+	if err = c.do(ctx, quotev1.Command_QueryHistoryCandlestick, req, &ret); err != nil {
+		return
+	}
+	candlesticks, err := c.alignHistoryCandlesticks(ctx, req, ret.GetCandlesticks())
 	if err != nil {
 		return
 	}
-	err = util.Copy(&sticks, ret.GetCandlesticks())
+	err = util.Copy(&sticks, candlesticks)
 	return
+}
+
+// alignHistoryCandlesticks applies the WebSocket's US overnight rule to a raw
+// HTTP candlestick page (see overnight.go): overnight bars are dropped and a
+// count / range-capped window is topped up so it covers the same bars the
+// WebSocket would return.
+func (c *core) alignHistoryCandlesticks(ctx context.Context, req *quotev1.SecurityHistoryCandlestickRequest, raw []*quotev1.Candlestick) ([]*quotev1.Candlestick, error) {
+	if !c.alignsOvernight() ||
+		req.GetTradeSession() != int32(CandlestickTradeSessionAll) ||
+		!isUSEquitySymbol(req.GetSymbol()) {
+		return raw, nil
+	}
+	kept, dropped := dropOvernight(raw)
+	if dropped == 0 {
+		return kept, nil
+	}
+
+	forward := false
+	target := 0
+	var bound time.Time
+	switch req.GetQueryType() {
+	case quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET:
+		// A page shorter than `count` is either all the data there is or the
+		// server's cap; either way it is the window the WebSocket would return.
+		offset := req.GetOffsetRequest()
+		forward = offset.GetDirection() == quotev1.Direction_FORWARD
+		target = len(raw)
+		if int(offset.GetCount()) < target {
+			target = int(offset.GetCount())
+		}
+	case quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE:
+		// A date range is served newest-first and capped at a fixed number of
+		// bars. With a start date, the window is capped only if it did not
+		// reach the first bar of that day (midnight New York, where the
+		// overnight session begins); without one, a page at least as long as
+		// the request cap is taken as capped.
+		if start := req.GetDateRequest().GetStartDate(); start != "" {
+			bound = newYorkMidnight(start)
+			if !bound.IsZero() && rawEdge(raw, false) > bound.Unix() {
+				target = len(raw)
+			}
+		} else if len(raw) >= maxHistoryCandlesticks {
+			target = len(raw)
+		}
+	}
+	if target <= len(kept) {
+		return kept, nil
+	}
+
+	direction := quotev1.Direction_BACKWARD
+	if forward {
+		direction = quotev1.Direction_FORWARD
+	}
+	fetch := func(ctx context.Context, anchor time.Time, count int32) ([]*quotev1.Candlestick, error) {
+		page := proto.Clone(req).(*quotev1.SecurityHistoryCandlestickRequest)
+		page.QueryType = quotev1.HistoryCandlestickQueryType_QUERY_BY_OFFSET
+		page.DateRequest = nil
+		page.OffsetRequest = &quotev1.SecurityHistoryCandlestickRequest_OffsetQuery{
+			Direction: direction,
+			Date:      anchor.Format("20060102"),
+			Minute:    anchor.Format("1504"),
+			Count:     count,
+		}
+		var ret quotev1.SecurityCandlestickResponse
+		if err := c.do(ctx, quotev1.Command_QueryHistoryCandlestick, page, &ret); err != nil {
+			return nil, err
+		}
+		return ret.GetCandlesticks(), nil
+	}
+	return refillCandlesticks(ctx, forward, kept, rawEdge(raw, forward), target, bound, fetch)
 }
 
 func (c *core) OptionChainExpiryDateList(ctx context.Context, symbol string) (times []time.Time, err error) {
 	req := &quotev1.SecurityRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryOptionChainDate), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.OptionChainDateListResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryOptionChainDate, req, &ret); err != nil {
 		return
 	}
 	times, err = toTimes(ret.GetExpiryDate())
@@ -474,14 +528,8 @@ func (c *core) OptionChainExpiryDateList(ctx context.Context, symbol string) (ti
 }
 
 func (c *core) WarrantIssuers(ctx context.Context) (infos []*IssuerInfo, err error) {
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryWarrantIssuerInfo)})
-	if err != nil {
-		return
-	}
 	var ret quotev1.IssuerInfoResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryWarrantIssuerInfo, nil, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&infos, ret.GetIssuerInfo())
@@ -489,7 +537,6 @@ func (c *core) WarrantIssuers(ctx context.Context) (infos []*IssuerInfo, err err
 }
 
 func (c *core) WarrantList(ctx context.Context, symbol string, config WarrantFilter, lang WarrantLanguage) (infos []*WarrantInfo, err error) {
-	var res *protocol.Packet
 
 	filter := &quotev1.FilterConfig{}
 	util.Copy(filter, &config)
@@ -500,16 +547,8 @@ func (c *core) WarrantList(ctx context.Context, symbol string, config WarrantFil
 		Language:     int32(lang),
 	}
 
-	res, err = c.client.Do(ctx, &client.Request{
-		Cmd:  uint32(quotev1.Command_QueryWarrantFilterList),
-		Body: req,
-	})
-	if err != nil {
-		return
-	}
 	var ret quotev1.WarrantFilterListResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryWarrantFilterList, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&infos, ret.GetWarrantList())
@@ -517,14 +556,8 @@ func (c *core) WarrantList(ctx context.Context, symbol string, config WarrantFil
 }
 
 func (c *core) TradingSession(ctx context.Context) (sessions []*MarketTradingSession, err error) {
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryMarketTradePeriod)})
-	if err != nil {
-		return
-	}
 	var ret quotev1.MarketTradePeriodResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryMarketTradePeriod, nil, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&sessions, ret.GetMarketTradeSession())
@@ -542,14 +575,8 @@ func (c *core) TradingDays(ctx context.Context, market openapi.Market, begin *ti
 		BegDay: util.FormatDateSimple(begin),
 		EndDay: util.FormatDateSimple(end),
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryMarketTradeDay), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.MarketTradeDayResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryMarketTradeDay, req, &ret); err != nil {
 		return
 	}
 	tradingDays, err = toTimes(ret.GetTradeDay())
@@ -571,14 +598,8 @@ func (c *core) CapitalDistribution(ctx context.Context, symbol string) (capitalD
 	req := &quotev1.SecurityRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryCapitalFlowDistribution), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.CapitalDistributionResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryCapitalFlowDistribution, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&capitalDib, ret)
@@ -589,14 +610,8 @@ func (c *core) CapitalFlow(ctx context.Context, symbol string) (capitalFlowLines
 	req := &quotev1.CapitalFlowIntradayRequest{
 		Symbol: symbol,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QueryCapitalFlowIntraday), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.CapitalFlowIntradayResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QueryCapitalFlowIntraday, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&capitalFlowLines, ret.GetCapitalFlowLines())
@@ -610,14 +625,8 @@ func (c *core) CalcIndex(ctx context.Context, symbols []string, indexes []CalcIn
 		Symbols:   symbols,
 		CalcIndex: quoteCalcIndexes,
 	}
-	var res *protocol.Packet
-	res, err = c.client.Do(ctx, &client.Request{Cmd: uint32(quotev1.Command_QuerySecurityCalcIndex), Body: req})
-	if err != nil {
-		return
-	}
 	var ret quotev1.SecurityCalcQuoteResponse
-	err = res.Unmarshal(&ret)
-	if err != nil {
+	if err = c.do(ctx, quotev1.Command_QuerySecurityCalcIndex, req, &ret); err != nil {
 		return
 	}
 	err = util.Copy(&calcIndexes, ret.GetSecurityCalcIndex())
@@ -660,6 +669,11 @@ func (c *core) RealtimeBrokers(ctx context.Context, symbol string) (securityBork
 }
 
 func (c *core) Close() error {
+	c.wsMu.Lock()
+	defer c.wsMu.Unlock()
+	if c.client == nil {
+		return nil
+	}
 	return c.client.Close(nil)
 }
 

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Quote transport** (ports longbridge/openapi #604) — new `quote.Transport` (`quote.TransportWebSocket`, default / `quote.TransportHTTP`), set with `quote.WithTransport(...)`, `config.Config.QuoteTransport` or env `LONGBRIDGE_QUOTE_TRANSPORT=ws|http`. With `TransportHTTP` the 19 `QuoteContext` pull APIs that have a REST equivalent (`StaticInfo`, `Quote`, `OptionQuote`, `WarrantQuote`, `Depth`, `Brokers`, `Participants`, `Trades`, `Intraday`, `Candlesticks`, `HistoryCandlesticksByOffset` / `ByDate`, `OptionChainExpiryDateList`, `WarrantIssuers`, `WarrantList`, `TradingSession`, `TradingDays`, `CapitalFlow`, `CapitalDistribution`, `CalcIndexes`) are sent as `POST /quote/*` instead of over the quote WebSocket; the request is the same protobuf message encoded as proto-JSON and the response is decoded back into the same message, so method signatures and return types are unchanged. The WebSocket is then dialed lazily — only when subscriptions, push callbacks, `Profile()` or an API without a REST equivalent is first used — so a context that only pulls data never opens a WebSocket connection. Results are aligned across transports, including US overnight data, which REST always returns but the WebSocket only returns with `WithEnableOvernight(true)`: on the HTTP path the SDK clears `OverNightQuote`, filters overnight `Intraday` lines for US equities and, for `CandlestickTradeSessionAll` history queries, drops overnight bars and tops up count/range-capped windows with offset queries (≤1000 per request, ≤8 rounds). Known differences: HTTP errors are `*http.ApiError` rather than protocol errors, and the REST gateway currently reports business errors (e.g. `301600`, `301607`) as `500`
+
+
 ## [v0.29.0] - 2026-09-30
 
 ### Breaking changes

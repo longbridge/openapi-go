@@ -16,6 +16,7 @@ import (
 	"github.com/longbridge/openapi-go/config"
 	"github.com/longbridge/openapi-go/http"
 	"github.com/longbridge/openapi-go/internal/util"
+	"github.com/longbridge/openapi-go/log"
 	"github.com/longbridge/openapi-go/longbridge"
 	"github.com/longbridge/openapi-go/quote/jsontypes"
 )
@@ -713,11 +714,28 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 		WithLbOptions(lbOpts),
 		WithEnableOvernight(cfg.EnableOvernight),
 		WithLanguage(cfg.Language),
+		WithTransport(transportFromConfig(cfg.QuoteTransport)),
 	)
 }
 
+// transportFromConfig parses the configured quote transport, falling back to
+// the default (with a warning) for an unknown value.
+func transportFromConfig(value string) Transport {
+	if value == "" {
+		return ""
+	}
+	transport, ok := ParseTransport(value)
+	if !ok {
+		log.Warnf("invalid quote transport %q, using ws", value)
+		return ""
+	}
+	return transport
+}
+
 // New return QuoteContext with option.
-// A connection will be created with quote server.
+// With the default TransportWebSocket a connection to the quote server is
+// created immediately; with TransportHTTP it is only dialed when an API that
+// needs it (subscriptions, push events, Profile, ...) is first used.
 func New(opt ...Option) (*QuoteContext, error) {
 	opts := newOptions(opt...)
 	core, err := newCore(opts)

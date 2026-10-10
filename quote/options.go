@@ -21,6 +21,7 @@ type Options struct {
 	logger             log.Logger
 	enableOvernight    bool
 	language           openapi.Language
+	transport          Transport
 	reconnectCallbacks []func(resubFlag bool)
 }
 
@@ -79,6 +80,16 @@ func WithEnableOvernight(enable bool) Option {
 	}
 }
 
+// WithTransport selects the transport for the quote pull (request/response)
+// APIs; see Transport. An empty value keeps the default, TransportWebSocket.
+func WithTransport(transport Transport) Option {
+	return func(o *Options) {
+		if transport != "" {
+			o.transport = transport
+		}
+	}
+}
+
 // WithLanguage to set language for quote context
 func WithLanguage(language openapi.Language) Option {
 	return func(o *Options) {
@@ -97,10 +108,11 @@ func OnReconnect(fn func(successResub bool)) Option {
 
 func newOptions(opt ...Option) *Options {
 	opts := Options{
-		quoteURL: DefaultQuoteUrl,
-		lbOpts:   longbridge.NewOptions(),
-		logger:   &protocol.DefaultLogger{},
-		language: openapi.LanguageEN,
+		quoteURL:  DefaultQuoteUrl,
+		lbOpts:    longbridge.NewOptions(),
+		logger:    &protocol.DefaultLogger{},
+		language:  openapi.LanguageEN,
+		transport: TransportWebSocket,
 	}
 	for _, o := range opt {
 		o(&opts)
