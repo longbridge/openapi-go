@@ -119,7 +119,8 @@ func (c *core) httpDo(ctx context.Context, path string, req, ret proto.Message) 
 	if err := c.httpClient.Post(ctx, path, body, &raw); err != nil {
 		return err
 	}
-	if ret == nil || len(raw) == 0 {
+	// An absent or `null` `data` is an empty response.
+	if ret == nil || len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return nil
 	}
 	normalized, err := normalizeProtoJSON(raw, ret.ProtoReflect().Descriptor())
@@ -142,11 +143,16 @@ func excerpt(b []byte) string {
 }
 
 // normalizeProtoJSON rewrites the few gateway encodings that protojson
-// rejects, using the message descriptor to find the affected fields: an
-// empty string on a numeric / enum field is dropped (→ default), `"true"` /
-// `"false"` on a bool field becomes a bool, a number on a string field becomes
-// a string, and `null` elements are removed from scalar lists. Everything
-// else, including unknown fields and camelCase keys, is left to protojson.
+// rejects, using the message descriptor to find the affected fields: an empty
+// string on a numeric / enum field is dropped (→ default), a quoted number on
+// an enum field is unquoted, `"true"` / `"false"` / `1` / `0` on a bool field
+// become bools, a number on a string field becomes a string, and `null`
+// elements are removed from lists. Everything else, including unknown fields
+// and camelCase keys, is left to protojson.
+//
+// It deliberately decodes, walks and re-encodes the whole payload (about 3x
+// the CPU of protojson alone on a 1000-row warrant page), which is small next
+// to the HTTP round trip.
 func normalizeProtoJSON(raw json.RawMessage, md protoreflect.MessageDescriptor) (json.RawMessage, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
@@ -165,9 +171,10 @@ func normalizeValue(v interface{}, md protoreflect.MessageDescriptor) {
 	}
 	fields := md.Fields()
 	for key, val := range obj {
-		fd := fields.ByName(protoreflect.Name(key))
+		// Same lookup order as protojson: JSON name first, then proto name.
+		fd := fields.ByJSONName(key)
 		if fd == nil {
-			fd = fields.ByJSONName(key)
+			fd = fields.ByName(protoreflect.Name(key))
 		}
 		if fd == nil {
 			continue
@@ -183,6 +190,9 @@ func normalizeValue(v interface{}, md protoreflect.MessageDescriptor) {
 			out := list[:0]
 			for _, el := range list {
 				if fd.Kind() == protoreflect.MessageKind {
+					if el == nil {
+						continue
+					}
 					normalizeValue(el, fd.Message())
 				} else {
 					var drop bool
@@ -215,8 +225,18 @@ func normalizeScalar(v interface{}, kind protoreflect.Kind) (out interface{}, dr
 			switch s {
 			case "true":
 				return true, false
-			case "false", "":
-				return nil, s == ""
+			case "false":
+				return false, false
+			case "":
+				return nil, true
+			}
+		}
+		if n, ok := v.(json.Number); ok {
+			switch n.String() {
+			case "1":
+				return true, false
+			case "0":
+				return false, false
 			}
 		}
 	case protoreflect.StringKind:
@@ -227,6 +247,13 @@ func normalizeScalar(v interface{}, kind protoreflect.Kind) (out interface{}, dr
 	default: // numeric and enum kinds
 		if s, ok := v.(string); ok && s == "" {
 			return nil, true
+		}
+		// protojson accepts quoted numbers for integer kinds but not for
+		// enums; the gateway sends enums as numbers.
+		if s, ok := v.(string); ok && kind == protoreflect.EnumKind {
+			if _, err := json.Number(s).Int64(); err == nil {
+				return json.Number(s), false
+			}
 		}
 		if v == nil {
 			return nil, true

@@ -202,6 +202,21 @@ func TestNormalizeProtoJSON(t *testing.T) {
 		t.Fatalf("bool: %v %+v", err, &s)
 	}
 
+	// Enum as a quoted number, bool as 0/1, "false", null in a message list.
+	raw = json.RawMessage(`{"secu_quote":[null,{"symbol":"A","trade_status":"0"}]}`)
+	var q2 quotev1.SecurityQuoteResponse
+	normalized, _ = normalizeProtoJSON(raw, q2.ProtoReflect().Descriptor())
+	if err := protoJSONUnmarshal.Unmarshal(normalized, &q2); err != nil || len(q2.GetSecuQuote()) != 1 {
+		t.Fatalf("enum/null list: %v %s", err, normalized)
+	}
+	for in, want := range map[string]bool{`1`: true, `0`: false, `"false"`: false} {
+		var s2 quotev1.StrikePriceInfo
+		normalized, _ = normalizeProtoJSON(json.RawMessage(`{"standard":`+in+`}`), s2.ProtoReflect().Descriptor())
+		if err := protoJSONUnmarshal.Unmarshal(normalized, &s2); err != nil || s2.GetStandard() != want {
+			t.Fatalf("bool %s: %v %v", in, err, s2.GetStandard())
+		}
+	}
+
 	// Still rejected: a non-numeric string on an int field.
 	raw = json.RawMessage(`{"ask":[{"volume":"abc"}]}`)
 	var d quotev1.SecurityDepthResponse
