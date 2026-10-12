@@ -48,7 +48,8 @@ func (c *core) alignsOvernight() bool {
 // session is what the WebSocket gates. Indices (`.VIX.US`) trade on their own
 // schedule and are left alone.
 func isUSEquitySymbol(symbol string) bool {
-	return strings.HasSuffix(symbol, ".US") && !strings.HasPrefix(symbol, ".")
+	n := len(symbol)
+	return n > 3 && strings.EqualFold(symbol[n-3:], ".US") && !strings.HasPrefix(symbol, ".")
 }
 
 // isUSOvernight reports whether a unix timestamp falls in the US overnight
@@ -124,20 +125,20 @@ func windowTarget(req *quotev1.SecurityHistoryCandlestickRequest, raw []*quotev1
 		return target
 	case quotev1.HistoryCandlestickQueryType_QUERY_BY_DATE:
 		// A date range is served newest-first and capped at a fixed number of
-		// bars. With a start date, the window is capped only if it did not
-		// reach the first bar of that day (midnight New York, where the
-		// overnight session begins); without one, a page at least as long as
-		// the request cap is taken as capped.
-		if start := req.GetDateRequest().GetStartDate(); start != "" {
-			bound := newYorkMidnight(start)
-			if !bound.IsZero() && rawEdge(raw, false) > bound.Unix() {
-				return len(raw)
-			}
+		// bars. A page shorter than the cap cannot have been cut off; a
+		// full-size page is capped unless it already reaches the first bar of
+		// the start date (midnight New York, where the overnight session
+		// begins), and is taken as capped when there is no start date.
+		if len(raw) < maxHistoryCandlesticks {
 			return 0
 		}
-		if len(raw) >= maxHistoryCandlesticks {
-			return len(raw)
+		if start := req.GetDateRequest().GetStartDate(); start != "" {
+			bound := newYorkMidnight(start)
+			if bound.IsZero() || rawEdge(raw, false) <= bound.Unix() {
+				return 0
+			}
 		}
+		return len(raw)
 	}
 	return 0
 }

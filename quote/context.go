@@ -717,14 +717,8 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 		WithLbOptions(lbOpts),
 		WithEnableOvernight(cfg.EnableOvernight),
 		WithLanguage(cfg.Language),
-		WithTransport(transportFromConfig(cfg.QuoteTransport)),
+		WithTransport(Transport(cfg.QuoteTransport)), // validated by WithTransport
 	)
-}
-
-// transportFromConfig passes the configured quote transport through;
-// WithTransport validates it.
-func transportFromConfig(value string) Transport {
-	return Transport(value)
 }
 
 // New return QuoteContext with option.

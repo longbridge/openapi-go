@@ -102,14 +102,22 @@ func TestAlignCandlesticksDateRange(t *testing.T) {
 	if err != nil || len(out) != 16*60 || len(calls) != 0 {
 		t.Fatalf("uncapped: len=%d calls=%d err=%v", len(out), len(calls), err)
 	}
-	// Page starts at 20:00 of the start day: capped at 240 → refill back to
-	// 240 non-overnight bars, bounded by midnight of the start day.
-	out, err = alignCandlesticks(context.Background(), dateReq("AAPL.US", "20261009", "20261010"), data[20*60:], fetch)
+	// A short page is never capped, whatever its first bar: drop only.
+	out, _ = alignCandlesticks(context.Background(), dateReq("AAPL.US", "20261009", "20261010"), data[20*60:], fetch)
+	if len(out) != 0 || len(calls) != 0 {
+		t.Fatalf("short page: len=%d calls=%d", len(out), len(calls))
+	}
+	// A full-size page (the last 1000 bars, 07:20–23:59) that does not reach
+	// midnight of the start day is capped: refill back to 04:00, stopping at
+	// the start day's midnight across the overnight block.
+	page := data[len(data)-maxHistoryCandlesticks:]
+	out, err = alignCandlesticks(context.Background(), dateReq("AAPL.US", "20261009", "20261009"), page, fetch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 240 || hhmm(out[0]) != "16:00" || hhmm(out[239]) != "19:59" {
-		t.Fatalf("capped: len=%d first=%s last=%s", len(out), hhmm(out[0]), hhmm(out[len(out)-1]))
+	assertSortedUnique(t, out)
+	if len(out) != 16*60 || hhmm(out[0]) != "04:00" || hhmm(out[len(out)-1]) != "19:59" || len(calls) == 0 {
+		t.Fatalf("capped: len=%d first=%s last=%s calls=%d", len(out), hhmm(out[0]), hhmm(out[len(out)-1]), len(calls))
 	}
 	// No start date and a page shorter than the cap: not treated as capped.
 	calls = nil

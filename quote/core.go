@@ -26,6 +26,7 @@ type core struct {
 	// WebSocket client; nil until dialed (see ws). Guarded by wsMu.
 	client          client.Client
 	wsMu            sync.Mutex
+	closed          bool
 	pendingHandlers []func(client.Client)
 
 	url           string
@@ -61,6 +62,7 @@ func newCore(opts *Options) (*core, error) {
 	var err error
 	core.userProfile, err = core.queryProfile(context.Background(), core.language)
 	if err != nil {
+		_ = core.Close()
 		return nil, err
 	}
 	return core, nil
@@ -102,6 +104,8 @@ func (c *core) dial(ctx context.Context) (client.Client, error) {
 		client.WriteQueueSize(opts.lbOpts.WriteQueueSize),
 	)
 	if err != nil {
+		// Dial may have connected before authentication failed; release it.
+		_ = cl.Close(err)
 		return nil, err
 	}
 
@@ -140,8 +144,7 @@ func (c *core) SetBrokersHandler(f func(*PushBrokers)) {
 func (c *core) Subscribe(ctx context.Context, symbols []string, subTypes []SubType, isFirstPush bool) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.doSubscirbe(ctx, symbols, subTypes, isFirstPush)
-	return
+	return c.doSubscirbe(ctx, symbols, subTypes, isFirstPush)
 }
 
 func (c *core) doSubscirbe(ctx context.Context, symbols []string, subTypes []SubType, isFirstPush bool) (err error) {
@@ -164,6 +167,9 @@ func (c *core) doSubscirbe(ctx context.Context, symbols []string, subTypes []Sub
 }
 
 func (c *core) Unsubscribe(ctx context.Context, unSubAll bool, symbols []string, subTypes []SubType) (err error) {
+	if !c.connected() {
+		return nil
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	req := &quotev1.UnsubscribeRequest{
@@ -230,6 +236,11 @@ func (c *core) queryProfile(ctx context.Context, lang string) (quoteProfile *Use
 }
 
 func (c *core) Subscriptions(ctx context.Context) (subscriptions map[string][]SubType, err error) {
+	if !c.connected() {
+		// Nothing can be subscribed without a connection; don't dial just to
+		// report that.
+		return map[string][]SubType{}, nil
+	}
 	req := &quotev1.SubscriptionRequest{}
 	var ret quotev1.SubscriptionResponse
 	if err = c.do(ctx, quotev1.Command_Subscription, req, &ret); err != nil {
@@ -621,6 +632,11 @@ func (c *core) RealtimeBrokers(ctx context.Context, symbol string) (securityBork
 func (c *core) Close() error {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()
+	if c.closed {
+		return nil
+	}
+	c.closed = true
+	c.pendingHandlers = nil
 	if c.client == nil {
 		return nil
 	}

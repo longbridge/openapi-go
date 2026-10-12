@@ -303,6 +303,11 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	if resp == nil {
 		return
 	}
+	// A raw-message caller decides itself what an absent `data` means.
+	if raw, ok := resp.(*json.RawMessage); ok && len(apiResp.Data) == 0 {
+		*raw = nil
+		return nil
+	}
 
 	if err = jsonUnmarshal(bytes.NewReader(apiResp.Data), resp); err != nil {
 		return err

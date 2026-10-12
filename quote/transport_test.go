@@ -1,21 +1,31 @@
 package quote
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	nethttp "net/http"
+	"net/http/httptest"
 	"testing"
 
 	quotev1 "github.com/longbridge/openapi-protobufs/gen/go/quote"
+	"github.com/longbridge/openapi-protocol/go/client"
+
+	lbhttp "github.com/longbridge/openapi-go/http"
 )
 
 func TestParseTransport(t *testing.T) {
-	for in, want := range map[string]Transport{"ws": TransportWebSocket, "WebSocket": TransportWebSocket, " http ": TransportHTTP} {
+	for in, want := range map[string]Transport{"ws": TransportWebSocket, "WS": TransportWebSocket, " http ": TransportHTTP} {
 		got, ok := ParseTransport(in)
 		if !ok || got != want {
 			t.Fatalf("ParseTransport(%q) = %q, %v", in, got, ok)
 		}
 	}
-	if _, ok := ParseTransport("grpc"); ok {
-		t.Fatal("grpc accepted")
+	for _, bad := range []string{"grpc", "websocket"} {
+		if _, ok := ParseTransport(bad); ok {
+			t.Fatalf("%q accepted", bad)
+		}
 	}
 }
 
@@ -104,5 +114,77 @@ func TestDecodeGatewayProtoJSON(t *testing.T) {
 	}
 	if string(m["trade_session"]) != "100" || string(m["symbol"]) != `"AAPL.US"` {
 		t.Fatalf("unexpected encoding: %s", b)
+	}
+}
+
+// TestHTTPDoEndToEnd drives httpDo against a fake gateway: the request path
+// and body, absent / null `data`, normalisation, and API errors.
+func TestHTTPDoEndToEnd(t *testing.T) {
+	var gotPath, gotBody string
+	reply := ""
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		gotPath = r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.Header().Set("content-type", "application/json")
+		_, _ = io.WriteString(w, reply)
+	}))
+	defer srv.Close()
+	hc, err := lbhttp.New(lbhttp.WithURL(srv.URL), lbhttp.WithAppKey("k"), lbhttp.WithAppSecret("s"), lbhttp.WithAccessToken("t"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &core{transport: TransportHTTP, httpClient: hc}
+	ctx := context.Background()
+
+	reply = `{"code":0,"data":{"ask":[{"position":1,"price":"1.5","volume":"","order_num":"3"}]}}`
+	var d quotev1.SecurityDepthResponse
+	if err := c.do(ctx, quotev1.Command_QueryDepth, &quotev1.SecurityRequest{Symbol: "700.HK"}, &d); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/quote/depth" || gotBody != `{"symbol":"700.HK"}` || d.GetAsk()[0].GetOrderNum() != 3 {
+		t.Fatalf("path=%s body=%s depth=%+v", gotPath, gotBody, &d)
+	}
+
+	for _, empty := range []string{`{"code":0,"message":"ok"}`, `{"code":0,"data":null}`} {
+		reply = empty
+		var p quotev1.ParticipantBrokerIdsResponse
+		if err := c.do(ctx, quotev1.Command_QueryParticipantBrokerIds, nil, &p); err != nil {
+			t.Fatalf("%s: %v", empty, err)
+		}
+		if gotBody != `{}` || len(p.GetParticipantBrokerNumbers()) != 0 {
+			t.Fatalf("%s: body=%s resp=%+v", empty, gotBody, &p)
+		}
+	}
+
+	reply = `{"code":301600,"message":"invalid symbol"}`
+	var q quotev1.SecurityQuoteResponse
+	err = c.do(ctx, quotev1.Command_QuerySecurityQuote, &quotev1.MultiSecurityRequest{Symbol: []string{"X"}}, &q)
+	var apiErr *lbhttp.ApiError
+	if !errors.As(err, &apiErr) || apiErr.Code != 301600 {
+		t.Fatalf("want ApiError 301600, got %v", err)
+	}
+}
+
+// TestClosedContextDoesNotDial checks that nothing re-dials the WebSocket
+// after Close on the HTTP transport, and that queued handlers are dropped.
+func TestClosedContextDoesNotDial(t *testing.T) {
+	c := &core{transport: TransportHTTP}
+	c.withClient(func(client.Client) { t.Fatal("handler applied") })
+	if err := c.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.ws(context.Background()); !errors.Is(err, ErrClosed) {
+		t.Fatalf("want ErrClosed, got %v", err)
+	}
+	if len(c.pendingHandlers) != 0 {
+		t.Fatal("pending handlers kept after Close")
+	}
+	subs, err := c.Subscriptions(context.Background())
+	if err != nil || len(subs) != 0 {
+		t.Fatalf("subscriptions without a connection: %v %v", subs, err)
+	}
+	if err := c.Subscribe(context.Background(), []string{"700.HK"}, []SubType{SubTypeQuote}, false); !errors.Is(err, ErrClosed) {
+		t.Fatalf("Subscribe after Close must fail, got %v", err)
 	}
 }

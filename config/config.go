@@ -54,7 +54,7 @@ type Config struct {
 	AccessToken     string        `env:"LONGBRIDGE_ACCESS_TOKEN,LONGPORT_ACCESS_TOKEN" yaml:"access_token" toml:"access_token"`
 	TradeUrl        string        `env:"LONGBRIDGE_TRADE_URL,LONGPORT_TRADE_URL" yaml:"trade_url" toml:"trade_url"`
 	QuoteUrl        string        `env:"LONGBRIDGE_QUOTE_URL,LONGPORT_QUOTE_URL" yaml:"quote_url" toml:"quote_url"`
-	EnableOvernight bool          `env:"LONGPORT_ENABLE_OVERNIGHT" yaml:"enable_overnight" toml:"enable_overnight"`
+	EnableOvernight bool          `env:"LONGBRIDGE_ENABLE_OVERNIGHT,LONGPORT_ENABLE_OVERNIGHT" yaml:"enable_overnight" toml:"enable_overnight"`
 	// QuoteTransport selects how the quote pull APIs reach the server: `ws`
 	// (default, the quote WebSocket) or `http` (`POST /quote/*`).
 	QuoteTransport string           `env:"LONGBRIDGE_QUOTE_TRANSPORT,LONGPORT_QUOTE_TRANSPORT" yaml:"quote_transport" toml:"quote_transport"`

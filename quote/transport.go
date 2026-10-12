@@ -31,11 +31,10 @@ const (
 	TransportHTTP Transport = "http"
 )
 
-// ParseTransport parses a transport name (`ws`, `websocket` or `http`,
-// case-insensitive). Unknown names return false.
+// ParseTransport parses a transport name (`ws` or `http`, case-insensitive). Unknown names return false.
 func ParseTransport(s string) (Transport, bool) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "ws", "websocket":
+	case "ws":
 		return TransportWebSocket, true
 	case "http":
 		return TransportHTTP, true
@@ -66,6 +65,9 @@ var httpPaths = map[quotev1.Command]string{
 	quotev1.Command_QuerySecurityCalcIndex:       "/quote/calc-indexes",
 	quotev1.Command_QueryHistoryCandlestick:      "/quote/history-candlesticks",
 }
+
+// ErrClosed is returned when the WebSocket is needed after Close.
+var ErrClosed = errors.New("quote: context closed")
 
 var (
 	protoJSONMarshal   = protojson.MarshalOptions{UseProtoNames: true}
@@ -119,6 +121,7 @@ func (c *core) httpDo(ctx context.Context, path string, req, ret proto.Message) 
 	if err := c.httpClient.Post(ctx, path, body, &raw); err != nil {
 		return err
 	}
+	// http.Client leaves an absent `data` as an empty RawMessage (see Call).
 	// An absent or `null` `data` is an empty response.
 	if ret == nil || len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return nil
@@ -272,7 +275,11 @@ func (c *core) ws(ctx context.Context) (client.Client, error) {
 	if c.client != nil {
 		return c.client, nil
 	}
-	cl, err := c.dial(ctx)
+	if c.closed {
+		return nil, ErrClosed
+	}
+	// The connection outlives this call; don't tie it to the caller's ctx.
+	cl, err := c.dial(context.WithoutCancel(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +291,16 @@ func (c *core) ws(ctx context.Context) (client.Client, error) {
 	return cl, nil
 }
 
+// connected reports whether the WebSocket has been dialed.
+func (c *core) connected() bool {
+	c.wsMu.Lock()
+	defer c.wsMu.Unlock()
+	return c.client != nil
+}
+
 // withClient runs `apply` against the WebSocket client now, or as soon as it
-// is dialed when the transport is HTTP and no connection exists yet.
+// is dialed when the transport is HTTP and no connection exists yet. It does
+// not dial by itself.
 func (c *core) withClient(apply func(client.Client)) {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()

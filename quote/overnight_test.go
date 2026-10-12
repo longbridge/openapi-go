@@ -211,7 +211,7 @@ func TestUSOvernightWindow(t *testing.T) {
 			}
 		}
 	}
-	for sym, want := range map[string]bool{"AAPL.US": true, "AAPL251017C340000.US": true, ".VIX.US": false, "700.HK": false} {
+	for sym, want := range map[string]bool{"aapl.us": true, ".US": false, "AAPL.US": true, "AAPL251017C340000.US": true, ".VIX.US": false, "700.HK": false} {
 		if isUSEquitySymbol(sym) != want {
 			t.Fatalf("isUSEquitySymbol(%q) != %v", sym, want)
 		}
