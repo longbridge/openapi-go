@@ -4,18 +4,24 @@
 
 ### Added
 
-- **Quote transport** (ports longbridge/openapi #604) — new `quote.Transport` (`quote.TransportWebSocket`, default / `quote.TransportHTTP`), set with `quote.WithTransport(...)`, `config.Config.QuoteTransport` or env `LONGBRIDGE_QUOTE_TRANSPORT=ws|http`. With `TransportHTTP` the 20 `QuoteContext` pull methods backed by the 19 WebSocket commands that have a REST equivalent (`StaticInfo`, `Quote`, `OptionQuote`, `WarrantQuote`, `Depth`, `Brokers`, `Participants`, `Trades`, `Intraday`, `Candlesticks`, `HistoryCandlesticksByOffset` / `ByDate`, `OptionChainExpiryDateList`, `WarrantIssuers`, `WarrantList`, `TradingSession`, `TradingDays`, `CapitalFlow`, `CapitalDistribution`, `CalcIndex`) are sent as `POST /quote/*` instead of over the quote WebSocket; the request is the same protobuf message encoded as proto-JSON and the response is decoded back into the same message, so method signatures and return types are unchanged
+- **Quote transport** (ports longbridge/openapi#604) — new `quote.Transport` (`quote.TransportWebSocket`, default / `quote.TransportHTTP`), set with `quote.WithTransport(...)`, `config.Config.QuoteTransport` or env `LONGBRIDGE_QUOTE_TRANSPORT=ws|http`. With `TransportHTTP` the 20 `QuoteContext` pull methods backed by the 19 WebSocket commands that have a REST equivalent (`StaticInfo`, `Quote`, `OptionQuote`, `WarrantQuote`, `Depth`, `Brokers`, `Participants`, `Trades`, `Intraday`, `Candlesticks`, `HistoryCandlesticksByOffset` / `ByDate`, `OptionChainExpiryDateList`, `WarrantIssuers`, `WarrantList`, `TradingSession`, `TradingDays`, `CapitalFlow`, `CapitalDistribution`, `CalcIndex`) are sent as `POST /quote/*` instead of over the quote WebSocket; the request is the same protobuf message encoded as proto-JSON and the response is decoded back into the same message, so method signatures and return types are unchanged
   - The WebSocket is dialed lazily with `TransportHTTP` — only when `Subscribe` / `Unsubscribe` (after a subscription), `Profile()` or an API without a REST equivalent is first used (push callbacks registered with `On*` are queued and attached then; `Subscriptions` returns an empty result while not connected; after `Close` nothing re-dials and such calls return `quote.ErrClosed`) — so a context that only pulls data never opens a WebSocket connection. `Profile()` may therefore dial on first use and returns `nil` if that fails. With the default `TransportWebSocket` the connection is established in `New` exactly as before
   - **US overnight alignment:** REST always returns US overnight data while the WebSocket only does with `WithEnableOvernight(true)`. On the HTTP path (and only there) the SDK clears `OverNightQuote`, drops overnight `Intraday` lines for US equities and, for `CandlestickTradeSessionAll` history queries, drops overnight bars and tops up count/range-capped windows with `POST /quote/history-candlesticks` offset queries (≤1000 bars per request, ≤8 extra requests; a failure in a top-up request fails the call)
-  - **Known differences:** HTTP errors are `*http.ApiError` rather than protocol errors; the REST gateway currently reports business errors (e.g. `301600`, `301607`) as `500`; during the US overnight session itself (20:00–04:00 New York) REST `Quote` / `Trades` values may reflect overnight trading that the WebSocket (without overnight enabled) does not report — not verified in this release
+  - **Known differences:** HTTP errors are `*http.ApiError` rather than protocol errors; the REST gateway currently reports business errors (e.g. `301600`, `301607`) as `500`; HTTP calls use `HTTPTimeout` (default 15s) rather than the WebSocket request timeout; a candlestick top-up turns one history call into up to 9 HTTP requests, which may reach REST rate limits (`429`) sooner; during the US overnight session itself (20:00–04:00 New York) REST snapshot APIs (`Quote`, `Trades`, `Depth`, `CalcIndex`, `CapitalFlow`, …) may reflect overnight trading that the WebSocket (without overnight enabled) does not report. The lazy dial holds the connection lock for the whole dial (up to dial + OTP + auth timeouts) and is not bounded by the caller's `ctx`
   - `quote.New` now returns an error instead of panicking when no HTTP client is configured
   - `quote.New` with options does not inherit the HTTP client's region: set `quote.WithQuoteURL(...)` for non-global environments, or use `quote.NewFromCfg`
+
+### Changed
+
+- `config.Config.EnableOvernight` now also reads `LONGBRIDGE_ENABLE_OVERNIGHT` (as the README always documented), taking precedence over `LONGPORT_ENABLE_OVERNIGHT`. Users who set `LONGBRIDGE_ENABLE_OVERNIGHT=true` will start receiving US overnight data after upgrading
+- `http.Client.Call` with a `*json.RawMessage` response now returns an empty message instead of `EOF` when a JSON response has no `data` field (non-JSON responses are still errors)
+- `QuoteContext.Close` is idempotent; calling it twice used to panic
 
 ### Fixed
 
 - `QuoteContext.Subscribe` now returns the error of the underlying subscribe request; it was dropped and `nil` was always returned
 - A WebSocket that fails authentication while dialing is closed instead of leaked
-- `config.Config.EnableOvernight` now also reads `LONGBRIDGE_ENABLE_OVERNIGHT` (as documented), in addition to `LONGPORT_ENABLE_OVERNIGHT`
+- The quote WebSocket is closed when the initial quote-profile query fails in `quote.New`, instead of being leaked
 
 ## [v0.29.0] - 2026-09-30
 

@@ -272,11 +272,11 @@ func normalizeScalar(v interface{}, kind protoreflect.Kind) (out interface{}, dr
 func (c *core) ws(ctx context.Context) (client.Client, error) {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()
-	if c.client != nil {
-		return c.client, nil
-	}
 	if c.closed {
 		return nil, ErrClosed
+	}
+	if c.client != nil {
+		return c.client, nil
 	}
 	// The connection outlives this call; don't tie it to the caller's ctx.
 	cl, err := c.dial(context.WithoutCancel(ctx))
@@ -295,7 +295,7 @@ func (c *core) ws(ctx context.Context) (client.Client, error) {
 func (c *core) connected() bool {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()
-	return c.client != nil
+	return c.client != nil && !c.closed
 }
 
 // withClient runs `apply` against the WebSocket client now, or as soon as it
@@ -304,6 +304,9 @@ func (c *core) connected() bool {
 func (c *core) withClient(apply func(client.Client)) {
 	c.wsMu.Lock()
 	defer c.wsMu.Unlock()
+	if c.closed {
+		return
+	}
 	if c.client != nil {
 		apply(c.client)
 		return

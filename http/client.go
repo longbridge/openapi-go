@@ -288,7 +288,8 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		apiResp.TraceID = v
 	}
 
-	if isJSON(httpResp.Header.Get("content-type")) {
+	jsonBody := isJSON(httpResp.Header.Get("content-type"))
+	if jsonBody {
 		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
 			return err
 		}
@@ -303,8 +304,9 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	if resp == nil {
 		return
 	}
-	// A raw-message caller decides itself what an absent `data` means.
-	if raw, ok := resp.(*json.RawMessage); ok && len(apiResp.Data) == 0 {
+	// A raw-message caller decides itself what an absent `data` means. Only
+	// for a JSON envelope: a non-JSON 200 (e.g. a proxy page) stays an error.
+	if raw, ok := resp.(*json.RawMessage); ok && jsonBody && len(apiResp.Data) == 0 {
 		*raw = nil
 		return nil
 	}

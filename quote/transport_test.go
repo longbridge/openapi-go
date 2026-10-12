@@ -121,12 +121,12 @@ func TestDecodeGatewayProtoJSON(t *testing.T) {
 // and body, absent / null `data`, normalisation, and API errors.
 func TestHTTPDoEndToEnd(t *testing.T) {
 	var gotPath, gotBody string
-	reply := ""
+	reply, contentType := "", "application/json"
 	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		gotPath = r.URL.Path
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("content-type", contentType)
 		_, _ = io.WriteString(w, reply)
 	}))
 	defer srv.Close()
@@ -157,6 +157,14 @@ func TestHTTPDoEndToEnd(t *testing.T) {
 		}
 	}
 
+	// A non-JSON 200 (proxy / WAF page) is an error, not an empty result.
+	reply, contentType = `<html>blocked</html>`, "text/html"
+	var p2 quotev1.ParticipantBrokerIdsResponse
+	if err := c.do(ctx, quotev1.Command_QueryParticipantBrokerIds, nil, &p2); err == nil {
+		t.Fatal("non-JSON 200 accepted as an empty response")
+	}
+	contentType = "application/json"
+
 	reply = `{"code":301600,"message":"invalid symbol"}`
 	var q quotev1.SecurityQuoteResponse
 	err = c.do(ctx, quotev1.Command_QuerySecurityQuote, &quotev1.MultiSecurityRequest{Symbol: []string{"X"}}, &q)
@@ -186,5 +194,21 @@ func TestClosedContextDoesNotDial(t *testing.T) {
 	}
 	if err := c.Subscribe(context.Background(), []string{"700.HK"}, []SubType{SubTypeQuote}, false); !errors.Is(err, ErrClosed) {
 		t.Fatalf("Subscribe after Close must fail, got %v", err)
+	}
+
+	// A context that had dialed: after Close the stale client is not reused.
+	dialed := &core{transport: TransportHTTP, client: client.New()}
+	if err := dialed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := dialed.ws(context.Background()); !errors.Is(err, ErrClosed) {
+		t.Fatalf("dialed+closed: want ErrClosed, got %v", err)
+	}
+	if dialed.connected() {
+		t.Fatal("connected() after Close")
+	}
+	dialed.withClient(func(client.Client) { t.Fatal("handler applied after Close") })
+	if err := dialed.Close(); err != nil {
+		t.Fatal("second Close must be a no-op")
 	}
 }

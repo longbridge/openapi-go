@@ -110,6 +110,12 @@ func (c *core) dial(ctx context.Context) (client.Client, error) {
 	}
 
 	cl.AfterReconnected(func() {
+		c.wsMu.Lock()
+		closed := c.closed
+		c.wsMu.Unlock()
+		if closed {
+			return
+		}
 		resubFlag := true
 
 		if err := c.resubscribe(context.Background()); err != nil {
