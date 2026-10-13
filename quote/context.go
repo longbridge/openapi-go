@@ -50,7 +50,10 @@ type QuoteContext struct {
 	core *core
 }
 
-// Profile obtain the user quote profile
+// Profile obtain the user quote profile.
+//
+// With TransportHTTP the profile is fetched on first use, which dials the
+// quote WebSocket; nil is returned if that fails.
 func (c *QuoteContext) Profile() *UserProfile {
 	return c.core.Profile()
 }
@@ -162,8 +165,9 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 //	qctx, err := quote.NewFromEnv()
 //	brokers, err := qctx.Brokers(context.Background(), "AAPL.HK")
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
-	// Broker queue via WebSocket is served only by the AP data center.
-	if err = c.opts.httpClient.CheckRegion("quote/brokers (WebSocket)", "AP"); err != nil {
+	// The broker queue is served only by the AP data center, over either
+	// transport.
+	if err = c.opts.httpClient.CheckRegion("quote/brokers", "AP"); err != nil {
 		return
 	}
 	return c.core.Brokers(ctx, symbol)
@@ -713,11 +717,14 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 		WithLbOptions(lbOpts),
 		WithEnableOvernight(cfg.EnableOvernight),
 		WithLanguage(cfg.Language),
+		WithTransport(Transport(cfg.QuoteTransport)), // validated by WithTransport
 	)
 }
 
 // New return QuoteContext with option.
-// A connection will be created with quote server.
+// With the default TransportWebSocket a connection to the quote server is
+// created immediately; with TransportHTTP it is only dialed when an API that
+// needs it (subscriptions, push events, Profile, ...) is first used.
 func New(opt ...Option) (*QuoteContext, error) {
 	opts := newOptions(opt...)
 	core, err := newCore(opts)
