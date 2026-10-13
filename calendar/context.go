@@ -49,8 +49,17 @@ func NewFromEnv() (*CalendarContext, error) {
 // start and end are date strings in "YYYY-MM-DD" format.
 // market is optional; pass nil or an empty string to retrieve all markets.
 //
-// The endpoint is paginated via NextDate. When the returned NextDate is
-// non-empty, pass it as start (keeping the same end) to fetch the next page.
+// count, offset and next are optional pagination controls; pass nil to use the
+// server defaults:
+//   - count — maximum number of events per page. The server caps a page at a
+//     small default (historically ~10) when count is not set, so pass a larger
+//     count to avoid a one-day query looking truncated.
+//   - offset — number of events to skip from the start of the window.
+//   - next — direction to page from the cursor (see CalendarPageDirection).
+//
+// The response reports a NextDate cursor. To page through the full window,
+// either request a larger count, or re-call passing the returned NextDate as
+// start until NextDate comes back empty.
 //
 // Reference: GET /v1/quote/finance_calendar
 func (c *CalendarContext) FinanceCalendar(
@@ -59,6 +68,9 @@ func (c *CalendarContext) FinanceCalendar(
 	start string,
 	end string,
 	market *string,
+	count *int32,
+	offset *int32,
+	next *CalendarPageDirection,
 ) (*CalendarEventsResponse, error) {
 	params := url.Values{}
 	params.Set("date", start)
@@ -66,6 +78,15 @@ func (c *CalendarContext) FinanceCalendar(
 	params.Set("types[]", category.String())
 	if market != nil && *market != "" {
 		params.Set("markets[]", *market)
+	}
+	if count != nil {
+		params.Set("count", fmt.Sprintf("%d", *count))
+	}
+	if offset != nil {
+		params.Set("offset", fmt.Sprintf("%d", *offset))
+	}
+	if next != nil {
+		params.Set("next", next.String())
 	}
 
 	var raw jsontypes.CalendarEventsResponse

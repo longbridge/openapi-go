@@ -1,5 +1,7 @@
 package jsontypes
 
+import "encoding/json"
+
 // Execution is execution details
 type Execution struct {
 	OrderId     string `json:"order_id"`
@@ -8,6 +10,7 @@ type Execution struct {
 	TradeDoneAt int64  `json:"trade_done_at,string"`
 	Quantity    string `json:"quantity"`
 	Price       string `json:"price"`
+	Side        string `json:"side"`
 }
 
 // Executions has a Execution list
@@ -17,6 +20,13 @@ type Executions struct {
 
 // AllExecutionsResponse is the response for get all executions request
 type AllExecutionsResponse struct {
+	HasMore bool         `json:"has_more"`
+	Trades  []*Execution `json:"trades"`
+}
+
+// HistoryExecutionsResponse is the response for get history executions request.
+// has_more drives client-side pagination through the `page` query parameter.
+type HistoryExecutionsResponse struct {
 	HasMore bool         `json:"has_more"`
 	Trades  []*Execution `json:"trades"`
 }
@@ -60,6 +70,27 @@ type Order struct {
 	OutsideRth       string                `json:"outside_rth"`
 	Remark           string                `json:"remark"`
 	AttachedOrders   []AttachedOrderDetail `json:"attached_orders"`
+	MultiLeg         *MultiLegInfo         `json:"multi_leg"`
+}
+
+// MultiLegInfo is the raw wire type for multi-leg option combination order information.
+type MultiLegInfo struct {
+	Strategy     string             `json:"strategy"`
+	StrategyName string             `json:"strategy_name"`
+	MultilegId   string             `json:"multileg_id"`
+	Code         string             `json:"code"`
+	Legs         []MultiLegOrderLeg `json:"legs"`
+}
+
+// MultiLegOrderLeg is the raw wire type for a single leg of a multi-leg combination order.
+type MultiLegOrderLeg struct {
+	Symbol            string `json:"symbol"`
+	Side              string `json:"side"`
+	Position          string `json:"position"`
+	RatioQuantity     string `json:"ratio_quantity"`
+	StrikePrice       string `json:"strike_price"`
+	ExpireDate        string `json:"expire_date"`
+	ContractDirection string `json:"contract_direction"`
 }
 
 // AttachedOrderDetail is the raw wire type for an attached (take-profit / stop-loss) sub-order.
@@ -120,13 +151,30 @@ type FundPositionChannel struct {
 
 // FundPosition is fund position details
 type FundPosition struct {
-	Symbol               string `json:"symbol"`
+	CounterID            string `json:"counter_id"`
 	CurrentNetAssetValue string `json:"current_net_asset_value"`
 	NetAssetValueDay     int64  `json:"net_asset_value_day,string"` // timestamp
 	SymbolName           string `json:"symbol_name"`
 	Currency             string `json:"currency"`
 	CostNetAssetValue    string `json:"cost_net_asset_value"`
 	HoldingUnits         string `json:"holding_units"`
+}
+
+// UnmarshalJSON accepts the fund identifier under either the new `counter_id`
+// key or the legacy `symbol` key (which carried the ISIN) during the transition.
+func (f *FundPosition) UnmarshalJSON(data []byte) error {
+	type alias FundPosition
+	aux := struct {
+		LegacySymbol string `json:"symbol"`
+		*alias
+	}{alias: (*alias)(f)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if f.CounterID == "" {
+		f.CounterID = aux.LegacySymbol
+	}
+	return nil
 }
 
 // StockPositions has a StockPosition list
@@ -185,31 +233,32 @@ type PushEvent struct {
 
 // PushOrderChanged is order change event details
 type PushOrderChanged struct {
-	AccountNo        string `json:"account_no"`
-	Currency         string `json:"currency"`
-	ExecutedPrice    string `json:"executed_price"`
-	ExecutedQuantity string `json:"executed_quantity"`
-	LastPrice        string `json:"last_price"`
-	LastShare        string `json:"last_share"`
-	LimitOffset      string `json:"limit_offset"`
-	Msg              string `json:"msg"`
-	OrderId          string `json:"order_id"`
-	OrderType        string `json:"order_type"`
-	Side             string `json:"side"`
-	Status           string `json:"status"`
-	StockName        string `json:"stock_name"`
-	SubmittedAt      string `json:"submitted_at"`
-	Price            string `json:"submitted_price"`
-	Quantity         string `json:"submitted_quantity"`
-	Symbol           string `json:"symbol"`
-	Tag              string `json:"tag"`
-	TrailingAmount   string `json:"trailing_amount"`
-	TrailingPercent  string `json:"trailing_percent"`
-	TriggerAt        string `json:"trigger_at"`
-	TriggerPrice     string `json:"trigger_price"`
-	TriggerStatus    string `json:"trigger_status"`
-	UpdatedAt        string `json:"updated_at"`
-	Remark           string `json:"remark"`
+	AccountNo        string        `json:"account_no"`
+	Currency         string        `json:"currency"`
+	ExecutedPrice    string        `json:"executed_price"`
+	ExecutedQuantity string        `json:"executed_quantity"`
+	LastPrice        string        `json:"last_price"`
+	LastShare        string        `json:"last_share"`
+	LimitOffset      string        `json:"limit_offset"`
+	Msg              string        `json:"msg"`
+	OrderId          string        `json:"order_id"`
+	OrderType        string        `json:"order_type"`
+	Side             string        `json:"side"`
+	Status           string        `json:"status"`
+	StockName        string        `json:"stock_name"`
+	SubmittedAt      string        `json:"submitted_at"`
+	Price            string        `json:"submitted_price"`
+	Quantity         string        `json:"submitted_quantity"`
+	Symbol           string        `json:"symbol"`
+	Tag              string        `json:"tag"`
+	TrailingAmount   string        `json:"trailing_amount"`
+	TrailingPercent  string        `json:"trailing_percent"`
+	TriggerAt        string        `json:"trigger_at"`
+	TriggerPrice     string        `json:"trigger_price"`
+	TriggerStatus    string        `json:"trigger_status"`
+	UpdatedAt        string        `json:"updated_at"`
+	Remark           string        `json:"remark"`
+	MultiLeg         *MultiLegInfo `json:"multi_leg"`
 }
 
 type ReplaceOrder struct {
@@ -239,6 +288,24 @@ type SubmitOrder struct {
 	Remark            string                `json:"remark,omitempty"`
 	TimeInForce       string                `json:"time_in_force"`
 	AttachedParams    *SubmitAttachedParams `json:"attached_params,omitempty"`
+}
+
+// SubmitMultiLegOrder is the raw wire type for a multi-leg option combination order submission.
+type SubmitMultiLegOrder struct {
+	Side              string                   `json:"side"`
+	OrderType         string                   `json:"order_type"`
+	SubmittedQuantity string                   `json:"submitted_quantity"`
+	Strategy          string                   `json:"strategy"`
+	Legs              []SubmitMultiLegOrderLeg `json:"legs"`
+	SubmittedPrice    string                   `json:"submitted_price,omitempty"`
+	Remark            string                   `json:"remark,omitempty"`
+	ClientRequestId   string                   `json:"client_request_id,omitempty"`
+}
+
+// SubmitMultiLegOrderLeg is the raw wire type for a single leg of a multi-leg order submission.
+type SubmitMultiLegOrderLeg struct {
+	Symbol        string `json:"symbol"`
+	RatioQuantity string `json:"ratio_quantity"`
 }
 
 // SubmitAttachedParams is the raw wire type for attached order (take-profit / stop-loss) parameters on submit.
@@ -350,6 +417,7 @@ type OrderDetail struct {
 	History                  []OrderHistoryDetail  `json:"history"`
 	ChargeDetail             *OrderChargeDetail    `json:"charge_detail"`
 	AttachedOrders           []AttachedOrderDetail `json:"attached_orders"`
+	MultiLeg                 *MultiLegInfo         `json:"multi_leg"`
 }
 
 // EstimateMaxPurchaseQuantity is response for estimate maximum purchase quantity

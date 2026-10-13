@@ -164,3 +164,22 @@ type ConstituentStock struct {
 	Chg               string   `json:"chg"`
 	TradeStatus       int32    `json:"trade_status"`
 }
+
+// RankCategoriesResponse is the raw response for GET /v1/quote/market/rank/categories.
+type RankCategoriesResponse struct {
+	FirstTags []RankCategory `json:"first_tags"`
+}
+
+// RankCategory is a top-level rank category with its sub-categories.
+type RankCategory struct {
+	Key        string            `json:"key"`
+	Name       string            `json:"name"`
+	SecondTags []RankSubCategory `json:"second_tags"`
+}
+
+// RankSubCategory is a rank sub-category. Its Key is passed to rank_list.
+type RankSubCategory struct {
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Market string `json:"market"`
+}

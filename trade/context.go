@@ -4,6 +4,7 @@ package trade
 import (
 	"context"
 	"net/url"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -80,12 +81,36 @@ func (c *TradeContext) Unsubscribe(ctx context.Context, topics []string) (unsubR
 //	  EndAt: time.Date(2024, 5, 10, 0, 0, 0, 0, time.UTC),
 //	})
 func (c *TradeContext) HistoryExecutions(ctx context.Context, params *GetHistoryExecutions) (trades []*Execution, err error) {
-	resp := &jsontypes.Executions{}
-	err = c.opts.httpClient.Get(ctx, "/v1/trade/execution/history", params.Values(), &resp)
-	if err != nil {
-		return
+	// The endpoint caps each response at 1000 records; walk the `page` param
+	// (1-based) until has_more is false. Dedupe by trade_id and stop if a page
+	// adds nothing new, guarding against the gateway ignoring `page`. Bounded to
+	// 1000 pages as a runaway guard.
+	all := make([]*jsontypes.Execution, 0)
+	seen := make(map[string]struct{})
+	for page := 1; page <= 1000; page++ {
+		values := params.Values()
+		values.Set("page", strconv.Itoa(page))
+		resp := &jsontypes.HistoryExecutionsResponse{}
+		if err = c.opts.httpClient.Get(ctx, "/v1/trade/execution/history", values, resp); err != nil {
+			return
+		}
+		if len(resp.Trades) == 0 {
+			break
+		}
+		added := 0
+		for _, t := range resp.Trades {
+			if _, ok := seen[t.TradeId]; ok {
+				continue
+			}
+			seen[t.TradeId] = struct{}{}
+			all = append(all, t)
+			added++
+		}
+		if !resp.HasMore || added == 0 {
+			break
+		}
 	}
-	err = util.Copy(&trades, resp.Trades)
+	err = util.Copy(&trades, all)
 	return
 }
 
@@ -201,6 +226,24 @@ func (c *TradeContext) SubmitOrder(ctx context.Context, params *SubmitOrder) (or
 	}
 	resp := &jsontypes.SubmitOrderResponse{}
 	err = c.opts.httpClient.Post(ctx, "/v1/trade/order", jsonbody, resp)
+	if err != nil {
+		return
+	}
+	return resp.OrderId, nil
+}
+
+// SubmitMultiLeg submits a multi-leg option combination order (vertical spreads,
+// straddles, strangles, collars, etc.) whose legs are placed together as a single
+// strategy order.
+// Reference: https://open.longbridge.com/en/docs/trade/order/submit_multileg
+func (c *TradeContext) SubmitMultiLeg(ctx context.Context, params *SubmitMultiLegOrder) (orderId string, err error) {
+	var jsonbody jsontypes.SubmitMultiLegOrder
+	err = util.Copy(&jsonbody, params)
+	if err != nil {
+		return
+	}
+	resp := &jsontypes.SubmitOrderResponse{}
+	err = c.opts.httpClient.Post(ctx, "/v1/trade/order/multileg", jsonbody, resp)
 	if err != nil {
 		return
 	}

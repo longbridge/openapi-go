@@ -93,6 +93,28 @@ type SubmitOrder struct {
 	AttachedParams    *SubmitAttachedParams // optional, take-profit / stop-loss parameters
 }
 
+// SubmitMultiLegOrder is the request for TradeContext.SubmitMultiLeg — a multi-leg
+// option combination order (vertical spreads, straddles, strangles, collars, etc.)
+// whose legs are placed together as a single strategy order.
+type SubmitMultiLegOrder struct {
+	Side              OrderSide                // required
+	OrderType         OrderType                // required
+	SubmittedQuantity decimal.Decimal          // required
+	Strategy          MultiLegStrategy         // required
+	Legs              []SubmitMultiLegOrderLeg // required
+	SubmittedPrice    decimal.Decimal          // required for limit order types such as LO
+	Remark            string                   // optional
+	ClientRequestId   string                   // optional
+}
+
+// SubmitMultiLegOrderLeg is a single leg of a multi-leg combination order to submit.
+// The direction of each leg is implied by Strategy together with the order Side, not by
+// the sign of RatioQuantity; RatioQuantity must be a positive number.
+type SubmitMultiLegOrderLeg struct {
+	Symbol        string          // Option symbol, in ticker.region format (e.g. QQQ260731C764000.US)
+	RatioQuantity decimal.Decimal // Leg ratio quantity, must be positive
+}
+
 // SubmitAttachedParams is attached order (take-profit / stop-loss) parameters for SubmitOrder.
 type SubmitAttachedParams struct {
 	AttachedOrderType AttachedOrderType // required

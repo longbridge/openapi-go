@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`OrderStatus` gains `OrderDelayedNotReported`** (`"DelayedNotReported"`, ports longbridge/openapi #595) — 监控中 (时间条件单), the state a time-conditional order sits in before it is reported to the exchange. Previously this wire value fell through to an unrecognized status, making monitored time-conditional orders indistinguishable from a genuinely unknown status in `TodayOrders` / `HistoryOrders` / `OrderDetail` and the order-changed push
+
+## [v0.29.0] - 2026-09-30
+
+### Breaking changes
+
+- **`trade.FundPosition`** — the fund identifier field is renamed from `Symbol` (which carried the ISIN) to `CounterID`, matching the Rust core and the fund channel. It now holds the full fund `counter_id` (e.g. `UT/FD/HK0000384492`); the ISIN is the last `/`-separated segment. The wire type reads the new `counter_id` key and still accepts the legacy `symbol` key during the transition
+
+### Added
+
+- **Fund (mutual fund)** — new `fund.FundContext` for the fund channel (ports longbridge/openapi), mirroring the Rust core field-for-field across 28 methods:
+  - Catalog / market data: `HotFunds` (`GET /v1/fund/hot-funds`), `Funds` (`POST /v1/fund/funds`), `Filters` (`GET /v1/fund/filters`), `Detail` (`GET /v1/fund/funds/detail`), `Analysis` / `AnalysisDetail` / `Trend` / `PerformanceComparison` (`.../analysis`, `.../analysis/detail`, `.../trend`, `.../performance/comparison`), `AnnualReturns` / `QuarterlyReturns` (`.../returns/annual`, `.../returns/quarterly`), `Performance` (`.../performance`), `Nav` / `NavHistory` / `NavRange` (`.../nav`, `.../nav-history`, `.../nav-range`), `Holdings` (`.../holdings`) and `StockHoldings` (`.../stock-holdings`, reverse lookup)
+  - User positions: `Positions` (`GET /v1/asset/funds`), `Position` (`.../detail`), `PositionPerformance` / `PositionProfits` / `PositionNav` / `PositionDividends` (`.../performance`, `/profits`, `/nav-history`, `/dividends`)
+  - Orders & trading: `Orders` (`GET /v1/fund/orders`), `Order` (`GET /v1/fund/orders/{id}`), `Transactions` (`GET /v1/fund/transactions`), `ValidateOrder` (`POST /v1/fund/orders/validate`), `SubmitOrder` (`POST /v1/fund/orders`) and `CancelOrder` (`POST /v1/fund/orders/{id}/cancel`)
+  - The fund channel is the deliberate **exception** to the release-wide symbol migration: funds are identified by `counter_id` (e.g. `UT/FD/HK0000384492`), which cannot be converted to a user symbol. Because it contains `/` it cannot sit in the URL path, so single-fund endpoints take it as a `counter_id` query parameter (fixed sub-paths like `/v1/fund/funds/detail`) rather than a path segment; the order request filter carries repeated `counter_id` query params. Three batch-backed endpoints — `Performance`, `Nav` and `PositionPerformance` — instead send the identifier as a one-element JSON array in a `counter_ids` query parameter, matching their backend contract
+  - Numeric `int64` fields use the string-tolerant `jsontypes.Int64` type (the backend may send them as a JSON number or a quoted string; empty / `null` become `0`); unix-second timestamps are `int64`; nested response objects the backend may return as `null` (`FundDetail.AssetAllocation`, `FundTrend.ContrastPerformances`, `FundPositionDetail.DetailValues`, `FundOrderDetail.Order`) are modeled as pointers so those responses deserialize instead of erroring on `null`; server-defined "any" structures (fund filters, analysis ability/cost blocks, trend / comparison performance series) are preserved as `json.RawMessage`
+
+## [v0.28.0] - 2026-09-28
+
 ### Breaking changes
 
 - **Removed `GridContext.SubmitStrategyQuestionnaire`** (`POST /v1/record/questionnaire`) and its `jsontypes.SubmitStrategyQuestionnaire` request type (ports longbridge/openapi). The strategy risk-disclosure questionnaire endpoint has been retired and is no longer submitted through the SDK. All other grid APIs are unchanged
@@ -13,11 +34,30 @@
 - `fundamental.Ratings` (`GET /v1/quote/ratings`) is temporarily disabled — the endpoint is not yet open; the method is commented out pending release
 - `market.TopMoversResponse.NextParams` is now a plain pagination-cursor `string` instead of `json.RawMessage`; an empty string means there are no more pages
 - Portfolio flows `ExecutedTimestamp` is normalized to a string (server may send int or string; `null` becomes an empty string)
+- **`CalendarContext.FinanceCalendar` gains pagination controls** (ports longbridge/openapi #597) — three new optional trailing parameters `count *int32` (max events per page), `offset *int32` (events to skip), and `next *CalendarPageDirection` (a new `Later` / `Earlier` enum). Previously the method issued a single request with no page-size control, so the server's default page cap (historically ~10 events) made even a one-day query look truncated at 10 results. The response's `NextDate` cursor is unchanged; to retrieve a full window, request a larger `count`, or re-call with the returned `NextDate` as `start` until it comes back empty. Pass `nil` for the new arguments to use the server defaults
+- **`QuoteContext.OptionChainInfoByDate` moves off the quote socket onto the HTTP endpoint `GET /v1/gemini/option/option_chain_list`** (ports longbridge/openapi PR #588) and its return type changes shape. The paired `StrikePriceInfo` (`Price` + `CallSymbol` + `PutSymbol` + `Standard`) is **removed** in favour of a flat, one-entry-per-contract `OptionChainContract` (`Symbol`, `ExpiryDate`, `StrikePrice`, `Direction`, `OptionType`, `StandardAttr`, `DaysToExpiry`). Calls and puts are no longer paired by strike, so a strike listed on one side only now yields a single entry; filter on `Direction` where you used to read the two symbol fields. The signature gains an `expiryDate time.Time` (now required, was `*time.Time`) and a `standardOnly bool` that filters out legacy corporate-action contracts server-side (omitted from the query when false). Two new enums come with it: `OptionExpiryCycleType` (`Unknown` / `Monthly` / `Weekly` / `Quarterly` — the server's empty `option_type` means a standard monthly option) and `OptionStandardAttr` (`Unknown` / `Normal` / `Old`), plus `OptionDirection` (`Unknown` / `Put` / `Call`). `QuoteContext.OptionChainExpiryDateList` is unchanged
 
 ### Added
 
 - **Grid trading** — new `grid.GridContext` for grid-order management: `Submit` / `Replace` / `Cancel` / `Suspend` / `Restart` grid orders, `List` (paged) and `ListByIds`, `Detail` and `TriggerHistory`, `SubmitStrategyQuestionnaire` (strategy risk-disclosure), and `SymbolInfo` (returns `GridSymbolInfo`: name, last price, lot sizes, price-step rules, channel/authorization) — the security info needed to build a grid order
-- **`OrderStatus` gains `OrderDelayedNotReported`** (`"DelayedNotReported"`, ports longbridge/openapi #595) — 监控中 (时间条件单), the state a time-conditional order sits in before it is reported to the exchange. Previously this wire value fell through to an unrecognized status, making monitored time-conditional orders indistinguishable from a genuinely unknown status in `TodayOrders` / `HistoryOrders` / `OrderDetail` and the order-changed push
+- **Multi-leg option orders** (ports longbridge/openapi #575, #589, #590) — new `TradeContext.SubmitMultiLeg` (`POST /v1/trade/order/multileg`) submits a multi-leg option combination order (vertical spreads, straddles, strangles, collars, calendar spreads, etc.) whose legs are placed together as a single strategy order. Takes `Side`, `OrderType`, `SubmittedQuantity`, `Strategy` (`MultiLegStrategy`), a list of `SubmitMultiLegOrderLeg` (`Symbol` + `RatioQuantity`), and optional `SubmittedPrice` / `Remark` / `ClientRequestId`; returns the order ID like `SubmitOrder`. `Order`, `OrderDetail`, and the `PushOrderChanged` order-changed push gain an optional `MultiLeg *MultiLegInfo` field — present only for multi-leg orders — carrying `Strategy`, `StrategyName`, `MultilegId`, `Code`, and the combination `Legs` (each with `Symbol`, `Side`, `Position`, `RatioQuantity`, `StrikePrice`, `ExpireDate`, `ContractDirection`). New enums `MultiLegStrategy` (`CoveredCall` … `Strangle`, plus `CalendarCallSpread` / `CalendarPutSpread`), `MultiLegPosition` (`LONG` / `SHORT`), and `ContractDirection` (`C` / `P`)
+
+- **Strategy signals** — new `signal.SignalContext` (ports longbridge/openapi #577, #578) for strategy signals and the catalyst facts behind them:
+  - `Signals` (`GET /v1/signals`) queries signals with symbol / strategy / catalyst / time-range filters and paging (`SignalsOptions`), returning `SignalsResponse` (`Signals` + `Total`)
+  - `Signal` (`GET /v1/signals/{signal_id}`) returns one signal including the full strategy analysis in `Signal.JsonData`
+  - `SecurityFacts` (`GET /v1/facts/security_facts`) lists a security's fact (catalyst) events — the anomaly detections, factor readings, data sources and natural-language summaries a strategy reacts to
+  - New types `Signal`, `SecurityFact`, `FactFactor`, `AnomalyDetection`, `FactDataSource`, `FactNlInfo` (with `SummaryTags()` / `InvestAnalTags()` / `EliExplainTags()` helpers for the `{tag, value}` entries the API carries as JSON inside a string), and the `Outlook`, `SignalStatus`, `FactType`, `FactDirection` enums
+- **`Execution` gains a `Side` field** (ports longbridge/openapi) — the buy/sell direction (`OrderSide`) of the fill, now populated on the `TodayExecutions`, `HistoryExecutions`, and `AllExecutions` responses
+
+### Changed
+
+- **`AlertItem.ValueMap` is now a typed `AlertValueMap`** (ports longbridge/openapi) instead of raw JSON (`json.RawMessage`). Exactly one field is populated depending on the alert condition: `Price *decimal.Decimal` (absolute-price threshold) for price alerts, `Chg *float64` (percentage-change threshold) for percentage alerts
+- **`MarketContext.RankCategories` now returns a typed response** (ports longbridge/openapi) instead of raw JSON. `RankCategoriesResponse.Categories` is a list of `RankCategory` (`Key` / `Name` / `SubCategories`), each `RankSubCategory` carrying `Key` / `Name` / `Market`. The `ib_` prefix is stripped from every `Key` so it can be passed straight to `RankList`
+- **`CorpActionLive.Status` is now a plain `string`** (ports longbridge/openapi) instead of `json.RawMessage`. The server may send it as either an integer or a string; it is now normalized to a string (e.g. `"2"`)
+- **`IndustryPeersResponse.Top` is now optional** (`*IndustryPeersTop`, ports longbridge/openapi) — the server may return `null` when there is no data; previously this caused a deserialization error
+- **`WarrantStatus` gains a `WarrantStatusUnknown` (0) variant** (ports longbridge/openapi) for the placeholder rows the server returns with `status: 0` and an empty `WarrantInfo.ExpiryDate`
+- Refreshed the option Greek field docs on `SecurityCalcIndex` (`Delta` / `Gamma` / `Theta` / `Vega` / `Rho`) to match the Calc Index interface documentation (ports longbridge/openapi #586). Notably `Theta` is documented as a per-day value — the server already divides the raw annualized value by 365. Doc comments only
+- **`TradeContext.HistoryExecutions` now pages through all results** (ports longbridge/openapi #591). The endpoint caps each response at 1000 records; the method walks the `page` query parameter (1-based) until `has_more` is false, deduping by `trade_id` and stopping early if a page adds nothing new (guarding against the gateway ignoring `page`), bounded to 1000 pages. Previously it issued a single request and silently returned only the first page
 
 ## [v0.27.0] - 2026-08-14
 

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go/alert/jsontypes"
 	"github.com/longbridge/openapi-go/config"
@@ -101,10 +102,23 @@ func (c *AlertContext) Update(ctx context.Context, item *AlertItem) error {
 		"frequency":    item.Frequency,
 		"scope":        item.Scope,
 		"state":        item.State,
-		"value_map":    item.ValueMap,
+		"value_map":    alertValueMapBody(item.ValueMap),
 		"enabled":      item.Enabled,
 	}
 	return c.httpClient.Post(ctx, "/v1/notify/reminders", body, nil)
+}
+
+// alertValueMapBody renders a typed AlertValueMap back into the wire form the
+// endpoint expects — a JSON object with string values, e.g. {"price":"600"}.
+func alertValueMapBody(vm AlertValueMap) map[string]string {
+	m := map[string]string{}
+	if vm.Price != nil {
+		m["price"] = vm.Price.String()
+	}
+	if vm.Chg != nil {
+		m["chg"] = strconv.FormatFloat(*vm.Chg, 'f', -1, 64)
+	}
+	return m
 }
 
 // Delete removes one or more price alerts by their IDs.
@@ -158,6 +172,21 @@ func convertAlertItem(j *jsontypes.AlertItem) *AlertItem {
 		Scope:       j.Scope,
 		Text:        j.Text,
 		State:       state,
-		ValueMap:    j.ValueMap,
+		ValueMap:    convertAlertValueMap(j.ValueMap),
 	}
+}
+
+func convertAlertValueMap(j jsontypes.AlertValueMap) AlertValueMap {
+	var vm AlertValueMap
+	if j.Price != nil {
+		if d, err := decimal.NewFromString(*j.Price); err == nil {
+			vm.Price = &d
+		}
+	}
+	if j.Chg != nil {
+		if f, err := strconv.ParseFloat(*j.Chg, 64); err == nil {
+			vm.Chg = &f
+		}
+	}
+	return vm
 }
