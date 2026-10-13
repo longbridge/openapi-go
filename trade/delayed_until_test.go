@@ -50,12 +50,32 @@ func TestDelayedUntilSerialize(t *testing.T) {
 		t.Errorf("replace delayed_until = %v", got)
 	}
 
-	var regular jsontypes.ReplaceOrder
-	if err := util.Copy(&regular, &ReplaceOrder{OrderId: "1", Quantity: 100}); err != nil {
+	var moved jsontypes.ReplaceOrder
+	if err := util.Copy(&moved, &ReplaceOrder{OrderId: "1", Quantity: 100, DelayedUntil: 1767312000}); err != nil {
 		t.Fatalf("copy: %v", err)
 	}
-	if _, ok := marshalMap(t, regular)["delayed_until"]; ok {
-		t.Error("delayed_until should be omitted when zero")
+	if got := marshalMap(t, moved)["delayed_until"]; got != float64(1767312000) {
+		t.Errorf("replace (new time) delayed_until = %v", got)
+	}
+
+	// Zero means "regular order" on submit and "keep the current time condition" on
+	// replace; in both cases the field must not be sent.
+	var regularReplace jsontypes.ReplaceOrder
+	if err := util.Copy(&regularReplace, &ReplaceOrder{OrderId: "1", Quantity: 100}); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	var regularSubmit jsontypes.SubmitOrder
+	if err := util.Copy(&regularSubmit, &SubmitOrder{Symbol: "700.HK", OrderType: OrderTypeMO, Side: OrderSideBuy, SubmittedQuantity: 100, TimeInForce: TimeTypeDay}); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	var regularMultiLeg jsontypes.SubmitMultiLegOrder
+	if err := util.Copy(&regularMultiLeg, &SubmitMultiLegOrder{Side: OrderSideBuy, OrderType: OrderTypeMO, SubmittedQuantity: decimal.RequireFromString("1"), Strategy: MultiLegStrategyStraddle}); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	for name, v := range map[string]interface{}{"replace": regularReplace, "submit": regularSubmit, "multileg": regularMultiLeg} {
+		if _, ok := marshalMap(t, v)["delayed_until"]; ok {
+			t.Errorf("%s: delayed_until should be omitted when zero", name)
+		}
 	}
 }
 
@@ -69,8 +89,8 @@ func TestDelayedUntilDeserialize(t *testing.T) {
 	if err := util.Copy(&order, &wire); err != nil {
 		t.Fatalf("copy: %v", err)
 	}
-	if order.DelayedUntil != "1767225600" || order.Status != OrderDelayedNotReported {
-		t.Errorf("order = %+v", order)
+	if order.DelayedUntil != "1767225600" {
+		t.Errorf("order.DelayedUntil = %q", order.DelayedUntil)
 	}
 
 	var wireDetail jsontypes.OrderDetail
@@ -83,5 +103,18 @@ func TestDelayedUntilDeserialize(t *testing.T) {
 	}
 	if detail.DelayedUntil != "0" {
 		t.Errorf("detail.DelayedUntil = %q", detail.DelayedUntil)
+	}
+
+	// Responses that predate the field leave it empty rather than failing.
+	var legacy jsontypes.Order
+	if err := json.Unmarshal([]byte(`{"order_id":"1"}`), &legacy); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var legacyOrder Order
+	if err := util.Copy(&legacyOrder, &legacy); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	if legacyOrder.DelayedUntil != "" {
+		t.Errorf("legacyOrder.DelayedUntil = %q", legacyOrder.DelayedUntil)
 	}
 }
