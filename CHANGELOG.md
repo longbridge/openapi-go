@@ -23,6 +23,7 @@
 - A WebSocket that fails authentication while dialing is closed instead of leaked
 - The quote WebSocket is closed when the initial quote-profile query fails in `quote.New`, instead of being leaked
 - **`OrderStatus` gains `OrderDelayedNotReported`** (`"DelayedNotReported"`, ports longbridge/openapi #595) — 监控中 (时间条件单), the state a time-conditional order sits in before it is reported to the exchange. Previously this wire value fell through to an unrecognized status, making monitored time-conditional orders indistinguishable from a genuinely unknown status in `TodayOrders` / `HistoryOrders` / `OrderDetail` and the order-changed push
+- **Time-condition orders** (ports longbridge/openapi #595, documented in longbridge/developers#1289) — `SubmitOrder`, `SubmitMultiLegOrder` and `ReplaceOrder` gain a `DelayedUntil int64` field (unix timestamp seconds; `0` / unset sends nothing). On submit it holds the order in `OrderDelayedNotReported` status and sends it automatically at that time (later than now, at most 90 days ahead; multi-leg orders support only `LO` / `MO`). On replace, `0` keeps the current time condition, the new `ClearDelayedUntil` constant (`1`) clears it, and any other value sets a new time. `Order` and `OrderDetail` gain `DelayedUntil string` carrying the time back from `TodayOrders` / `HistoryOrders` / `OrderDetail` (`"0"` when the order is not a time-condition order)
 
 ## [v0.29.0] - 2026-09-30
 

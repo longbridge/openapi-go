@@ -69,6 +69,7 @@ type Order struct {
 	Currency         string                `json:"currency"`
 	OutsideRth       string                `json:"outside_rth"`
 	Remark           string                `json:"remark"`
+	DelayedUntil     string                `json:"delayed_until"`
 	AttachedOrders   []AttachedOrderDetail `json:"attached_orders"`
 	MultiLeg         *MultiLegInfo         `json:"multi_leg"`
 }
@@ -271,6 +272,7 @@ type ReplaceOrder struct {
 	TrailingPercent string                 `json:"trailing_percent,omitempty"`
 	Remark          string                 `json:"remark"`
 	AttachedParams  *ReplaceAttachedParams `json:"attached_params,omitempty"`
+	DelayedUntil    int64                  `json:"delayed_until,omitempty"`
 }
 
 type SubmitOrder struct {
@@ -288,6 +290,7 @@ type SubmitOrder struct {
 	Remark            string                `json:"remark,omitempty"`
 	TimeInForce       string                `json:"time_in_force"`
 	AttachedParams    *SubmitAttachedParams `json:"attached_params,omitempty"`
+	DelayedUntil      int64                 `json:"delayed_until,omitempty"`
 }
 
 // SubmitMultiLegOrder is the raw wire type for a multi-leg option combination order submission.
@@ -300,6 +303,7 @@ type SubmitMultiLegOrder struct {
 	SubmittedPrice    string                   `json:"submitted_price,omitempty"`
 	Remark            string                   `json:"remark,omitempty"`
 	ClientRequestId   string                   `json:"client_request_id,omitempty"`
+	DelayedUntil      int64                    `json:"delayed_until,omitempty"`
 }
 
 // SubmitMultiLegOrderLeg is the raw wire type for a single leg of a multi-leg order submission.
@@ -405,6 +409,7 @@ type OrderDetail struct {
 	Currency                 string                `json:"currency"`
 	OutsideRth               string                `json:"outside_rth"` // Enable or disable outside regular trading hours
 	Remark                   string                `json:"remark"`
+	DelayedUntil             string                `json:"delayed_until"` // Time-condition submit time, "0" when not a time-condition order
 	FreeStatus               string                `json:"free_status"`
 	FreeAmount               string                `json:"free_amount"`
 	FreeCurrency             string                `json:"free_currency"`
