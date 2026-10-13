@@ -409,7 +409,7 @@ type OrderDetail struct {
 	Currency                 string                `json:"currency"`
 	OutsideRth               string                `json:"outside_rth"` // Enable or disable outside regular trading hours
 	Remark                   string                `json:"remark"`
-	DelayedUntil             string                `json:"delayed_until"` // Time-condition submit time, "0" (or empty if the server omits the field) when not a time-condition order
+	DelayedUntil             string                `json:"delayed_until"` // Time-condition submit time (unix timestamp seconds), "0" (or empty if the server omits the field) when not a time-condition order
 	FreeStatus               string                `json:"free_status"`
 	FreeAmount               string                `json:"free_amount"`
 	FreeCurrency             string                `json:"free_currency"`
