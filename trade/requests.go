@@ -82,8 +82,8 @@ type ReplaceOrder struct {
 
 // ClearDelayedUntil is the ReplaceOrder.DelayedUntil value that clears an order's time
 // condition, turning it into a regular order. Use this constant rather than a literal 1;
-// note that a DelayedUntil of 0 (e.g. time.Unix(0, 0).Unix()) is not sent at all and
-// keeps the current time condition.
+// a DelayedUntil of 0 (the zero value) is not sent at all and keeps the current time
+// condition.
 const ClearDelayedUntil int64 = 1
 
 type SubmitOrder struct {

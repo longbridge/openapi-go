@@ -84,8 +84,8 @@ const (
 	OrderCanceledStatus       OrderStatus = "CanceledStatus"
 	OrderExpiredStatus        OrderStatus = "ExpiredStatus"
 	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
-	// OrderDelayedNotReported is monitoring (time-condition order) — the state a time-conditional
-	// order sits in before it is reported to the exchange.
+	// OrderDelayedNotReported is the status of a time-condition order that is being held
+	// and has not yet been reported to the exchange.
 	OrderDelayedNotReported OrderStatus = "DelayedNotReported"
 
 	// Outside RTH
