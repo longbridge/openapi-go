@@ -84,6 +84,9 @@ const (
 	OrderCanceledStatus       OrderStatus = "CanceledStatus"
 	OrderExpiredStatus        OrderStatus = "ExpiredStatus"
 	OrderPartialWithdrawal    OrderStatus = "PartialWithdrawal"
+	// OrderDelayedNotReported is the status of a time-condition order that is being held
+	// and has not yet been reported to the exchange.
+	OrderDelayedNotReported OrderStatus = "DelayedNotReported"
 
 	// Outside RTH
 	OutsideRTHOnly            OutsideRTH = "RTH_ONLY"          // Regular trading hour only
@@ -214,6 +217,7 @@ type Order struct {
 	Currency         string
 	OutsideRth       OutsideRTH
 	Remark           string
+	DelayedUntil     string // Time-condition submit time (unix timestamp seconds), "0" (or empty if the server omits the field) when not a time-condition order
 	AttachedOrders   []AttachedOrderDetail
 	// MultiLeg is present only for multi-leg option combination orders.
 	MultiLeg *MultiLegInfo
@@ -321,6 +325,7 @@ type OrderDetail struct {
 	Currency                 string
 	OutsideRth               OutsideRTH /// Enable or disable outside regular trading hours
 	Remark                   string
+	DelayedUntil             string // Time-condition submit time (unix timestamp seconds), "0" (or empty if the server omits the field) when not a time-condition order
 	FreeStatus               CommissionFreeStatus
 	FreeAmount               *decimal.Decimal
 	FreeCurrency             string

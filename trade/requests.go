@@ -74,7 +74,17 @@ type ReplaceOrder struct {
 	TrailingPercent decimal.Decimal // TSLPPCT / TSMAPCT Order Required
 	Remark          string
 	AttachedParams  *ReplaceAttachedParams // optional, take-profit / stop-loss parameters
+	// DelayedUntil changes the time condition (unix timestamp seconds): 0 keeps the
+	// current time condition, ClearDelayedUntil (1) clears it, and any other value sets
+	// a new submit time, which must be later than now and no more than 90 days ahead.
+	DelayedUntil int64
 }
+
+// ClearDelayedUntil is the ReplaceOrder.DelayedUntil value that clears an order's time
+// condition, turning it into a regular order. Use this constant rather than a literal 1;
+// a DelayedUntil of 0 (the zero value) is not sent at all and keeps the current time
+// condition.
+const ClearDelayedUntil int64 = 1
 
 type SubmitOrder struct {
 	Symbol            string          // required
@@ -91,6 +101,11 @@ type SubmitOrder struct {
 	Remark            string
 	TimeInForce       TimeType              // required
 	AttachedParams    *SubmitAttachedParams // optional, take-profit / stop-loss parameters
+	// DelayedUntil makes this a time-condition order (unix timestamp seconds, 0 for a
+	// regular order): it is held in OrderDelayedNotReported status and only submitted
+	// at this time, which must be later than now and no more than 90 days ahead. Values
+	// are sent as-is, so any time must be greater than 1 (0 and 1 are wire sentinels).
+	DelayedUntil int64
 }
 
 // SubmitMultiLegOrder is the request for TradeContext.SubmitMultiLeg — a multi-leg
@@ -105,6 +120,12 @@ type SubmitMultiLegOrder struct {
 	SubmittedPrice    decimal.Decimal          // required for limit order types such as LO
 	Remark            string                   // optional
 	ClientRequestId   string                   // optional
+	// DelayedUntil makes this a time-condition order (unix timestamp seconds, 0 for a
+	// regular order): it is held in OrderDelayedNotReported status and only submitted
+	// at this time, which must be later than now and no more than 90 days ahead. Only
+	// LO / MO support time conditions. Values are sent as-is, so any time must be
+	// greater than 1 (0 and 1 are wire sentinels).
+	DelayedUntil int64
 }
 
 // SubmitMultiLegOrderLeg is a single leg of a multi-leg combination order to submit.

@@ -1,6 +1,9 @@
 package jsontypes
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // Execution is execution details
 type Execution struct {
@@ -69,6 +72,7 @@ type Order struct {
 	Currency         string                `json:"currency"`
 	OutsideRth       string                `json:"outside_rth"`
 	Remark           string                `json:"remark"`
+	DelayedUntil     FlexString            `json:"delayed_until"`
 	AttachedOrders   []AttachedOrderDetail `json:"attached_orders"`
 	MultiLeg         *MultiLegInfo         `json:"multi_leg"`
 }
@@ -271,6 +275,7 @@ type ReplaceOrder struct {
 	TrailingPercent string                 `json:"trailing_percent,omitempty"`
 	Remark          string                 `json:"remark"`
 	AttachedParams  *ReplaceAttachedParams `json:"attached_params,omitempty"`
+	DelayedUntil    int64                  `json:"delayed_until,omitempty"`
 }
 
 type SubmitOrder struct {
@@ -288,6 +293,7 @@ type SubmitOrder struct {
 	Remark            string                `json:"remark,omitempty"`
 	TimeInForce       string                `json:"time_in_force"`
 	AttachedParams    *SubmitAttachedParams `json:"attached_params,omitempty"`
+	DelayedUntil      int64                 `json:"delayed_until,omitempty"`
 }
 
 // SubmitMultiLegOrder is the raw wire type for a multi-leg option combination order submission.
@@ -300,6 +306,7 @@ type SubmitMultiLegOrder struct {
 	SubmittedPrice    string                   `json:"submitted_price,omitempty"`
 	Remark            string                   `json:"remark,omitempty"`
 	ClientRequestId   string                   `json:"client_request_id,omitempty"`
+	DelayedUntil      int64                    `json:"delayed_until,omitempty"`
 }
 
 // SubmitMultiLegOrderLeg is the raw wire type for a single leg of a multi-leg order submission.
@@ -405,6 +412,7 @@ type OrderDetail struct {
 	Currency                 string                `json:"currency"`
 	OutsideRth               string                `json:"outside_rth"` // Enable or disable outside regular trading hours
 	Remark                   string                `json:"remark"`
+	DelayedUntil             FlexString            `json:"delayed_until"` // Time-condition submit time (unix timestamp seconds), "0" (or empty if the server omits the field) when not a time-condition order
 	FreeStatus               string                `json:"free_status"`
 	FreeAmount               string                `json:"free_amount"`
 	FreeCurrency             string                `json:"free_currency"`
@@ -424,4 +432,29 @@ type OrderDetail struct {
 type EstimateMaxPurchaseQuantityResponse struct {
 	CashMaxQty   string `json:"cash_max_qty"`   // Cash available quantity
 	MarginMaxQty string `json:"margin_max_qty"` // Margin available quantity
+}
+
+// FlexString is a string field that also accepts a JSON number (kept as its
+// literal text) or null (left empty); booleans, objects and arrays are ignored.
+// It keeps a server-side type change in a newly added field from failing the
+// whole response.
+type FlexString string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexString) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		return err
+	}
+	switch v := v.(type) {
+	case string:
+		*f = FlexString(v)
+	case json.Number:
+		*f = FlexString(v.String())
+	default:
+		*f = ""
+	}
+	return nil
 }
