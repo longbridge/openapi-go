@@ -434,9 +434,10 @@ type EstimateMaxPurchaseQuantityResponse struct {
 	MarginMaxQty string `json:"margin_max_qty"` // Margin available quantity
 }
 
-// FlexString is a string field that also accepts a JSON number (rendered in
-// decimal) or null (left empty), so a server-side type change in a newly added
-// field cannot fail the whole response.
+// FlexString is a string field that also accepts a JSON number (kept as its
+// literal text) or null (left empty); booleans, objects and arrays are ignored.
+// It keeps a server-side type change in a newly added field from failing the
+// whole response.
 type FlexString string
 
 // UnmarshalJSON implements json.Unmarshaler.

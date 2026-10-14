@@ -123,7 +123,8 @@ type SubmitMultiLegOrder struct {
 	// DelayedUntil makes this a time-condition order (unix timestamp seconds, 0 for a
 	// regular order): it is held in OrderDelayedNotReported status and only submitted
 	// at this time, which must be later than now and no more than 90 days ahead. Only
-	// LO / MO support time conditions.
+	// LO / MO support time conditions. Values are sent as-is, so any time must be
+	// greater than 1 (0 and 1 are wire sentinels).
 	DelayedUntil int64
 }
 
