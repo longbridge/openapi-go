@@ -105,6 +105,15 @@ func TestDelayedUntilDeserialize(t *testing.T) {
 		t.Errorf("detail.DelayedUntil = %q", detail.DelayedUntil)
 	}
 
+	// The spec marks delayed_until nullable; null must not fail the response.
+	var nullWire jsontypes.OrderDetail
+	if err := json.Unmarshal([]byte(`{"order_id":"1","delayed_until":null}`), &nullWire); err != nil {
+		t.Fatalf("unmarshal null: %v", err)
+	}
+	if nullWire.DelayedUntil != "" {
+		t.Errorf("null DelayedUntil = %q", nullWire.DelayedUntil)
+	}
+
 	// Responses that predate the field leave it empty rather than failing.
 	var legacy jsontypes.Order
 	if err := json.Unmarshal([]byte(`{"order_id":"1"}`), &legacy); err != nil {
