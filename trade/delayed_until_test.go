@@ -114,6 +114,20 @@ func TestDelayedUntilDeserialize(t *testing.T) {
 		t.Errorf("null DelayedUntil = %q", nullWire.DelayedUntil)
 	}
 
+	// A JSON number instead of the documented string must not fail the response
+	// and must survive util.Copy into the public string field.
+	var numWire jsontypes.Order
+	if err := json.Unmarshal([]byte(`{"order_id":"1","delayed_until":1767225600}`), &numWire); err != nil {
+		t.Fatalf("unmarshal number: %v", err)
+	}
+	var numOrder Order
+	if err := util.Copy(&numOrder, &numWire); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	if numOrder.DelayedUntil != "1767225600" {
+		t.Errorf("number DelayedUntil = %q", numOrder.DelayedUntil)
+	}
+
 	// Responses that predate the field leave it empty rather than failing.
 	var legacy jsontypes.Order
 	if err := json.Unmarshal([]byte(`{"order_id":"1"}`), &legacy); err != nil {
