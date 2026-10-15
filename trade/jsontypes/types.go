@@ -120,6 +120,7 @@ type AttachedOrderDetail struct {
 	ActivateOrderType   string `json:"activate_order_type"`
 	ActivateRth         string `json:"activate_rth"`
 	SubmitPrice         string `json:"submit_price"`
+	LimitDepthLevel     int32  `json:"limit_depth_level"`
 }
 
 // AccountBalances has a AccountBalance list
@@ -326,6 +327,8 @@ type SubmitAttachedParams struct {
 	ProfitTakerSubmitPrice string `json:"profit_taker_submit_price,omitempty"`
 	StopLossSubmitPrice    string `json:"stop_loss_submit_price,omitempty"`
 	ActivateRTH            string `json:"activate_rth,omitempty"`
+	ProfitTakerDepthLevel  int32  `json:"profit_taker_depth_level,omitempty"`
+	StopLossDepthLevel     int32  `json:"stop_loss_depth_level,omitempty"`
 }
 
 // ReplaceAttachedParams is the raw wire type for attached order (take-profit / stop-loss) parameters on replace.
@@ -345,6 +348,8 @@ type ReplaceAttachedParams struct {
 	ProfitTakerSubmitPrice string `json:"profit_taker_submit_price,omitempty"`
 	StopLossSubmitPrice    string `json:"stop_loss_submit_price,omitempty"`
 	ActivateRTH            string `json:"activate_rth,omitempty"`
+	ProfitTakerDepthLevel  int32  `json:"profit_taker_depth_level,omitempty"`
+	StopLossDepthLevel     int32  `json:"stop_loss_depth_level,omitempty"`
 }
 
 type MarginRatio struct {
