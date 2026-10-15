@@ -3,6 +3,8 @@ package jsontypes
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
+	"strings"
 )
 
 // Execution is execution details
@@ -99,28 +101,28 @@ type MultiLegOrderLeg struct {
 
 // AttachedOrderDetail is the raw wire type for an attached (take-profit / stop-loss) sub-order.
 type AttachedOrderDetail struct {
-	OrderId             string `json:"order_id"`
-	AttachedTypeDisplay string `json:"attached_type_display"`
-	TriggerPrice        string `json:"trigger_price"`
-	Quantity            string `json:"quantity"`
-	ExecutedQty         string `json:"executed_qty"`
-	Status              string `json:"status"`
-	UpdatedAt           string `json:"updated_at"`
-	Withdrawn           bool   `json:"withdrawn"`
-	Gtd                 string `json:"gtd"`
-	TimeInForce         string `json:"time_in_force"`
-	CounterId           string `json:"counter_id"`
-	TriggerStatus       string `json:"trigger_status"`
-	ExecutedAmount      string `json:"executed_amount"`
-	Tag                 string `json:"tag"`
-	SubmittedAt         string `json:"submitted_at"`
-	ExecutedPrice       string `json:"executed_price"`
-	ForceOnlyRth        string `json:"force_only_rth"`
-	Reviewed            bool   `json:"reviewed"`
-	ActivateOrderType   string `json:"activate_order_type"`
-	ActivateRth         string `json:"activate_rth"`
-	SubmitPrice         string `json:"submit_price"`
-	LimitDepthLevel     int32  `json:"limit_depth_level"`
+	OrderId             string    `json:"order_id"`
+	AttachedTypeDisplay string    `json:"attached_type_display"`
+	TriggerPrice        string    `json:"trigger_price"`
+	Quantity            string    `json:"quantity"`
+	ExecutedQty         string    `json:"executed_qty"`
+	Status              string    `json:"status"`
+	UpdatedAt           string    `json:"updated_at"`
+	Withdrawn           bool      `json:"withdrawn"`
+	Gtd                 string    `json:"gtd"`
+	TimeInForce         string    `json:"time_in_force"`
+	CounterId           string    `json:"counter_id"`
+	TriggerStatus       string    `json:"trigger_status"`
+	ExecutedAmount      string    `json:"executed_amount"`
+	Tag                 string    `json:"tag"`
+	SubmittedAt         string    `json:"submitted_at"`
+	ExecutedPrice       string    `json:"executed_price"`
+	ForceOnlyRth        string    `json:"force_only_rth"`
+	Reviewed            bool      `json:"reviewed"`
+	ActivateOrderType   string    `json:"activate_order_type"`
+	ActivateRth         string    `json:"activate_rth"`
+	SubmitPrice         string    `json:"submit_price"`
+	LimitDepthLevel     FlexInt32 `json:"limit_depth_level"`
 }
 
 // AccountBalances has a AccountBalance list
@@ -461,5 +463,24 @@ func (f *FlexString) UnmarshalJSON(data []byte) error {
 	default:
 		*f = ""
 	}
+	return nil
+}
+
+// FlexInt32 is an int32 field that also accepts a numeric string; null or an
+// unparsable value is left as 0, so a server-side type change in a newly added
+// field cannot fail the whole response.
+type FlexInt32 int32
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexInt32) UnmarshalJSON(data []byte) error {
+	var s FlexString
+	if err := s.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(string(s)), 10, 32)
+	if err != nil {
+		v = 0
+	}
+	*f = FlexInt32(v)
 	return nil
 }

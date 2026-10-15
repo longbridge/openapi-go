@@ -59,7 +59,7 @@ func TestAttachedParamsDepthLevel(t *testing.T) {
 
 // TestAttachedOrderLimitDepthLevel verifies attached_orders[].limit_depth_level is read.
 func TestAttachedOrderLimitDepthLevel(t *testing.T) {
-	for raw, want := range map[string]int32{`3`: 3, `0`: 0, `null`: 0} {
+	for raw, want := range map[string]int32{`3`: 3, `0`: 0, `null`: 0, `"4"`: 4, `"abc"`: 0, `-2`: -2} {
 		var wire jsontypes.OrderDetail
 		body := `{"order_id":"1","attached_orders":[{"order_id":"2","limit_depth_level":` + raw + `}]}`
 		if err := json.Unmarshal([]byte(body), &wire); err != nil {
