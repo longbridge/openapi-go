@@ -26,6 +26,21 @@ func TestAttachedParamsDepthLevel(t *testing.T) {
 		t.Errorf("submit attached_params = %v", ap)
 	}
 
+	var zero jsontypes.SubmitOrder
+	if err := util.Copy(&zero, &SubmitOrder{
+		Symbol: "700.HK", OrderType: OrderTypeLO, Side: OrderSideBuy, SubmittedQuantity: 100,
+		SubmittedPrice: decimal.RequireFromString("300"), TimeInForce: TimeTypeDay,
+		AttachedParams: &SubmitAttachedParams{AttachedOrderType: AttachedOrderTypeBracket},
+	}); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	ap = marshalMap(t, zero)["attached_params"].(map[string]interface{})
+	for _, k := range []string{"profit_taker_depth_level", "stop_loss_depth_level"} {
+		if _, ok := ap[k]; ok {
+			t.Errorf("submit %s should be omitted when zero: %v", k, ap)
+		}
+	}
+
 	var replace jsontypes.ReplaceOrder
 	if err := util.Copy(&replace, &ReplaceOrder{
 		OrderId: "1", Quantity: 100,
@@ -57,5 +72,21 @@ func TestAttachedOrderLimitDepthLevel(t *testing.T) {
 		if len(detail.AttachedOrders) != 1 || detail.AttachedOrders[0].LimitDepthLevel != want {
 			t.Errorf("%s: attached orders = %+v", raw, detail.AttachedOrders)
 		}
+	}
+
+	// TodayOrders / HistoryOrders copy a slice of orders, and a response that predates
+	// the field reads as 0.
+	var wire jsontypes.Orders
+	body := `{"orders":[{"order_id":"1","attached_orders":[{"order_id":"2","limit_depth_level":3},{"order_id":"3"}]}]}`
+	if err := json.Unmarshal([]byte(body), &wire); err != nil {
+		t.Fatalf("unmarshal orders: %v", err)
+	}
+	var orders []*Order
+	if err := util.Copy(&orders, wire.Orders); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	if len(orders) != 1 || len(orders[0].AttachedOrders) != 2 ||
+		orders[0].AttachedOrders[0].LimitDepthLevel != 3 || orders[0].AttachedOrders[1].LimitDepthLevel != 0 {
+		t.Errorf("orders = %+v", orders)
 	}
 }

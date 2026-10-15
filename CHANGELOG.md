@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Attached-order depth levels** (ports longbridge/openapi, documented in longbridge/developers#1189) — `SubmitAttachedParams` and `ReplaceAttachedParams` gain `ProfitTakerDepthLevel` / `StopLossDepthLevel` (`int32`, `0` is not sent): the bid/ask depth level used for the take-profit / stop-loss limit order's submitted price, valid when `ActivateOrderType` is `LIT`. `AttachedOrderDetail` gains `LimitDepthLevel` (`0` when not set), returned on the `AttachedOrders` of `TodayOrders` / `HistoryOrders` / `OrderDetail`
+- **Attached-order depth levels** (ports longbridge/openapi#607, documented in longbridge/developers#1189) — `SubmitAttachedParams` and `ReplaceAttachedParams` gain `ProfitTakerDepthLevel` / `StopLossDepthLevel` (`int32`, `0` is not sent): the bid/ask depth level used for the take-profit / stop-loss limit order's submitted price, valid when `ActivateOrderType` is `LIT`. `AttachedOrderDetail` gains `LimitDepthLevel` (`0` when not set), returned on the `AttachedOrders` of `TodayOrders` / `HistoryOrders` / `OrderDetail`
 
 ## [v0.29.1] - 2026-10-14
 
