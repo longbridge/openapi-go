@@ -266,6 +266,7 @@ type AttachedOrderDetail struct {
 	ActivateOrderType   OrderType // Order type to submit after trigger
 	ActivateRTH         OutsideRTH
 	SubmitPrice         *decimal.Decimal // Submit (limit) price for the activated order
+	LimitDepthLevel     int32            // Bid/ask depth level of the limit order submitted price (0 when not set)
 }
 
 type OrderChargeItem struct {

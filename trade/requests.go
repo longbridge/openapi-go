@@ -149,6 +149,12 @@ type SubmitAttachedParams struct {
 	// StopLossSubmitPrice is required when ActivateOrderType is LIT.
 	StopLossSubmitPrice decimal.Decimal
 	ActivateRTH         OutsideRTH // optional, RTH setting for the activated order
+	// ProfitTakerDepthLevel is the bid/ask depth level for the take-profit limit order
+	// submitted price, valid when ActivateOrderType is LIT (optional, 0 is not sent).
+	ProfitTakerDepthLevel int32
+	// StopLossDepthLevel is the bid/ask depth level for the stop-loss limit order
+	// submitted price, valid when ActivateOrderType is LIT (optional, 0 is not sent).
+	StopLossDepthLevel int32
 }
 
 // ReplaceAttachedParams is attached order (take-profit / stop-loss) parameters for ReplaceOrder.
@@ -170,6 +176,12 @@ type ReplaceAttachedParams struct {
 	// StopLossSubmitPrice is required when ActivateOrderType is LIT.
 	StopLossSubmitPrice decimal.Decimal
 	ActivateRTH         OutsideRTH // optional, RTH setting for the activated order
+	// ProfitTakerDepthLevel is the bid/ask depth level for the take-profit limit order
+	// submitted price, valid when ActivateOrderType is LIT (optional, 0 is not sent).
+	ProfitTakerDepthLevel int32
+	// StopLossDepthLevel is the bid/ask depth level for the stop-loss limit order
+	// submitted price, valid when ActivateOrderType is LIT (optional, 0 is not sent).
+	StopLossDepthLevel int32
 }
 
 type GetEstimateMaxPurchaseQuantity struct {
