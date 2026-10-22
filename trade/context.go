@@ -406,12 +406,19 @@ func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRa
 
 // OrderDetail is used for order detail query
 // Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
+//
+// AP accounts only: GET /v1/trade/order returns HTTP 500 for US data-center
+// accounts, so the call returns *http.RegionRestrictedError for US credentials.
+// Use USOrderDetail for US accounts.
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	od, err := tctx.OrderDetail(context.Background(), "1123123123")
 func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/trade/order", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("order_id", orderId)
 	var resp jsontypes.OrderDetail
@@ -426,12 +433,19 @@ func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDe
 // OrderDetailAttached queries detail for an attached (take-profit / stop-loss) sub-order by its
 // own order ID, instead of the parent order's ID.
 // Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
+//
+// AP accounts only: GET /v1/trade/order returns HTTP 500 for US data-center
+// accounts, so the call returns *http.RegionRestrictedError for US credentials.
+// Use USOrderDetail for US accounts.
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	od, err := tctx.OrderDetailAttached(context.Background(), "706388312699592705")
 func (c *TradeContext) OrderDetailAttached(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/trade/order", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("order_id", orderId)
 	values.Add("is_attached", "true")

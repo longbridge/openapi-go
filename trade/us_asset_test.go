@@ -184,4 +184,10 @@ func TestUSAssetRegionRestrictions(t *testing.T) {
 	if _, err := us.MarginRatio(ctx, "AAPL.US"); !errors.As(err, &rre) {
 		t.Errorf("MarginRatio with US token: got %v, want RegionRestrictedError", err)
 	}
+	if _, err := us.OrderDetail(ctx, "1"); !errors.As(err, &rre) {
+		t.Errorf("OrderDetail with US token: got %v, want RegionRestrictedError", err)
+	}
+	if _, err := us.OrderDetailAttached(ctx, "1"); !errors.As(err, &rre) {
+		t.Errorf("OrderDetailAttached with US token: got %v, want RegionRestrictedError", err)
+	}
 }

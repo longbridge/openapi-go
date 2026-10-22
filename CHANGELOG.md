@@ -13,6 +13,7 @@
 ### Changed
 
 - `TradeContext.FundPositions` and `TradeContext.MarginRatio` are AP-only: US data-center accounts have no fund holdings or margin-ratio data, so with US credentials they now return `*http.RegionRestrictedError` instead of an opaque server error. As with the other region guards, OAuth sessions are treated as AP and are not blocked
+- `TradeContext.OrderDetail` and `TradeContext.OrderDetailAttached` are AP-only: `GET /v1/trade/order` returns HTTP 500 for US data-center accounts (the order gateway panics on US orders), so with US credentials they now return `*http.RegionRestrictedError` without sending the request. US accounts should use `USOrderDetail`. As above, OAuth sessions are treated as AP
 
 ### Fixed
 
