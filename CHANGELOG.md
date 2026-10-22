@@ -4,7 +4,7 @@
 
 ### Added
 
-- **US account asset APIs** (ports longbridge/openapi `feat/us-asset-apis`) — four `TradeContext` methods, all US-only (they return `*http.RegionRestrictedError` for non-US credentials without sending a request):
+- **US account asset APIs** (ports longbridge/openapi#613) — four `TradeContext` methods, all US-only (they return `*http.RegionRestrictedError` for non-US credentials without sending a request):
   - `USCashAndBuyPower(ctx, currency)` — `GET /v1/us/assets/cash-and-buy-power`: buying power (`USBuyLimitInfo`), cash per currency (`USCashDetail`) and margin status (`USMarginStatus`)
   - `USAvailableHolding(ctx, *GetUSAvailableHolding)` — `GET /v1/us/assets/available-holding`: quantity of a stock / option / crypto holding available to trade; `EquityType` defaults to `STOCK`, `PositionSide` to `LONG`
   - `USTransactionHistory(ctx, *GetUSTransactionHistory)` — `POST /v1/us/assets/transaction-history`: one page of account transactions between `StartAt` and `EndAt` (both required), with optional `Types` / `Currency` filters; `Page` defaults to 1, `Size` to 20. `CreateAt` / `DoneAt` are read from unix seconds (number or string) as `time.Time`, and `CurrentPage` accepts a number or a numeric string
@@ -13,6 +13,10 @@
 ### Changed
 
 - `TradeContext.FundPositions` and `TradeContext.MarginRatio` are AP-only: US data-center accounts have no fund holdings or margin-ratio data, so with US credentials they now return `*http.RegionRestrictedError` instead of an opaque server error. As with the other region guards, OAuth sessions are treated as AP and are not blocked
+
+### Fixed
+
+- **`QuoteContext.OptionChainInfoByDate` calls `POST /v1/quote/options/strikes`** (ports longbridge/openapi#612) — the `GET /v1/gemini/option/option_chain_list` endpoint it used since v0.28 was renamed on the gateway and returned `404000 api not found` in every region, so the method failed on every call. The same fields are now sent as a JSON body; the signature and `OptionChainContract` are unchanged
 
 ## [v0.29.2] - 2026-10-16
 

@@ -293,11 +293,11 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 
 // OptionChainInfoByDate obtains a list of option contracts by the option chain expiry date.
 //
-// This calls GET /v1/gemini/option/option_chain_list. Every contract is an independent
+// This calls POST /v1/quote/options/strikes. Every contract is an independent
 // entry — calls and puts are not paired — so filter on Direction to separate them.
 //
 // standardOnly filters out the legacy contracts produced by corporate actions (e.g.
-// BABA2261218C10000.US) server-side; when false the parameter is omitted and the endpoint
+// BABA2261218C10000.US) server-side; when false the field is omitted and the endpoint
 // returns everything.
 //
 // Example:
@@ -306,16 +306,19 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 //	date := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
 //	list, err := qctx.OptionChainInfoByDate(context.Background(), "AAPL.US", date, false)
 func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string, expiryDate time.Time, standardOnly bool) (contracts []*OptionChainContract, err error) {
-	values := url.Values{}
-	values.Set("symbol", symbol)
-	values.Set("expiry_date", util.FormatDateSimple(&expiryDate))
-	// `false` and an omitted parameter mean the same thing to the endpoint, so send
-	// nothing rather than standard_only=false.
-	if standardOnly {
-		values.Set("standard_only", "true")
+	// `false` and an omitted field mean the same thing to the endpoint, so send
+	// nothing rather than "standard_only": false.
+	body := struct {
+		Symbol       string `json:"symbol"`
+		ExpiryDate   string `json:"expiry_date"`
+		StandardOnly bool   `json:"standard_only,omitempty"`
+	}{
+		Symbol:       symbol,
+		ExpiryDate:   util.FormatDateSimple(&expiryDate),
+		StandardOnly: standardOnly,
 	}
 	var resp jsontypes.OptionChainContractList
-	if err = c.opts.httpClient.Get(ctx, "/v1/gemini/option/option_chain_list", values, &resp); err != nil {
+	if err = c.opts.httpClient.Post(ctx, "/v1/quote/options/strikes", body, &resp); err != nil {
 		return
 	}
 	contracts = make([]*OptionChainContract, 0, len(resp.List))
