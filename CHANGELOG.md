@@ -7,7 +7,7 @@
 - **US account asset APIs** (ports longbridge/openapi#613) — four `TradeContext` methods, all US-only (they return `*http.RegionRestrictedError` for non-US credentials without sending a request):
   - `USCashAndBuyPower(ctx, currency)` — `GET /v1/us/assets/cash-and-buy-power`: buying power (`USBuyLimitInfo`), cash per currency (`USCashDetail`) and margin status (`USMarginStatus`)
   - `USAvailableHolding(ctx, *GetUSAvailableHolding)` — `GET /v1/us/assets/available-holding`: quantity of a stock / option / crypto holding available to trade; `EquityType` defaults to `STOCK`, `PositionSide` to `LONG`
-  - `USTransactionHistory(ctx, *GetUSTransactionHistory)` — `POST /v1/us/assets/transaction-history`: one page of account transactions between `StartAt` and `EndAt` (both required), with optional `Types` / `Currency` filters; `Page` defaults to 1, `Size` to 20. `CreateAt` / `DoneAt` are read from unix seconds (number or string) as `time.Time`, and `CurrentPage` accepts a number or a numeric string
+  - `USTransactionHistory(ctx, *GetUSTransactionHistory)` — `POST /v1/us/assets/transaction-history`: one page of account transactions between `StartAt` and `EndAt` (both required), with optional `Types` / `Currency` filters; `Page` defaults to 1, `Size` to 20. `Symbol` is the user-facing symbol (e.g. `BTCUSD.BKKT`); `CreateAt` / `DoneAt` are read from unix seconds (number or string) as `time.Time`, and `CurrentPage` accepts a number or a numeric string
   - `USExchangeRates(ctx)` — `GET /v1/us/assets/exchange-rates`: the upstream two-level map is flattened into `USExchangeRates.Exchanges`, sorted by the two upstream map keys, which are kept on each entry as `UniversalKey` / `SpecKey`; rates accept a JSON number or string and are empty when absent
 
 ### Changed
@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- **`USAssetOverview.CryptoList` keeps the holding quantity and prices** — `USCryptoEntry` only kept five of the fields `GET /v1/us/assets/overview` returns for a crypto holding, so it had no `Quantity`; it now mirrors `USStockEntry` (`Quantity`, `Market`, `Name`, `LastDone`, `MarketPrice`, `PrevClose`, `TodayPL`, `PositionSide`, ...). `Symbol` is the bare pair code (e.g. `BTCUSD`); the user-facing symbol is `Symbol + "." + Market` (e.g. `BTCUSD.BKKT`)
 - **`QuoteContext.OptionChainInfoByDate` calls `POST /v1/quote/options/strikes`** (ports longbridge/openapi#612) — the `GET /v1/gemini/option/option_chain_list` endpoint it used since v0.28 was renamed on the gateway and returned `404000 api not found` in every region, so the method failed on every call. The same fields are now sent as a JSON body; the signature and `OptionChainContract` are unchanged
 
 ## [v0.29.2] - 2026-10-16

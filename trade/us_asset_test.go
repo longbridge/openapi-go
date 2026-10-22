@@ -63,7 +63,7 @@ func TestUSTransactionHistoryUnmarshal(t *testing.T) {
 		"current_page": "2",
 		"items": [
 			{"title": "Buy", "amount": "-100", "currency": "USD", "symbol": "AAPL.US", "create_at": "1792600000", "done_at": 1792600060},
-			{"title": "Deposit", "amount": "500", "currency": "USD", "counter_id": "ST/US/AAPL", "done_at": "0", "remark": null}
+			{"title": "Deposit", "amount": "500", "currency": "", "symbol": "BTCUSD.BKKT", "counter_id": "VA/BKKT/BTCUSD", "done_at": "0", "remark": null}
 		]
 	}`
 	var resp USTransactionHistory
@@ -76,8 +76,55 @@ func TestUSTransactionHistoryUnmarshal(t *testing.T) {
 	if resp.Items[0].Symbol != "AAPL.US" || resp.Items[0].CreateAt.Unix() != 1792600000 || resp.Items[0].DoneAt.Unix() != 1792600060 {
 		t.Errorf("item 0 = %+v", resp.Items[0])
 	}
-	if resp.Items[1].Symbol != "ST/US/AAPL" || !resp.Items[1].DoneAt.IsZero() {
+	if resp.Items[1].Symbol != "BTCUSD.BKKT" || !resp.Items[1].DoneAt.IsZero() {
 		t.Errorf("item 1 = %+v", resp.Items[1])
+	}
+}
+
+// TestUSAssetProdShapes decodes the field names, JSON types and map keys that
+// US prod returns.
+func TestUSAssetProdShapes(t *testing.T) {
+	var hist USTransactionHistory
+	if err := json.Unmarshal([]byte(`{"current_page": 1, "items": [{
+		"amount": "0.5", "biz_code": "LVAVNSCR", "counter_id": "VA/BKKT/BTCUSD",
+		"create_at": "1791478565", "currency": "", "done_at": "1791478565",
+		"equity_type": "CRYPTO", "market": "BKKT", "position_side": "LONG",
+		"quantity": "0.5", "symbol": "BTCUSD.BKKT", "title": "Cryptocurrency Deposit: BTCUSD"
+	}]}`), &hist); err != nil {
+		t.Fatalf("unmarshal transaction history: %v", err)
+	}
+	if hist.CurrentPage != 1 || hist.Items[0].Symbol != "BTCUSD.BKKT" || hist.Items[0].DoneAt.Unix() != 1791478565 {
+		t.Errorf("transaction history = %+v", hist)
+	}
+
+	var raw usRawExchangeRates
+	if err := json.Unmarshal([]byte(`{"universal_exchanges": {"us_lb_apex": {"spec_exchanges": {
+		"reference": {"exchanges": [{"average_rate": 1, "base_currency": "USD", "bid_rate": 1, "offer_rate": 1, "other_currency": "USD"}]},
+		"am": {"exchanges": [{"average_rate": 1, "base_currency": "USD", "bid_rate": 1, "offer_rate": 1, "other_currency": "USD"}]}
+	}}}}`), &raw); err != nil {
+		t.Fatalf("unmarshal exchange rates: %v", err)
+	}
+	rates := raw.flatten().Exchanges
+	if len(rates) != 2 || rates[0].UniversalKey != "us_lb_apex" || rates[0].SpecKey != "am" || rates[1].SpecKey != "reference" || rates[0].AverageRate != "1" {
+		t.Errorf("exchange rates = %+v", rates)
+	}
+
+	var overview usRawAssetOverview
+	if err := json.Unmarshal([]byte(`{"account_type": "1", "asset_timestamp": "1792661597",
+		"stock_list": [{"symbol": "MULL", "full_symbol": "MULL.US", "counter_id": "ETF/US/MULL", "quantity": "10"}],
+		"crypto_list": [{"asset_type": "CRYPTO", "average_cost": "", "counter_id": "VA/BKKT/ETHUSD",
+			"currency": "USD", "last_done": "2500", "market": "BKKT", "market_price": "2500",
+			"name": "Ethereum", "open_position_time": "0", "position_side": "LONG",
+			"quantity": "0.1", "symbol": "ETHUSD", "today_pl": "", "trade_status": "105"}],
+		"option_list": [], "multi_leg": {"holdings": []}}`), &overview); err != nil {
+		t.Fatalf("unmarshal asset overview: %v", err)
+	}
+	if overview.StockList[0].FullSymbol != "MULL.US" {
+		t.Errorf("stock entry = %+v", overview.StockList[0])
+	}
+	c := overview.CryptoList[0]
+	if c.Symbol != "ETHUSD" || c.Market != "BKKT" || c.Quantity != "0.1" || c.Name != "Ethereum" || c.MarketPrice != "2500" {
+		t.Errorf("crypto entry = %+v", c)
 	}
 }
 

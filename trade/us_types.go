@@ -395,12 +395,33 @@ type USCashEntry struct {
 
 // USCryptoEntry is one cryptocurrency holding in USAssetOverview.
 type USCryptoEntry struct {
-	AssetType   string `json:"asset_type"`
+	AssetType string `json:"asset_type"`
+	// Symbol is the bare trading-pair code (e.g. "BTCUSD"); the user-facing
+	// symbol is Symbol + "." + Market (e.g. "BTCUSD.BKKT").
+	Symbol   string `json:"symbol"`
+	Quantity string `json:"quantity"`
+	Currency string `json:"currency"`
+	// AverageCost is empty when the server has none.
 	AverageCost string `json:"average_cost"`
-	// Symbol is the user-facing trading-pair symbol (e.g. "BTCUSD.BKKT").
-	Symbol       string `json:"symbol"`
-	Currency     string `json:"currency"`
-	IndustryName string `json:"industry_name"`
+	// Market is the market code (e.g. "BKKT").
+	Market                     string `json:"market"`
+	TradeStatus                string `json:"trade_status"`
+	PrevClose                  string `json:"prev_close"`
+	LastDone                   string `json:"last_done"`
+	MarketPrice                string `json:"market_price"`
+	PretradeClose              string `json:"pretrade_close"`
+	StockInvestOfToday         string `json:"stock_invest_of_today"`
+	TodayPL                    string `json:"today_pl"`
+	PretradeStockInvestOfToday string `json:"pretrade_stock_invest_of_today"`
+	PretradeTodayPL            string `json:"pretrade_today_pl"`
+	NightLastDone              string `json:"night_last_done"`
+	NightPrevClose             string `json:"night_prev_close"`
+	PositionSide               string `json:"position_side"`
+	// OpenPositionTime is a unix-second string; "0" when unknown.
+	OpenPositionTime  string `json:"open_position_time"`
+	Name              string `json:"name"`
+	IndustryCounterID string `json:"industry_counter_id"`
+	IndustryName      string `json:"industry_name"`
 }
 
 // usRawAssetOverview is the raw API shape before field conversion.

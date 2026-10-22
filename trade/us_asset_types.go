@@ -103,7 +103,8 @@ type USTransaction struct {
 	// Amount is negative for outflows.
 	Amount   string `json:"amount"`
 	Currency string `json:"currency"`
-	// Symbol is the related security symbol, if any (e.g. "AAPL.US").
+	// Symbol is the related security's user-facing symbol, if any (e.g.
+	// "AAPL.US" or "BTCUSD.BKKT").
 	Symbol              string `json:"symbol"`
 	Market              string `json:"market"`
 	EquityType          string `json:"equity_type"`
@@ -118,23 +119,18 @@ type USTransaction struct {
 	DoneAt time.Time `json:"done_at"`
 }
 
-// UnmarshalJSON reads create_at / done_at as unix seconds (number or string)
-// and accepts the symbol under either `symbol` or `counter_id`.
+// UnmarshalJSON reads create_at / done_at as unix seconds (number or string).
 func (t *USTransaction) UnmarshalJSON(data []byte) error {
 	type plain USTransaction
 	var raw struct {
 		plain
-		CounterID string        `json:"counter_id"`
-		CreateAt  unixTimestamp `json:"create_at"`
-		DoneAt    unixTimestamp `json:"done_at"`
+		CreateAt unixTimestamp `json:"create_at"`
+		DoneAt   unixTimestamp `json:"done_at"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	*t = USTransaction(raw.plain)
-	if t.Symbol == "" {
-		t.Symbol = raw.CounterID
-	}
 	t.CreateAt = raw.CreateAt.Time()
 	t.DoneAt = raw.DoneAt.Time()
 	return nil
