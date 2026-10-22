@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- **`QuoteContext.OptionChainInfoByDate` calls `POST /v1/quote/options/strikes`** (ports longbridge/openapi `fix/option-chain-strikes-route`) — the `GET /v1/gemini/option/option_chain_list` endpoint it used since v0.28 was renamed on the gateway and returned `404000 api not found` in every region, so the method failed on every call. The same fields are now sent as a JSON body; the signature and `OptionChainContract` are unchanged
+- **`QuoteContext.OptionChainInfoByDate` calls `POST /v1/quote/options/strikes`** (ports longbridge/openapi#612) — the `GET /v1/gemini/option/option_chain_list` endpoint it used since v0.28 was renamed on the gateway and returned `404000 api not found` in every region, so the method failed on every call. The same fields are now sent as a JSON body; the signature and `OptionChainContract` are unchanged
 
 ## [v0.29.2] - 2026-10-16
 
