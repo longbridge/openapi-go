@@ -165,9 +165,11 @@ func (h *USTransactionHistory) UnmarshalJSON(data []byte) error {
 
 // USExchangeRate is one exchange rate in USExchangeRates.
 type USExchangeRate struct {
-	// UniversalKey is the outer upstream map key (`universal_exchanges` key).
+	// UniversalKey is the account channel the rates apply to, e.g. "us_lb_apex"
+	// (outer `universal_exchanges` key).
 	UniversalKey string `json:"universal_key"`
-	// SpecKey is the inner upstream map key (`spec_exchanges` key).
+	// SpecKey is the rate type, e.g. "am" or "reference" (inner
+	// `spec_exchanges` key).
 	SpecKey       string `json:"spec_key"`
 	BaseCurrency  string `json:"base_currency"`
 	OtherCurrency string `json:"other_currency"`
