@@ -333,12 +333,19 @@ func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashf
 
 // FundPositions to obtain fund position information including account, fund code, holding share, cost net worth, current net worth, and currency.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/fund
+//
+// AP accounts only: US data-center accounts have no fund holdings, and the
+// call returns *http.RegionRestrictedError for US credentials.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	channels, err := tctx.FundPositions(context.Background, []string{"AAPL.US", "700.HK"})
 func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fundPositionChannels []*FundPositionChannel, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/asset/fund", "AP"); err != nil {
+		return
+	}
 	params := &GetFundPositions{
 		Symbols: symbols,
 	}
@@ -373,12 +380,19 @@ func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (st
 
 // MarginRatio is used to obtain the initial margin ratio, maintain the margin ratio and strengthen the margin ratio of stocks.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/margin_ratio
+//
+// AP accounts only: US data-center accounts have no margin-ratio data, and the
+// call returns *http.RegionRestrictedError for US credentials.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	mr, err := tctx.MarginRatio(context.Background(), "AAPL.US")
 func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRatio MarginRatio, err error) {
+	if err = c.opts.httpClient.CheckRegion("/v1/risk/margin-ratio", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("symbol", symbol)
 	var resp jsontypes.MarginRatio
