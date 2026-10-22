@@ -210,3 +210,114 @@ func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (
 	}
 	return &resp, nil
 }
+
+// USCashAndBuyPower returns cash, buying power and margin status for the US
+// account. currency is optional (e.g. "USD"); empty uses the server default.
+//
+// Path: GET /v1/us/assets/cash-and-buy-power
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
+func (c *TradeContext) USCashAndBuyPower(ctx context.Context, currency string) (*USCashAndBuyPower, error) {
+	const path = "/v1/us/assets/cash-and-buy-power"
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	if currency != "" {
+		q.Set("currency", currency)
+	}
+	var resp USCashAndBuyPower
+	if err := c.opts.httpClient.Get(ctx, path, q, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// USAvailableHolding returns the quantity of a US holding that is available to
+// trade. EquityType defaults to "STOCK" and PositionSide to "LONG".
+//
+// Path: GET /v1/us/assets/available-holding
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
+func (c *TradeContext) USAvailableHolding(ctx context.Context, req *GetUSAvailableHolding) (*USAvailableHolding, error) {
+	const path = "/v1/us/assets/available-holding"
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+		return nil, err
+	}
+	if req == nil || req.Symbol == "" {
+		return nil, fmt.Errorf("trade: USAvailableHolding requires a symbol")
+	}
+	equityType := req.EquityType
+	if equityType == "" {
+		equityType = "STOCK"
+	}
+	positionSide := req.PositionSide
+	if positionSide == "" {
+		positionSide = "LONG"
+	}
+	q := url.Values{}
+	q.Set("symbol", req.Symbol)
+	q.Set("equity_type", equityType)
+	q.Set("position_side", positionSide)
+	var resp USAvailableHolding
+	if err := c.opts.httpClient.Get(ctx, path, q, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// USTransactionHistory returns one page of the US account transaction history
+// (deposits, withdrawals, trades, corporate actions, transfers and so on).
+// Page defaults to 1 and Size to 20.
+//
+// Path: POST /v1/us/assets/transaction-history
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
+func (c *TradeContext) USTransactionHistory(ctx context.Context, req *GetUSTransactionHistory) (*USTransactionHistory, error) {
+	const path = "/v1/us/assets/transaction-history"
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+		return nil, err
+	}
+	if req == nil || req.StartAt.IsZero() || req.EndAt.IsZero() {
+		return nil, fmt.Errorf("trade: USTransactionHistory requires StartAt and EndAt")
+	}
+	body := map[string]interface{}{
+		"start": req.StartAt.Unix(),
+		"end":   req.EndAt.Unix(),
+		"page":  defaultInt32(req.Page, 1),
+		"size":  defaultInt32(req.Size, 20),
+	}
+	if len(req.Types) > 0 {
+		body["types"] = req.Types
+	}
+	if req.Currency != "" {
+		body["currency"] = req.Currency
+	}
+	var resp USTransactionHistory
+	if err := c.opts.httpClient.Post(ctx, path, body, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// USExchangeRates returns the exchange rates used by the US account. The
+// upstream two-level map is flattened into USExchangeRates.Exchanges; each entry
+// keeps the two upstream map keys as UniversalKey and SpecKey.
+//
+// Path: GET /v1/us/assets/exchange-rates
+// US token required; returns *http.RegionRestrictedError for non-US credentials.
+func (c *TradeContext) USExchangeRates(ctx context.Context) (*USExchangeRates, error) {
+	const path = "/v1/us/assets/exchange-rates"
+	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+		return nil, err
+	}
+	var raw usRawExchangeRates
+	if err := c.opts.httpClient.Get(ctx, path, nil, &raw); err != nil {
+		return nil, err
+	}
+	return raw.flatten(), nil
+}
+
+func defaultInt32(v, def int32) int32 {
+	if v > 0 {
+		return v
+	}
+	return def
+}

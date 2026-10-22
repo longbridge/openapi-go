@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **US account asset APIs** (ports longbridge/openapi `feat/us-asset-apis`) — four `TradeContext` methods, all US-only (they return `*http.RegionRestrictedError` for non-US credentials without sending a request):
+  - `USCashAndBuyPower(ctx, currency)` — `GET /v1/us/assets/cash-and-buy-power`: buying power (`USBuyLimitInfo`), cash per currency (`USCashDetail`) and margin status (`USMarginStatus`)
+  - `USAvailableHolding(ctx, *GetUSAvailableHolding)` — `GET /v1/us/assets/available-holding`: quantity of a stock / option / crypto holding available to trade; `EquityType` defaults to `STOCK`, `PositionSide` to `LONG`
+  - `USTransactionHistory(ctx, *GetUSTransactionHistory)` — `POST /v1/us/assets/transaction-history`: one page of account transactions between `StartAt` and `EndAt` (both required), with optional `Types` / `Currency` filters; `Page` defaults to 1, `Size` to 20. `CreateAt` / `DoneAt` are read from unix seconds (number or string) as `time.Time`, and `CurrentPage` accepts a number or a numeric string
+  - `USExchangeRates(ctx)` — `GET /v1/us/assets/exchange-rates`: the upstream two-level map is flattened into `USExchangeRates.Exchanges`, sorted by the two upstream map keys, which are kept on each entry as `UniversalKey` / `SpecKey`; rates accept a JSON number or string and are empty when absent
+
+### Changed
+
+- `TradeContext.FundPositions` and `TradeContext.MarginRatio` are AP-only: US data-center accounts have no fund holdings or margin-ratio data, so with US credentials they now return `*http.RegionRestrictedError` instead of an opaque server error. As with the other region guards, OAuth sessions are treated as AP and are not blocked
+
 ## [v0.29.2] - 2026-10-16
 
 ### Added
