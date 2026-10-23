@@ -9,6 +9,7 @@
   - `USAvailableHolding(ctx, *GetUSAvailableHolding)` — `GET /v1/us/assets/available-holding`: quantity of a stock / option / crypto holding available to trade; `EquityType` defaults to `STOCK`, `PositionSide` to `LONG`
   - `USTransactionHistory(ctx, *GetUSTransactionHistory)` — `POST /v1/us/assets/transaction-history`: one page of account transactions between `StartAt` and `EndAt` (both required), with optional `Types` / `Currency` filters; `Page` defaults to 1, `Size` to 20. `Symbol` is the user-facing symbol (e.g. `BTCUSD.BKKT`); `CreateAt` / `DoneAt` are read from unix seconds (number or string) as `time.Time`, and `CurrentPage` accepts a number or a numeric string
   - `USExchangeRates(ctx)` — `GET /v1/us/assets/exchange-rates`: the upstream two-level map is flattened into `USExchangeRates.Exchanges`, sorted by the two upstream map keys, which are kept on each entry as `UniversalKey` / `SpecKey`; rates accept a JSON number or string and are empty when absent
+- `OrderSideUnknown` (`""`) — the `OrderSide` value of `Execution.Side` when the response omits `side`, as `GET /v1/trade/execution/history` does for Longbridge US accounts
 
 ### Changed
 
