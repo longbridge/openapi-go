@@ -120,9 +120,11 @@ func apOnlyAlternative(path string) string {
 	case "/v1/asset/stock":
 		return "use the US endpoint GET /v1/us/assets/overview (TradeContext US methods)"
 	case "/v1/asset/exchange_rates":
-		return "the US equivalent is on TradeContext (GET /v1/us/assets/exchange-rates)"
+		return "use the US endpoint GET /v1/us/assets/exchange-rates (TradeContext US methods)"
 	case "/v1/trade/order":
 		return "use the US endpoint GET /v1/us/orders/{order_id} (TradeContext US methods)"
+	case "/v3/trade/execution/all":
+		return "use GET /v1/trade/execution/history"
 	case "/v1/risk/margin-ratio":
 		return "there is no US equivalent; account-level margin is at GET /v1/us/assets/cash-and-buy-power (margin_status)"
 	case "/v1/asset/fund", "quote/brokers", "/v1/quote/operatings":
@@ -149,6 +151,16 @@ func usOnlyAlternative(path string) string {
 		return "use the AP endpoint GET /v1/asset/account"
 	case "/v1/us/assets/available-holding":
 		return "use the AP endpoint GET /v1/asset/stock (available_quantity)"
+	case "/v1/us/stock-info/company-overview":
+		return "use the AP endpoint GET /v1/quote/comp-overview"
+	case "/v1/us/stock-info/valuation-overview":
+		return "use the AP endpoint GET /v1/quote/valuation"
+	case "/v1/us/stock-info/finn-overview", "/v1/us/quote/financials/statements", "/v1/us/stock-info/fin-keyfactor":
+		return "use the AP endpoint GET /v1/quote/financial-reports"
+	case "/v1/us/stock-info/fin-consensus":
+		return "use the AP endpoint GET /v1/quote/financial-consensus-detail"
+	case "/v1/us/stock-info/etf-dividend-info", "/v1/us/stock-info/company-dividends":
+		return "use the AP endpoint GET /v1/quote/dividends"
 	}
 	switch {
 	case strings.HasPrefix(path, "/v1/us/orders/"):

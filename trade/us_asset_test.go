@@ -199,4 +199,9 @@ func TestUSAssetRegionRestrictions(t *testing.T) {
 	if _, err := us.StockPositions(ctx, nil); !errors.As(err, &rre) {
 		t.Errorf("StockPositions with US token: got %v, want RegionRestrictedError", err)
 	}
+	if _, err := us.AllExecutions(ctx, &GetAllExecutions{}); !errors.As(err, &rre) {
+		t.Errorf("AllExecutions with US token: got %v, want RegionRestrictedError", err)
+	} else if rre.Path != "/v3/trade/execution/all" {
+		t.Errorf("AllExecutions restricted path = %q, want /v3/trade/execution/all", rre.Path)
+	}
 }

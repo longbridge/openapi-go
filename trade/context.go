@@ -133,7 +133,15 @@ func (c *TradeContext) TodayExecutions(ctx context.Context, params *GetTodayExec
 
 // AllExecutions will return all executions
 // Reference: https://open.longbridge.com/en/docs/trade/execution/all_executions
+//
+// AP accounts only: US data-center accounts get HTTP 500 (code 12) from
+// GET /v3/trade/execution/all, so the call returns *http.RegionRestrictedError
+// for US sessions without sending the request. US accounts should use
+// HistoryExecutions instead.
 func (c *TradeContext) AllExecutions(ctx context.Context, params *GetAllExecutions) (resp *AllExecutionsResponse, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v3/trade/execution/all", "AP"); err != nil {
+		return
+	}
 	jsonResp := &jsontypes.AllExecutionsResponse{}
 	err = c.opts.httpClient.Get(ctx, "/v3/trade/execution/all", params.Values(), jsonResp)
 	if err != nil {
