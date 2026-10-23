@@ -190,4 +190,13 @@ func TestUSAssetRegionRestrictions(t *testing.T) {
 	if _, err := us.OrderDetailAttached(ctx, "1"); !errors.As(err, &rre) {
 		t.Errorf("OrderDetailAttached with US token: got %v, want RegionRestrictedError", err)
 	}
+	if _, err := us.AccountBalance(ctx, &GetAccountBalance{}); !errors.As(err, &rre) {
+		t.Errorf("AccountBalance with US token: got %v, want RegionRestrictedError", err)
+	}
+	if _, err := us.CashFlow(ctx, &GetCashFlow{StartAt: 1, EndAt: 2}); !errors.As(err, &rre) {
+		t.Errorf("CashFlow with US token: got %v, want RegionRestrictedError", err)
+	}
+	if _, err := us.StockPositions(ctx, nil); !errors.As(err, &rre) {
+		t.Errorf("StockPositions with US token: got %v, want RegionRestrictedError", err)
+	}
 }

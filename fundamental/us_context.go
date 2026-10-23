@@ -11,7 +11,7 @@ import (
 // Path: GET /v1/us/stock-info/company-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string) (*USCompanyOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/company-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -28,7 +28,7 @@ func (c *FundamentalContext) CompanyOverview(ctx context.Context, symbol string)
 // Path: GET /v1/us/stock-info/valuation-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol string) (*ValuationOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/valuation-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/valuation-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -48,7 +48,7 @@ func (c *FundamentalContext) ValuationOverview(ctx context.Context, symbol strin
 // Path: GET /v1/us/stock-info/finn-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, report string) (*FinancialOverview, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/finn-overview", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/finn-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -71,7 +71,7 @@ func (c *FundamentalContext) FinancialOverview(ctx context.Context, symbol, repo
 // Path: GET /v1/us/quote/financials/statements
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kind, report string) (*FinancialStatement, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/quote/financials/statements", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/quote/financials/statements", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -93,7 +93,7 @@ func (c *FundamentalContext) FinancialStatement(ctx context.Context, symbol, kin
 // Path: GET /v1/us/stock-info/fin-keyfactor
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, report string) (*KeyFinancialMetrics, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-keyfactor", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/fin-keyfactor", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -114,7 +114,7 @@ func (c *FundamentalContext) KeyFinancialMetrics(ctx context.Context, symbol, re
 // Path: GET /v1/us/stock-info/fin-consensus
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, report string) (*AnalystConsensus, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/fin-consensus", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/fin-consensus", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -132,7 +132,7 @@ func (c *FundamentalContext) AnalystConsensus(ctx context.Context, symbol, repor
 // Path: GET /v1/us/stock-info/etf-dividend-info
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string) (*ETFDividendInfo, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-dividend-info", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/etf-dividend-info", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -149,7 +149,7 @@ func (c *FundamentalContext) ETFDividendInfo(ctx context.Context, symbol string)
 // Path: GET /v1/us/stock-info/company-dividends
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string) (*USCompanyDividends, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/company-dividends", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/company-dividends", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -168,7 +168,7 @@ func (c *FundamentalContext) CompanyDividends(ctx context.Context, symbol string
 // Path: GET /v1/us/stock-info/etf-files
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *FundamentalContext) ETFFiles(ctx context.Context, symbol string, size *int32) (*ETFFilesResponse, error) {
-	if err := c.httpClient.CheckRegion("/v1/us/stock-info/etf-files", "US"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/us/stock-info/etf-files", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}

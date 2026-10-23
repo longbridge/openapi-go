@@ -13,8 +13,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/longbridge/openapi-go/config"
-	"github.com/longbridge/openapi-go/portfolio/jsontypes"
 	httplib "github.com/longbridge/openapi-go/http"
+	"github.com/longbridge/openapi-go/portfolio/jsontypes"
 )
 
 // PortfolioContext is a client for the Longbridge Portfolio Analytics API.
@@ -49,7 +49,15 @@ func NewFromEnv() (*PortfolioContext, error) {
 // ExchangeRate returns the current exchange rates for supported currencies.
 //
 // Path: GET /v1/asset/exchange_rates
+//
+// AP accounts only: US data-center accounts get an error (code 12) from this
+// endpoint, so the call returns *http.RegionRestrictedError for US sessions
+// without sending the request. US accounts should use
+// trade.TradeContext.USExchangeRates.
 func (c *PortfolioContext) ExchangeRate(ctx context.Context) (*ExchangeRates, error) {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/asset/exchange_rates", "AP"); err != nil {
+		return nil, err
+	}
 	var resp jsontypes.ExchangeRates
 	if err := c.httpClient.Get(ctx, "/v1/asset/exchange_rates", url.Values{}, &resp); err != nil {
 		return nil, err

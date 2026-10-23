@@ -72,7 +72,7 @@ func convertUSOrder(o usRawOrder) USOrder {
 // Path: POST /v1/us/orders/query
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrders) (*QueryUSOrdersResponse, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/us/orders/query", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, "/v1/us/orders/query", "US"); err != nil {
 		return nil, err
 	}
 	if req == nil {
@@ -142,7 +142,7 @@ func (c *TradeContext) QueryUSOrders(ctx context.Context, req *GetUSHistoryOrder
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOrderDetailResponse, error) {
 	path := fmt.Sprintf("/v1/us/orders/%s", orderID)
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, path, "US"); err != nil {
 		return nil, err
 	}
 	var out USOrderDetailResponse
@@ -160,7 +160,7 @@ func (c *TradeContext) USOrderDetail(ctx context.Context, orderID string) (*USOr
 // Path: GET /v1/us/assets/overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/overview", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, "/v1/us/assets/overview", "US"); err != nil {
 		return nil, err
 	}
 	var raw usRawAssetOverview
@@ -190,7 +190,7 @@ func (c *TradeContext) USAssetOverview(ctx context.Context) (*USAssetOverview, e
 // Path: GET /v1/us/assets/pl/realized
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (*USRealizedPLResponse, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/us/assets/pl/realized", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, "/v1/us/assets/pl/realized", "US"); err != nil {
 		return nil, err
 	}
 	if req == nil {
@@ -218,7 +218,7 @@ func (c *TradeContext) USRealizedPL(ctx context.Context, req *GetUSRealizedPL) (
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USCashAndBuyPower(ctx context.Context, currency string) (*USCashAndBuyPower, error) {
 	const path = "/v1/us/assets/cash-and-buy-power"
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, path, "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
@@ -239,7 +239,7 @@ func (c *TradeContext) USCashAndBuyPower(ctx context.Context, currency string) (
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USAvailableHolding(ctx context.Context, req *GetUSAvailableHolding) (*USAvailableHolding, error) {
 	const path = "/v1/us/assets/available-holding"
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, path, "US"); err != nil {
 		return nil, err
 	}
 	if req == nil || req.Symbol == "" {
@@ -272,7 +272,7 @@ func (c *TradeContext) USAvailableHolding(ctx context.Context, req *GetUSAvailab
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USTransactionHistory(ctx context.Context, req *GetUSTransactionHistory) (*USTransactionHistory, error) {
 	const path = "/v1/us/assets/transaction-history"
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, path, "US"); err != nil {
 		return nil, err
 	}
 	if req == nil || req.StartAt.IsZero() || req.EndAt.IsZero() {
@@ -305,7 +305,7 @@ func (c *TradeContext) USTransactionHistory(ctx context.Context, req *GetUSTrans
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *TradeContext) USExchangeRates(ctx context.Context) (*USExchangeRates, error) {
 	const path = "/v1/us/assets/exchange-rates"
-	if err := c.opts.httpClient.CheckRegion(path, "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, path, "US"); err != nil {
 		return nil, err
 	}
 	var raw usRawExchangeRates

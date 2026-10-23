@@ -462,7 +462,7 @@ func (c *FundamentalContext) Operating(
 	symbol string,
 ) (*OperatingList, error) {
 	// Operating reports are served only by the AP data center.
-	if err := c.httpClient.CheckRegion("/v1/quote/operatings", "AP"); err != nil {
+	if err := c.httpClient.CheckRegionCtx(ctx, "/v1/quote/operatings", "AP"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}
