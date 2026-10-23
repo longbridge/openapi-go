@@ -133,7 +133,15 @@ func (c *TradeContext) TodayExecutions(ctx context.Context, params *GetTodayExec
 
 // AllExecutions will return all executions
 // Reference: https://open.longbridge.com/en/docs/trade/execution/all_executions
+//
+// AP accounts only: US data-center accounts get HTTP 500 (code 12) from
+// GET /v3/trade/execution/all, so the call returns *http.RegionRestrictedError
+// for US sessions without sending the request. US accounts should use
+// HistoryExecutions instead.
 func (c *TradeContext) AllExecutions(ctx context.Context, params *GetAllExecutions) (resp *AllExecutionsResponse, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v3/trade/execution/all", "AP"); err != nil {
+		return
+	}
 	jsonResp := &jsontypes.AllExecutionsResponse{}
 	err = c.opts.httpClient.Get(ctx, "/v3/trade/execution/all", params.Values(), jsonResp)
 	if err != nil {
@@ -293,12 +301,21 @@ func (c *TradeContext) CancelOrderAttached(ctx context.Context, orderId string) 
 
 // AccountBalance to obtain the available, desirable, frozen, to-be-settled, and in-transit funds (fund purchase and redemption) information for each currency of the user.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/account
+//
+// AP accounts only: US data-center accounts get an error (code 12) from
+// GET /v1/asset/account, so the call returns *http.RegionRestrictedError for
+// US sessions without sending the request. US accounts should use
+// USCashAndBuyPower (cash and buying power) or USAssetOverview.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	ab, err := trade.AccountBalance(context.Background(), &trade.GetAccountBalance{Currency: trade.CurrencyHKD})
 func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBalance) (accounts []*AccountBalance, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/asset/account", "AP"); err != nil {
+		return
+	}
 	var resp jsontypes.AccountBalances
 	err = c.opts.httpClient.Get(ctx, "/v1/asset/account", params.Values(), &resp)
 	if err != nil {
@@ -310,6 +327,12 @@ func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBal
 
 // CashFlow to obtain capital inflow/outflow direction, capital type, capital amount, occurrence time, associated stock code and capital flow description information.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/cashflow
+//
+// AP accounts only: US data-center accounts get an error (code 12) from
+// GET /v1/asset/cashflow, so the call returns *http.RegionRestrictedError for
+// US sessions without sending the request. US accounts should use
+// USTransactionHistory.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
@@ -322,6 +345,9 @@ func (c *TradeContext) AccountBalance(ctx context.Context, params *GetAccountBal
 //	  BussinessType: trade.BalanceTypeCash,
 //	})
 func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashflows []*CashFlow, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/asset/cashflow", "AP"); err != nil {
+		return
+	}
 	var resp jsontypes.CashFlows
 	err = c.opts.httpClient.Get(ctx, "/v1/asset/cashflow", params.Values(), &resp)
 	if err != nil {
@@ -333,12 +359,19 @@ func (c *TradeContext) CashFlow(ctx context.Context, params *GetCashFlow) (cashf
 
 // FundPositions to obtain fund position information including account, fund code, holding share, cost net worth, current net worth, and currency.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/fund
+//
+// AP accounts only: US data-center accounts have no fund holdings, and the
+// call returns *http.RegionRestrictedError for US sessions. No US equivalent.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	channels, err := tctx.FundPositions(context.Background, []string{"AAPL.US", "700.HK"})
 func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fundPositionChannels []*FundPositionChannel, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/asset/fund", "AP"); err != nil {
+		return
+	}
 	params := &GetFundPositions{
 		Symbols: symbols,
 	}
@@ -353,12 +386,21 @@ func (c *TradeContext) FundPositions(ctx context.Context, symbols []string) (fun
 
 // StockPositions to obtain stock position information including account, stock code, number of shares held, number of available shares, average position price (calculated according to account settings), and currency.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/stock
+//
+// AP accounts only: US data-center accounts get an error (code 12) from
+// GET /v1/asset/stock, so the call returns *http.RegionRestrictedError for
+// US sessions without sending the request. US accounts should use
+// USAssetOverview (its StockList holds the stock positions).
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	channels, err := tctx.StockPositions(context.Background(), []string{"AAPL.US"})
 func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (stockPositionChannels []*StockPositionChannel, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/asset/stock", "AP"); err != nil {
+		return
+	}
 	params := &GetStockPositions{
 		Symbols: symbols,
 	}
@@ -373,12 +415,20 @@ func (c *TradeContext) StockPositions(ctx context.Context, symbols []string) (st
 
 // MarginRatio is used to obtain the initial margin ratio, maintain the margin ratio and strengthen the margin ratio of stocks.
 // Reference: https://open.longbridge.com/en/docs/trade/asset/margin_ratio
+//
+// AP accounts only: US data-center accounts have no margin-ratio data, and the
+// call returns *http.RegionRestrictedError for US sessions. No US equivalent;
+// see USCashAndBuyPower's MarginStatus for the US margin account status.
+//
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	mr, err := tctx.MarginRatio(context.Background(), "AAPL.US")
 func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRatio MarginRatio, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/risk/margin-ratio", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("symbol", symbol)
 	var resp jsontypes.MarginRatio
@@ -392,12 +442,19 @@ func (c *TradeContext) MarginRatio(ctx context.Context, symbol string) (marginRa
 
 // OrderDetail is used for order detail query
 // Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
+//
+// AP accounts only: GET /v1/trade/order returns HTTP 500 for US data-center
+// accounts, so the call returns *http.RegionRestrictedError for US credentials.
+// Use USOrderDetail for US accounts.
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	od, err := tctx.OrderDetail(context.Background(), "1123123123")
 func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/trade/order", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("order_id", orderId)
 	var resp jsontypes.OrderDetail
@@ -412,12 +469,19 @@ func (c *TradeContext) OrderDetail(ctx context.Context, orderId string) (orderDe
 // OrderDetailAttached queries detail for an attached (take-profit / stop-loss) sub-order by its
 // own order ID, instead of the parent order's ID.
 // Reference: https://open.longbridge.com/en/docs/trade/order/order_detail
+//
+// AP accounts only: GET /v1/trade/order returns HTTP 500 for US data-center
+// accounts, so the call returns *http.RegionRestrictedError for US credentials.
+// Use USOrderDetail for US accounts.
 // Example:
 //
 //	conf, err := config.NewFromEnv()
 //	tctx, err := trade.NewFromCfg(conf)
 //	od, err := tctx.OrderDetailAttached(context.Background(), "706388312699592705")
 func (c *TradeContext) OrderDetailAttached(ctx context.Context, orderId string) (orderDetail OrderDetail, err error) {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "/v1/trade/order", "AP"); err != nil {
+		return
+	}
 	values := url.Values{}
 	values.Add("order_id", orderId)
 	values.Add("is_attached", "true")

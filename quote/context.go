@@ -167,7 +167,7 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
 	// The broker queue is served only by the AP data center, over either
 	// transport.
-	if err = c.opts.httpClient.CheckRegion("quote/brokers", "AP"); err != nil {
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "quote/brokers", "AP"); err != nil {
 		return
 	}
 	return c.core.Brokers(ctx, symbol)

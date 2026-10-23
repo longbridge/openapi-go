@@ -63,8 +63,9 @@ const (
 	OrderTypeSLO     OrderType = "SLO"     // SLO order
 
 	// Order side
-	OrderSideBuy  OrderSide = "Buy"
-	OrderSideSell OrderSide = "Sell"
+	OrderSideUnknown OrderSide = "" // Side not reported by the server
+	OrderSideBuy     OrderSide = "Buy"
+	OrderSideSell    OrderSide = "Sell"
 
 	// Order status
 	OrderNotReported          OrderStatus = "NotReported"
@@ -168,7 +169,9 @@ type Execution struct {
 	TradeDoneAt time.Time
 	Quantity    string
 	Price       *decimal.Decimal
-	// Side is the buy/sell direction of the fill.
+	// Side is the buy/sell direction of the fill. It is OrderSideUnknown ("")
+	// when the response omits it, as GET /v1/trade/execution/history does for
+	// Longbridge US accounts.
 	Side OrderSide
 }
 

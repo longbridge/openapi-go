@@ -7,9 +7,9 @@ import (
 	"errors"
 	"io"
 	nhttp "net/http"
-	"time"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/google/go-querystring/query"
 
@@ -75,32 +75,84 @@ func WithRequestTimeout(d time.Duration) RequestOption {
 	}
 }
 
-// region returns the data center region derived from the client's credentials.
+// region returns the data center region derived from the client's static
+// API-key credentials. For an OAuth session the region lives in the access
+// token, which can only be read with a context; region reports AP for OAuth
+// sessions. Use regionCtx wherever a context is available.
 func (c *Client) region() dcRegion {
 	if c.opts.OAuthClient != nil {
-		// OAuth token inspection is async; cannot determine synchronously.
-		// Default to AP (the gateway default) so AP-only guards don't fire.
 		return dcRegionAp
 	}
 	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken)
 }
 
-// IsUS reports whether the configured credentials belong to the US data center.
+// regionCtx returns the data center region of the current session. For an
+// OAuth session it reads the access token (refreshing it if needed), exactly
+// as Call does when deriving the x-dc-region header, and returns any error
+// from obtaining the token.
+func (c *Client) regionCtx(ctx context.Context) (dcRegion, error) {
+	if c.opts.OAuthClient != nil {
+		token, err := c.opts.OAuthClient.AccessToken(ctx)
+		if err != nil {
+			return dcRegionAp, err
+		}
+		return dcRegionFromCredential(token), nil
+	}
+	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken), nil
+}
+
+// IsUS reports whether the configured API-key credentials belong to the US
+// data center.
+//
+// Deprecated: IsUS cannot see the region of an OAuth session (it reports
+// false for every OAuth session). Use IsUSCtx.
 func (c *Client) IsUS() bool {
 	return c.region() == dcRegionUs
 }
 
-// CheckRegion verifies that the current session's region matches required.
-// Returns *RegionRestrictedError if it does not; nil otherwise.
-// required must be "US" or "AP".
-func (c *Client) CheckRegion(path, required string) error {
-	var req dcRegion
-	if required == "US" {
-		req = dcRegionUs
-	} else {
-		req = dcRegionAp
+// IsUSCtx reports whether the current session belongs to the US data center.
+// For an OAuth session the region is derived from the access token's "us_"
+// prefix; an error is returned if the token cannot be obtained.
+func (c *Client) IsUSCtx(ctx context.Context) (bool, error) {
+	r, err := c.regionCtx(ctx)
+	if err != nil {
+		return false, err
 	}
-	cur := c.region()
+	return r == dcRegionUs, nil
+}
+
+// CheckRegion verifies that the configured API-key credentials' region matches
+// required. Returns *RegionRestrictedError if it does not; nil otherwise.
+// required must be "US" or "AP" (compared case-insensitively; anything
+// other than "US" means AP).
+//
+// Deprecated: CheckRegion treats every OAuth session as AP, so it blocks US
+// OAuth users from US-only APIs and never blocks them from AP-only ones. Use
+// CheckRegionCtx.
+func (c *Client) CheckRegion(path, required string) error {
+	return checkRegion(path, required, c.region())
+}
+
+// CheckRegionCtx verifies that the current session's region matches required.
+// For an OAuth session the region is derived from the access token, the same
+// way Call derives the x-dc-region header; an error from obtaining the token
+// is returned as is. Returns *RegionRestrictedError if the region does not
+// match; nil otherwise. required must be "US" or "AP" (compared
+// case-insensitively; anything other than "US" means AP).
+func (c *Client) CheckRegionCtx(ctx context.Context, path, required string) error {
+	cur, err := c.regionCtx(ctx)
+	if err != nil {
+		return err
+	}
+	return checkRegion(path, required, cur)
+}
+
+// checkRegion returns *RegionRestrictedError when cur does not satisfy required.
+func checkRegion(path, required string, cur dcRegion) error {
+	req := dcRegionAp
+	if strings.EqualFold(required, "US") {
+		req = dcRegionUs
+	}
 	if cur.allows(req) {
 		return nil
 	}

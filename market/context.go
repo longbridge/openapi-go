@@ -79,7 +79,7 @@ func (m *MarketContext) MarketStatus(ctx context.Context) (*MarketStatusResponse
 // Path: GET /v1/quote/broker-holding
 func (m *MarketContext) BrokerHolding(ctx context.Context, symbol string, period BrokerHoldingPeriod) (*BrokerHoldingTop, error) {
 	// Broker holdings are served only by the AP data center.
-	if err := m.httpClient.CheckRegion("/v1/quote/broker-holding", "AP"); err != nil {
+	if err := m.httpClient.CheckRegionCtx(ctx, "/v1/quote/broker-holding", "AP"); err != nil {
 		return nil, err
 	}
 	var resp jsontypes.BrokerHoldingTop
@@ -97,7 +97,7 @@ func (m *MarketContext) BrokerHolding(ctx context.Context, symbol string, period
 // Path: GET /v1/quote/broker-holding/detail
 func (m *MarketContext) BrokerHoldingDetail(ctx context.Context, symbol string) (*BrokerHoldingDetail, error) {
 	// Broker holdings are served only by the AP data center.
-	if err := m.httpClient.CheckRegion("/v1/quote/broker-holding/detail", "AP"); err != nil {
+	if err := m.httpClient.CheckRegionCtx(ctx, "/v1/quote/broker-holding/detail", "AP"); err != nil {
 		return nil, err
 	}
 	var resp jsontypes.BrokerHoldingDetail
@@ -114,7 +114,7 @@ func (m *MarketContext) BrokerHoldingDetail(ctx context.Context, symbol string) 
 // Path: GET /v1/quote/broker-holding/daily
 func (m *MarketContext) BrokerHoldingDaily(ctx context.Context, symbol string, brokerID string) (*BrokerHoldingDailyHistory, error) {
 	// Broker holdings are served only by the AP data center.
-	if err := m.httpClient.CheckRegion("/v1/quote/broker-holding/daily", "AP"); err != nil {
+	if err := m.httpClient.CheckRegionCtx(ctx, "/v1/quote/broker-holding/daily", "AP"); err != nil {
 		return nil, err
 	}
 	var resp jsontypes.BrokerHoldingDailyHistory
