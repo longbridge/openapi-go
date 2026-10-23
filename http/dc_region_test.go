@@ -69,23 +69,68 @@ func TestStripBearerPrefix(t *testing.T) {
 
 func TestRegionRestrictedErrorHint(t *testing.T) {
 	const apPrefix = "is only available in the AP data center and is not supported for your US-region account"
-	tests := []struct {
-		path, required, current, want string
-	}{
-		{"/v1/asset/account", "AP", "US", "this API (/v1/asset/account) " + apPrefix + "; use USCashAndBuyPower or USAssetOverview instead"},
-		{"/v1/asset/cashflow", "AP", "US", "this API (/v1/asset/cashflow) " + apPrefix + "; use USTransactionHistory instead"},
-		{"/v1/asset/stock", "AP", "US", "this API (/v1/asset/stock) " + apPrefix + "; use USAssetOverview instead"},
-		{"/v1/asset/exchange_rates", "AP", "US", "this API (/v1/asset/exchange_rates) " + apPrefix + "; use USExchangeRates instead"},
-		{"/v1/trade/order", "AP", "US", "this API (/v1/trade/order) " + apPrefix + "; use USOrderDetail instead"},
-		{"/v1/asset/fund", "AP", "US", "this API (/v1/asset/fund) " + apPrefix + "; there is no US equivalent"},
-		{"/v1/risk/margin-ratio", "AP", "US", "this API (/v1/risk/margin-ratio) " + apPrefix + "; there is no US equivalent; see MarginStatus in USCashAndBuyPower instead"},
-		{"/v1/us/assets/overview", "US", "AP", "this API (/v1/us/assets/overview) is only available in the US data center and is not supported for your AP-region account; this API is for US data-center accounts only"},
-		{"quote/brokers", "AP", "US", "this API (quote/brokers) " + apPrefix},
+	const usPrefix = "is only available in the US data center and is not supported for your AP-region account"
+	ap := func(path, hint string) [4]string {
+		want := "this API (" + path + ") " + apPrefix
+		if hint != "" {
+			want += "; " + hint
+		}
+		return [4]string{path, "AP", "US", want}
+	}
+	us := func(path, hint string) [4]string {
+		want := "this API (" + path + ") " + usPrefix
+		if hint != "" {
+			want += "; " + hint
+		}
+		return [4]string{path, "US", "AP", want}
+	}
+	tests := [][4]string{
+		ap("/v1/asset/account", "use the US endpoint GET /v1/us/assets/cash-and-buy-power or GET /v1/us/assets/overview (TradeContext US methods)"),
+		ap("/v1/asset/cashflow", "use the US endpoint POST /v1/us/assets/transaction-history (TradeContext US methods)"),
+		ap("/v1/asset/stock", "use the US endpoint GET /v1/us/assets/overview (TradeContext US methods)"),
+		ap("/v1/asset/exchange_rates", "the US equivalent is on TradeContext (GET /v1/us/assets/exchange-rates)"),
+		ap("/v1/trade/order", "use the US endpoint GET /v1/us/orders/{order_id} (TradeContext US methods)"),
+		ap("/v1/risk/margin-ratio", "there is no US equivalent; account-level margin is at GET /v1/us/assets/cash-and-buy-power (margin_status)"),
+		ap("/v1/asset/fund", "there is no US equivalent"),
+		ap("quote/brokers", "there is no US equivalent"),
+		ap("/v1/quote/operatings", "there is no US equivalent"),
+		ap("/v1/quote/broker-holding", "there is no US equivalent"),
+		ap("/v1/quote/broker-holding/detail", "there is no US equivalent"),
+		ap("/v1/quote/broker-holding/daily", "there is no US equivalent"),
+		ap("/v1/dailycoins/query", "there is no US equivalent"),
+		ap("/v1/dailycoins/toggle", "there is no US equivalent"),
+		ap("/v1/unknown", ""),
+		us("/v1/us/orders/123", "use the AP endpoint GET /v1/trade/order"),
+		us("/v1/us/orders/query", "use the AP endpoint GET /v1/trade/order/today or GET /v1/trade/order/history"),
+		us("/v1/us/assets/overview", "use the AP endpoints GET /v1/asset/account and GET /v1/asset/stock"),
+		us("/v1/us/assets/transaction-history", "use the AP endpoint GET /v1/asset/cashflow"),
+		us("/v1/us/assets/exchange-rates", "use the AP endpoint GET /v1/asset/exchange_rates"),
+		us("/v1/us/assets/cash-and-buy-power", "use the AP endpoint GET /v1/asset/account"),
+		us("/v1/us/assets/available-holding", "use the AP endpoint GET /v1/asset/stock (available_quantity)"),
+		us("/v1/us/assets/pl/realized", "there is no AP equivalent"),
+		us("/v1/us/gemini/crypto-overview", "there is no AP equivalent"),
+		us("/v1/us/stock-info/company-overview", "there is no AP equivalent"),
+		us("/v1/us/quote/financials/statements", "there is no AP equivalent"),
+		us("/v1/unknown", ""),
 	}
 	for _, tt := range tests {
-		err := &RegionRestrictedError{Path: tt.path, Required: tt.required, Current: tt.current}
-		if got := err.Error(); got != tt.want {
-			t.Errorf("Error() for %s:\n got  %q\n want %q", tt.path, got, tt.want)
+		err := &RegionRestrictedError{Path: tt[0], Required: tt[1], Current: tt[2]}
+		if got := err.Error(); got != tt[3] {
+			t.Errorf("Error() for %s:\n got  %q\n want %q", tt[0], got, tt[3])
 		}
+	}
+}
+
+func TestRegionAlternativeCaseInsensitive(t *testing.T) {
+	for _, required := range []string{"US", "us", "Us"} {
+		if got := regionAlternative("/v1/us/assets/cash-and-buy-power", required); got != "use the AP endpoint GET /v1/asset/account" {
+			t.Errorf("regionAlternative(required=%q) = %q", required, got)
+		}
+	}
+	if err := checkRegion("/v1/us/assets/overview", "us", dcRegionUs); err != nil {
+		t.Errorf("checkRegion with lowercase \"us\" on a US session = %v, want nil", err)
+	}
+	if err := checkRegion("/v1/asset/account", "ap", dcRegionAp); err != nil {
+		t.Errorf("checkRegion with lowercase \"ap\" on an AP session = %v, want nil", err)
 	}
 }

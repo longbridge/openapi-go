@@ -91,27 +91,70 @@ func (e *RegionRestrictedError) Error() string {
 	return msg
 }
 
+// Hints for paths that have no counterpart in the other data center.
+const (
+	noUSEquivalent = "there is no US equivalent"
+	noAPEquivalent = "there is no AP equivalent"
+)
+
 // regionAlternative returns the recovery hint for a region-restricted API
-// path, or "" when there is none.
+// path, or "" when there is none. required is compared case-insensitively.
+//
+// The hint text matches the Rust SDK, whose message is shared by every
+// binding and by MCP servers with different method and tool names, so the
+// alternative is named by HTTP endpoint rather than by method.
 func regionAlternative(path, required string) string {
-	if required == "US" {
-		return "this API is for US data-center accounts only"
+	if strings.EqualFold(required, "US") {
+		return usOnlyAlternative(path)
 	}
+	return apOnlyAlternative(path)
+}
+
+// apOnlyAlternative is the hint for a US-region account calling an AP-only path.
+func apOnlyAlternative(path string) string {
 	switch path {
 	case "/v1/asset/account":
-		return "use USCashAndBuyPower or USAssetOverview instead"
+		return "use the US endpoint GET /v1/us/assets/cash-and-buy-power or GET /v1/us/assets/overview (TradeContext US methods)"
 	case "/v1/asset/cashflow":
-		return "use USTransactionHistory instead"
+		return "use the US endpoint POST /v1/us/assets/transaction-history (TradeContext US methods)"
 	case "/v1/asset/stock":
-		return "use USAssetOverview instead"
+		return "use the US endpoint GET /v1/us/assets/overview (TradeContext US methods)"
 	case "/v1/asset/exchange_rates":
-		return "use USExchangeRates instead"
+		return "the US equivalent is on TradeContext (GET /v1/us/assets/exchange-rates)"
 	case "/v1/trade/order":
-		return "use USOrderDetail instead"
-	case "/v1/asset/fund":
-		return "there is no US equivalent"
+		return "use the US endpoint GET /v1/us/orders/{order_id} (TradeContext US methods)"
 	case "/v1/risk/margin-ratio":
-		return "there is no US equivalent; see MarginStatus in USCashAndBuyPower instead"
+		return "there is no US equivalent; account-level margin is at GET /v1/us/assets/cash-and-buy-power (margin_status)"
+	case "/v1/asset/fund", "quote/brokers", "/v1/quote/operatings":
+		return noUSEquivalent
+	}
+	if strings.HasPrefix(path, "/v1/quote/broker-holding") || strings.HasPrefix(path, "/v1/dailycoins/") {
+		return noUSEquivalent
+	}
+	return ""
+}
+
+// usOnlyAlternative is the hint for an AP-region account calling a US-only path.
+func usOnlyAlternative(path string) string {
+	switch path {
+	case "/v1/us/orders/query":
+		return "use the AP endpoint GET /v1/trade/order/today or GET /v1/trade/order/history"
+	case "/v1/us/assets/overview":
+		return "use the AP endpoints GET /v1/asset/account and GET /v1/asset/stock"
+	case "/v1/us/assets/transaction-history":
+		return "use the AP endpoint GET /v1/asset/cashflow"
+	case "/v1/us/assets/exchange-rates":
+		return "use the AP endpoint GET /v1/asset/exchange_rates"
+	case "/v1/us/assets/cash-and-buy-power":
+		return "use the AP endpoint GET /v1/asset/account"
+	case "/v1/us/assets/available-holding":
+		return "use the AP endpoint GET /v1/asset/stock (available_quantity)"
+	}
+	switch {
+	case strings.HasPrefix(path, "/v1/us/orders/"):
+		return "use the AP endpoint GET /v1/trade/order"
+	case strings.HasPrefix(path, "/v1/us/"):
+		return noAPEquivalent
 	}
 	return ""
 }

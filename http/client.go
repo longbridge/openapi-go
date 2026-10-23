@@ -123,7 +123,8 @@ func (c *Client) IsUSCtx(ctx context.Context) (bool, error) {
 
 // CheckRegion verifies that the configured API-key credentials' region matches
 // required. Returns *RegionRestrictedError if it does not; nil otherwise.
-// required must be "US" or "AP".
+// required must be "US" or "AP" (compared case-insensitively; anything
+// other than "US" means AP).
 //
 // Deprecated: CheckRegion treats every OAuth session as AP, so it blocks US
 // OAuth users from US-only APIs and never blocks them from AP-only ones. Use
@@ -136,7 +137,8 @@ func (c *Client) CheckRegion(path, required string) error {
 // For an OAuth session the region is derived from the access token, the same
 // way Call derives the x-dc-region header; an error from obtaining the token
 // is returned as is. Returns *RegionRestrictedError if the region does not
-// match; nil otherwise. required must be "US" or "AP".
+// match; nil otherwise. required must be "US" or "AP" (compared
+// case-insensitively; anything other than "US" means AP).
 func (c *Client) CheckRegionCtx(ctx context.Context, path, required string) error {
 	cur, err := c.regionCtx(ctx)
 	if err != nil {
@@ -148,7 +150,7 @@ func (c *Client) CheckRegionCtx(ctx context.Context, path, required string) erro
 // checkRegion returns *RegionRestrictedError when cur does not satisfy required.
 func checkRegion(path, required string, cur dcRegion) error {
 	req := dcRegionAp
-	if required == "US" {
+	if strings.EqualFold(required, "US") {
 		req = dcRegionUs
 	}
 	if cur.allows(req) {
