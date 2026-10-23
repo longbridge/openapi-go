@@ -155,8 +155,10 @@ func usOnlyAlternative(path string) string {
 		return "use the AP endpoint GET /v1/quote/comp-overview"
 	case "/v1/us/stock-info/valuation-overview":
 		return "use the AP endpoint GET /v1/quote/valuation"
-	case "/v1/us/stock-info/finn-overview", "/v1/us/quote/financials/statements", "/v1/us/stock-info/fin-keyfactor":
+	case "/v1/us/stock-info/finn-overview", "/v1/us/quote/financials/statements":
 		return "use the AP endpoint GET /v1/quote/financial-reports"
+	case "/v1/us/stock-info/fin-keyfactor":
+		return "use the AP endpoint GET /v1/quote/financials/earnings-snapshot"
 	case "/v1/us/stock-info/fin-consensus":
 		return "use the AP endpoint GET /v1/quote/financial-consensus-detail"
 	case "/v1/us/stock-info/etf-dividend-info", "/v1/us/stock-info/company-dividends":

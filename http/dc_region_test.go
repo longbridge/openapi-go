@@ -115,7 +115,7 @@ func TestRegionRestrictedErrorHint(t *testing.T) {
 		us("/v1/us/stock-info/valuation-overview", "use the AP endpoint GET /v1/quote/valuation"),
 		us("/v1/us/stock-info/finn-overview", "use the AP endpoint GET /v1/quote/financial-reports"),
 		us("/v1/us/quote/financials/statements", "use the AP endpoint GET /v1/quote/financial-reports"),
-		us("/v1/us/stock-info/fin-keyfactor", "use the AP endpoint GET /v1/quote/financial-reports"),
+		us("/v1/us/stock-info/fin-keyfactor", "use the AP endpoint GET /v1/quote/financials/earnings-snapshot"),
 		us("/v1/us/stock-info/fin-consensus", "use the AP endpoint GET /v1/quote/financial-consensus-detail"),
 		us("/v1/us/stock-info/etf-dividend-info", "use the AP endpoint GET /v1/quote/dividends"),
 		us("/v1/us/stock-info/company-dividends", "use the AP endpoint GET /v1/quote/dividends"),
