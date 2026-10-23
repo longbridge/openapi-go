@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.30.0] - 2026-10-23
+
 ### Added
 
 - **US account asset APIs** (ports longbridge/openapi#613) — four `TradeContext` methods, all US-only (they return `*http.RegionRestrictedError` for non-US credentials without sending a request):
