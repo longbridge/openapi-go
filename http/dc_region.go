@@ -77,11 +77,43 @@ type RegionRestrictedError struct {
 	Current string
 }
 
+// Error returns the region message followed, when one is known, by a hint
+// naming the API to call instead, so callers (including LLM agents) can recover
+// without parsing the path.
 func (e *RegionRestrictedError) Error() string {
-	return fmt.Sprintf(
+	msg := fmt.Sprintf(
 		"this API (%s) is only available in the %s data center and is not supported for your %s-region account",
 		e.Path, e.Required, e.Current,
 	)
+	if hint := regionAlternative(e.Path, e.Required); hint != "" {
+		msg += "; " + hint
+	}
+	return msg
+}
+
+// regionAlternative returns the recovery hint for a region-restricted API
+// path, or "" when there is none.
+func regionAlternative(path, required string) string {
+	if required == "US" {
+		return "this API is for US data-center accounts only"
+	}
+	switch path {
+	case "/v1/asset/account":
+		return "use USCashAndBuyPower or USAssetOverview instead"
+	case "/v1/asset/cashflow":
+		return "use USTransactionHistory instead"
+	case "/v1/asset/stock":
+		return "use USAssetOverview instead"
+	case "/v1/asset/exchange_rates":
+		return "use USExchangeRates instead"
+	case "/v1/trade/order":
+		return "use USOrderDetail instead"
+	case "/v1/asset/fund":
+		return "there is no US equivalent"
+	case "/v1/risk/margin-ratio":
+		return "there is no US equivalent; see MarginStatus in USCashAndBuyPower instead"
+	}
+	return ""
 }
 
 // stripBearerPrefix strips any leading "Bearer " from a credential.

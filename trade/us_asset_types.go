@@ -113,9 +113,11 @@ type USTransaction struct {
 	QuantityDescription string `json:"quantity_description"`
 	RefNo               string `json:"ref_no"`
 	Remark              string `json:"remark"`
-	// CreateAt is the creation time; zero when not provided.
+	// CreateAt is the creation time; the zero time.Time when not provided. Check
+	// IsZero(): encoding/json marshals a zero value as "0001-01-01T00:00:00Z".
 	CreateAt time.Time `json:"create_at"`
-	// DoneAt is the completion time; zero when not provided.
+	// DoneAt is the completion time; the zero time.Time when not provided. Check
+	// IsZero(): encoding/json marshals a zero value as "0001-01-01T00:00:00Z".
 	DoneAt time.Time `json:"done_at"`
 }
 
