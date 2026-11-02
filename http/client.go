@@ -8,6 +8,7 @@ import (
 	"io"
 	nhttp "net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,41 @@ type apiResponse struct {
 	Message string
 	Data    json.RawMessage
 	TraceID string
+	// RetryAfter comes from the Retry-After header, not the body.
+	RetryAfter time.Duration `json:"-"`
+}
+
+// UnmarshalJSON accepts `code` as either a JSON number or a numeric string:
+// the unified gateway reports its own errors (e.g. rate limiting) as
+// {"code":"459101",...}. Any other code value becomes 500.
+func (r *apiResponse) UnmarshalJSON(b []byte) error {
+	type plain apiResponse
+	aux := struct {
+		*plain
+		Code json.RawMessage
+	}{plain: (*plain)(r)}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	r.Code = parseCode(aux.Code)
+	return nil
+}
+
+func parseCode(raw json.RawMessage) int {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0
+	}
+	s := string(raw)
+	if raw[0] == '"' {
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return nhttp.StatusInternalServerError
+		}
+	}
+	code, err := strconv.Atoi(s)
+	if err != nil {
+		return nhttp.StatusInternalServerError
+	}
+	return code
 }
 
 type otpResponse struct {
@@ -289,18 +325,33 @@ func readErrorBody(httpResp *nhttp.Response) error {
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
-	}
-	if isJSON(httpResp.Header.Get("content-type")) {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
 	return NewError(httpResp.StatusCode, apiResp)
+}
+
+// decodeAPIResponse decodes a response body into an apiResponse. A non-200
+// body that isn't a valid JSON envelope (e.g. an empty or truncated 429)
+// keeps its raw text as the message, so the caller still gets an *ApiError
+// carrying the HTTP status rather than a decode error.
+func decodeAPIResponse(httpResp *nhttp.Response, rb []byte) (*apiResponse, error) {
+	traceID := httpResp.Header.Get("x-trace-id")
+	retryAfter := parseRetryAfter(httpResp.Header.Get("retry-after"))
+	apiResp := &apiResponse{TraceID: traceID, RetryAfter: retryAfter}
+	if !isJSON(httpResp.Header.Get("content-type")) {
+		apiResp.Message = string(rb)
+		return apiResp, nil
+	}
+	if err := jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
+		if httpResp.StatusCode == nhttp.StatusOK {
+			return nil, err
+		}
+		log.Debugf("http call decode error response body: %v", err)
+		return &apiResponse{TraceID: traceID, RetryAfter: retryAfter, Message: string(rb)}, nil
+	}
+	return apiResp, nil
 }
 
 // Call will send request with signature to http server
@@ -315,6 +366,31 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		defer cancel()
 	}
 
+	// A rate-limited request was rejected before reaching the service, so
+	// it is safe to retry whatever the method.
+	delay := retryInitialDelay
+	for i := 0; ; i++ {
+		err = c.call(ctx, method, path, queryParams, body, resp, ro)
+		ae := rateLimitError(err)
+		if i == retryCount || ae == nil || ae.RetryAfter > maxRetryAfter {
+			return err
+		}
+		wait := delay
+		if ae.RetryAfter > 0 {
+			wait = ae.RetryAfter
+		}
+		log.Debugf("http call rate limited, retry in %v: %v", wait, err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(wait):
+		}
+		delay *= retryFactor
+	}
+}
+
+// call sends a single request; see Call.
+func (c *Client) call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ro *RequestOptions) (err error) {
 	req, bb, err := c.buildRequest(ctx, method, path, queryParams, body, ro)
 	if err != nil {
 		return err
@@ -334,20 +410,11 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
-
 	jsonBody := isJSON(httpResp.Header.Get("content-type"))
-	if jsonBody {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
-	}
 
 	if httpResp.StatusCode != nhttp.StatusOK || apiResp.Code != 0 {
 		return NewError(httpResp.StatusCode, apiResp)
