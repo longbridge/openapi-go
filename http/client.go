@@ -23,6 +23,8 @@ type apiResponse struct {
 	Message string
 	Data    json.RawMessage
 	TraceID string
+	// RetryAfter comes from the Retry-After header, not the body.
+	RetryAfter time.Duration `json:"-"`
 }
 
 // UnmarshalJSON accepts `code` as either a JSON number or a numeric string:
@@ -336,7 +338,8 @@ func readErrorBody(httpResp *nhttp.Response) error {
 // carrying the HTTP status rather than a decode error.
 func decodeAPIResponse(httpResp *nhttp.Response, rb []byte) (*apiResponse, error) {
 	traceID := httpResp.Header.Get("x-trace-id")
-	apiResp := &apiResponse{TraceID: traceID}
+	retryAfter := parseRetryAfter(httpResp.Header.Get("retry-after"))
+	apiResp := &apiResponse{TraceID: traceID, RetryAfter: retryAfter}
 	if !isJSON(httpResp.Header.Get("content-type")) {
 		apiResp.Message = string(rb)
 		return apiResp, nil
@@ -346,7 +349,7 @@ func decodeAPIResponse(httpResp *nhttp.Response, rb []byte) (*apiResponse, error
 			return nil, err
 		}
 		log.Debugf("http call decode error response body: %v", err)
-		return &apiResponse{TraceID: traceID, Message: string(rb)}, nil
+		return &apiResponse{TraceID: traceID, RetryAfter: retryAfter, Message: string(rb)}, nil
 	}
 	return apiResp, nil
 }
@@ -368,14 +371,19 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	delay := retryInitialDelay
 	for i := 0; ; i++ {
 		err = c.call(ctx, method, path, queryParams, body, resp, ro)
-		if i == retryCount || !isRateLimited(err) {
+		ae := rateLimitError(err)
+		if i == retryCount || ae == nil || ae.RetryAfter > maxRetryAfter {
 			return err
 		}
-		log.Debugf("http call rate limited, retry in %v: %v", delay, err)
+		wait := delay
+		if ae.RetryAfter > 0 {
+			wait = ae.RetryAfter
+		}
+		log.Debugf("http call rate limited, retry in %v: %v", wait, err)
 		select {
 		case <-ctx.Done():
 			return err
-		case <-time.After(delay):
+		case <-time.After(wait):
 		}
 		delay *= retryFactor
 	}

@@ -319,3 +319,75 @@ func TestCallNoRetryWhenContextAlreadyDone(t *testing.T) {
 		t.Errorf("calls = %d, want 0", calls)
 	}
 }
+
+func TestParseRetryAfter(t *testing.T) {
+	cases := []struct {
+		in   string
+		want time.Duration
+	}{
+		{"", 0},
+		{"2", 2 * time.Second},
+		{"1.5s", 1500 * time.Millisecond},
+		{"300ms", 300 * time.Millisecond},
+		{"1m0s", time.Minute},
+		{"-1s", 0},
+		{"soon", 0},
+		{time.Now().Add(-time.Minute).UTC().Format(nhttp.TimeFormat), 0},
+	}
+	for _, tc := range cases {
+		if got := parseRetryAfter(tc.in); got != tc.want {
+			t.Errorf("parseRetryAfter(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+
+	if got := parseRetryAfter(time.Now().Add(time.Hour).UTC().Format(nhttp.TimeFormat)); got < 59*time.Minute || got > time.Hour {
+		t.Errorf("parseRetryAfter(HTTP date in 1h) = %v", got)
+	}
+}
+
+func retryAfterHandler(retryAfter string, calls *int) nhttp.HandlerFunc {
+	return func(w nhttp.ResponseWriter, r *nhttp.Request) {
+		*calls++
+		w.Header().Set("content-type", "application/json")
+		if *calls == 1 {
+			w.Header().Set("retry-after", retryAfter)
+			w.WriteHeader(nhttp.StatusTooManyRequests)
+			_, _ = io.WriteString(w, `{"code":429002,"message":"rate limit"}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"code":0,"data":{}}`)
+	}
+}
+
+func TestCallRetryHonorsRetryAfter(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(retryAfterHandler("300ms", &calls))
+	defer srv.Close()
+
+	start := time.Now()
+	if err := newTestClient(t, srv.URL).Call(context.Background(), "GET", "/v1/x", nil, nil, nil); err != nil {
+		t.Fatalf("Call error: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
+	}
+	// The backoff alone would wait 100ms.
+	if elapsed := time.Since(start); elapsed < 300*time.Millisecond {
+		t.Errorf("elapsed = %v, want >= 300ms", elapsed)
+	}
+}
+
+func TestCallNoRetryWhenRetryAfterTooLong(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(retryAfterHandler("1m0s", &calls))
+	defer srv.Close()
+
+	err := newTestClient(t, srv.URL).Call(context.Background(), "GET", "/v1/x", nil, nil, nil)
+	var ae *ApiError
+	if !errors.As(err, &ae) || ae.HttpStatus != nhttp.StatusTooManyRequests || ae.RetryAfter != time.Minute {
+		t.Fatalf("err = %v, want 429 ApiError with RetryAfter 1m", err)
+	}
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1", calls)
+	}
+}
