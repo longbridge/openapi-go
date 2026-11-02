@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [v0.30.1] - 2026-11-02
+
+### Added
+
+- `http.CodeGatewayRateLimited` (`459101`): the code that the unified gateway returns when it rejects a request because of a rate limit.
+- `http.ApiError.RetryAfter`: how long the server asked the client to wait, read from the `Retry-After` response header. It is `0` when the header is absent.
+
+### Changed
+
+- **`http.Client.Call` retries rate-limited requests** (#137). A request is rate-limited when the response has HTTP status 429 or code `459101`. `Call` retries it up to 5 times, with a delay that starts at 100ms and doubles each time. This matches the Rust SDK.
+  - If the response has a `Retry-After` header, `Call` waits that long instead. The header can be a number of seconds, an HTTP date, or a Go duration such as `1.5s`, which is the form the OpenAPI gateway sends.
+  - If `Retry-After` is longer than 10s, `Call` returns the error at once and does not retry.
+  - `Call` retries every HTTP method, POST included. The gateway rejects a rate-limited request before it forwards the request to a service.
+  - Each attempt builds and signs the request again. When `ctx` is done (this includes `WithRequestTimeout`), `Call` stops and returns the last error.
+  - `CallSSE` does not retry.
+- A non-200 response whose JSON body cannot be decoded (for example, an empty or truncated body) now returns an `*http.ApiError`. The error keeps the HTTP status and the trace ID, and its `Message` is the raw body. Before, `Call` returned the JSON decode error.
+
+### Fixed
+
+- **A string error code no longer causes a decode failure** (#137). The unified gateway reports rate-limit errors with a string code, for example `{"code":"459101","message":"request too many"}`. Before, decoding this body failed. Now a code that is a number or a numeric string becomes an `int`. Any other value becomes `500`.
+
 ## [v0.30.0] - 2026-10-23
 
 ### Added
