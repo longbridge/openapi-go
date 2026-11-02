@@ -8,6 +8,7 @@ import (
 	"io"
 	nhttp "net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,39 @@ type apiResponse struct {
 	Message string
 	Data    json.RawMessage
 	TraceID string
+}
+
+// UnmarshalJSON accepts `code` as either a JSON number or a numeric string:
+// the unified gateway reports its own errors (e.g. rate limiting) as
+// {"code":"459101",...}. Any other code value becomes 500.
+func (r *apiResponse) UnmarshalJSON(b []byte) error {
+	type plain apiResponse
+	aux := struct {
+		*plain
+		Code json.RawMessage
+	}{plain: (*plain)(r)}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	r.Code = parseCode(aux.Code)
+	return nil
+}
+
+func parseCode(raw json.RawMessage) int {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0
+	}
+	s := string(raw)
+	if raw[0] == '"' {
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return nhttp.StatusInternalServerError
+		}
+	}
+	code, err := strconv.Atoi(s)
+	if err != nil {
+		return nhttp.StatusInternalServerError
+	}
+	return code
 }
 
 type otpResponse struct {
@@ -315,6 +349,26 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		defer cancel()
 	}
 
+	// A rate-limited request was rejected before reaching the service, so
+	// it is safe to retry whatever the method.
+	delay := retryInitialDelay
+	for i := 0; ; i++ {
+		err = c.call(ctx, method, path, queryParams, body, resp, ro)
+		if i == retryCount || !isRateLimited(err) {
+			return err
+		}
+		log.Debugf("http call rate limited, retry in %v: %v", delay, err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(delay):
+		}
+		delay *= retryFactor
+	}
+}
+
+// call sends a single request; see Call.
+func (c *Client) call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ro *RequestOptions) (err error) {
 	req, bb, err := c.buildRequest(ctx, method, path, queryParams, body, ro)
 	if err != nil {
 		return err
