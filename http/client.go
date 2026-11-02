@@ -323,18 +323,32 @@ func readErrorBody(httpResp *nhttp.Response) error {
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
-	}
-	if isJSON(httpResp.Header.Get("content-type")) {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
 	return NewError(httpResp.StatusCode, apiResp)
+}
+
+// decodeAPIResponse decodes a response body into an apiResponse. A non-200
+// body that isn't a valid JSON envelope (e.g. an empty or truncated 429)
+// keeps its raw text as the message, so the caller still gets an *ApiError
+// carrying the HTTP status rather than a decode error.
+func decodeAPIResponse(httpResp *nhttp.Response, rb []byte) (*apiResponse, error) {
+	traceID := httpResp.Header.Get("x-trace-id")
+	apiResp := &apiResponse{TraceID: traceID}
+	if !isJSON(httpResp.Header.Get("content-type")) {
+		apiResp.Message = string(rb)
+		return apiResp, nil
+	}
+	if err := jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
+		if httpResp.StatusCode == nhttp.StatusOK {
+			return nil, err
+		}
+		log.Debugf("http call decode error response body: %v", err)
+		return &apiResponse{TraceID: traceID, Message: string(rb)}, nil
+	}
+	return apiResp, nil
 }
 
 // Call will send request with signature to http server
@@ -388,20 +402,11 @@ func (c *Client) call(ctx context.Context, method, path string, queryParams inte
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
-
 	jsonBody := isJSON(httpResp.Header.Get("content-type"))
-	if jsonBody {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
-	}
 
 	if httpResp.StatusCode != nhttp.StatusOK || apiResp.Code != 0 {
 		return NewError(httpResp.StatusCode, apiResp)

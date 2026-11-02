@@ -150,65 +150,172 @@ func TestAPIResponseUnmarshalCode(t *testing.T) {
 	}
 }
 
-func rateLimitedHandler(limited int, calls *int) nhttp.HandlerFunc {
+func rateLimitedHandler(limited int, status int, ct, body string, calls *int) nhttp.HandlerFunc {
 	return func(w nhttp.ResponseWriter, r *nhttp.Request) {
 		*calls++
-		w.Header().Set("content-type", "application/json")
 		if *calls <= limited {
-			w.WriteHeader(nhttp.StatusTooManyRequests)
-			_, _ = io.WriteString(w, `{"code":"459101","message":"request too many"}`)
+			if ct != "" {
+				w.Header().Set("content-type", ct)
+			}
+			w.WriteHeader(status)
+			_, _ = io.WriteString(w, body)
 			return
 		}
+		w.Header().Set("content-type", "application/json")
 		_, _ = io.WriteString(w, `{"code":0,"data":{"ok":true}}`)
 	}
 }
 
 func TestCallRetriesRateLimited(t *testing.T) {
-	calls := 0
-	srv := httptest.NewServer(rateLimitedHandler(1, &calls))
-	defer srv.Close()
-
-	var resp struct{ Ok bool }
-	if err := newTestClient(t, srv.URL).Call(context.Background(), "POST", "/v1/x", nil, nil, &resp); err != nil {
-		t.Fatalf("Call error: %v", err)
+	cases := []struct {
+		name   string
+		status int
+		ct     string
+		body   string
+	}{
+		{"gateway 429", nhttp.StatusTooManyRequests, "application/json", `{"code":"459101","message":"request too many"}`},
+		{"429 only", nhttp.StatusTooManyRequests, "application/json", `{"code":1,"message":"slow down"}`},
+		{"429 empty json body", nhttp.StatusTooManyRequests, "application/json", ``},
+		{"429 truncated json", nhttp.StatusTooManyRequests, "application/json", `{"code":`},
+		{"429 mistyped json", nhttp.StatusTooManyRequests, "application/json", `{"message":42}`},
+		{"429 plain text", nhttp.StatusTooManyRequests, "text/plain", `too many`},
+		{"code 459101 only", nhttp.StatusOK, "application/json", `{"code":"459101","message":"request too many"}`},
 	}
-	if calls != 2 || !resp.Ok {
-		t.Errorf("calls = %d, resp = %+v; want 2 calls and ok", calls, resp)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			srv := httptest.NewServer(rateLimitedHandler(1, tc.status, tc.ct, tc.body, &calls))
+			defer srv.Close()
+
+			var resp struct{ Ok bool }
+			if err := newTestClient(t, srv.URL).Call(context.Background(), "POST", "/v1/x", nil, map[string]int{"n": 1}, &resp); err != nil {
+				t.Fatalf("Call error: %v", err)
+			}
+			if calls != 2 || !resp.Ok {
+				t.Errorf("calls = %d, resp = %+v; want 2 calls and ok", calls, resp)
+			}
+		})
 	}
 }
 
 func TestCallNoRetryOnOtherError(t *testing.T) {
-	calls := 0
+	cases := []struct {
+		name     string
+		status   int
+		body     string
+		wantCode int
+	}{
+		{"business error", nhttp.StatusOK, `{"code":301600,"message":"bad"}`, 301600},
+		{"server error", nhttp.StatusInternalServerError, `{"code":`, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			srv := httptest.NewServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
+				calls++
+				w.Header().Set("content-type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			defer srv.Close()
+
+			err := newTestClient(t, srv.URL).Call(context.Background(), "GET", "/v1/x", nil, nil, nil)
+			var ae *ApiError
+			if !errors.As(err, &ae) || ae.HttpStatus != tc.status || ae.Code != tc.wantCode {
+				t.Fatalf("err = %v, want ApiError status %d code %d", err, tc.status, tc.wantCode)
+			}
+			if calls != 1 {
+				t.Errorf("calls = %d, want 1", calls)
+			}
+		})
+	}
+}
+
+func TestCallMalformedErrorBodyKeepsStatus(t *testing.T) {
 	srv := httptest.NewServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
-		calls++
 		w.Header().Set("content-type", "application/json")
-		_, _ = io.WriteString(w, `{"code":301600,"message":"bad"}`)
+		w.Header().Set("x-trace-id", "trace-1")
+		w.WriteHeader(nhttp.StatusBadGateway)
+		_, _ = io.WriteString(w, `<html>bad gateway</html>`)
 	}))
 	defer srv.Close()
 
 	err := newTestClient(t, srv.URL).Call(context.Background(), "GET", "/v1/x", nil, nil, nil)
 	var ae *ApiError
-	if !errors.As(err, &ae) || ae.Code != 301600 {
-		t.Fatalf("err = %v, want ApiError code 301600", err)
+	if !errors.As(err, &ae) {
+		t.Fatalf("err = %v, want ApiError", err)
+	}
+	if ae.HttpStatus != nhttp.StatusBadGateway || ae.Message != `<html>bad gateway</html>` || ae.TraceID != "trace-1" {
+		t.Errorf("ApiError = %+v", ae)
+	}
+}
+
+// cancelOnClose cancels a context once a response body is closed, i.e.
+// right after Call has read and decoded a response, before any backoff.
+type cancelOnClose struct {
+	cancel context.CancelFunc
+}
+
+func (t cancelOnClose) RoundTrip(r *nhttp.Request) (*nhttp.Response, error) {
+	resp, err := nhttp.DefaultTransport.RoundTrip(r)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body = cancelBody{ReadCloser: resp.Body, cancel: t.cancel}
+	return resp, nil
+}
+
+type cancelBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (b cancelBody) Close() error {
+	b.cancel()
+	return b.ReadCloser.Close()
+}
+
+func TestCallRetryStopsOnContextDone(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	calls := 0
+	srv := httptest.NewServer(rateLimitedHandler(100, nhttp.StatusTooManyRequests, "application/json", `{"code":"459101","message":"request too many"}`, &calls))
+	defer srv.Close()
+
+	c, err := New(
+		WithURL(srv.URL),
+		WithAppKey("test_app_key"),
+		WithAppSecret("test_app_secret"),
+		WithAccessToken("test_access_token"),
+		WithClient(&nhttp.Client{Transport: cancelOnClose{cancel: cancel}}),
+	)
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+
+	err = c.Call(ctx, "GET", "/v1/x", nil, nil, nil)
+	var ae *ApiError
+	if !errors.As(err, &ae) || ae.Code != CodeGatewayRateLimited || ae.HttpStatus != nhttp.StatusTooManyRequests {
+		t.Fatalf("err = %v, want rate-limited ApiError", err)
 	}
 	if calls != 1 {
 		t.Errorf("calls = %d, want 1", calls)
 	}
 }
 
-func TestCallRetryStopsOnContextDone(t *testing.T) {
+func TestCallNoRetryWhenContextAlreadyDone(t *testing.T) {
 	calls := 0
-	srv := httptest.NewServer(rateLimitedHandler(100, &calls))
+	srv := httptest.NewServer(rateLimitedHandler(100, nhttp.StatusTooManyRequests, "application/json", `{"code":"459101"}`, &calls))
 	defer srv.Close()
 
-	err := newTestClient(t, srv.URL).Call(context.Background(), "GET", "/v1/x", nil, nil, nil,
-		WithRequestTimeout(250*time.Millisecond))
-	var ae *ApiError
-	if !errors.As(err, &ae) || ae.Code != CodeGatewayRateLimited || ae.HttpStatus != nhttp.StatusTooManyRequests {
-		t.Fatalf("err = %v, want rate-limited ApiError", err)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := newTestClient(t, srv.URL).Call(ctx, "GET", "/v1/x", nil, nil, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
 	}
-	// 0ms, 100ms, 300ms: the third attempt is past the 250ms deadline.
-	if calls != 2 {
-		t.Errorf("calls = %d, want 2", calls)
+	if calls != 0 {
+		t.Errorf("calls = %d, want 0", calls)
 	}
 }
