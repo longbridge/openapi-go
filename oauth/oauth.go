@@ -68,6 +68,11 @@ type OAuth struct {
 	baseURL      string
 	openURL      func(string)
 
+	// refreshMu serializes token refreshes with each other and with Revoke,
+	// so Revoke never reads a refresh token that a refresh is about to
+	// rotate. Lock order: refreshMu before mu.
+	refreshMu sync.Mutex
+
 	mu    sync.Mutex
 	token *oauthToken
 	// gen is bumped by Clear so a refresh that was in flight when the token
@@ -137,8 +142,10 @@ func (o *OAuth) Build(ctx context.Context) error {
 	gen := o.gen
 	if loaded != nil && loaded.RefreshToken != "" {
 		o.mu.Unlock()
+		o.refreshMu.Lock()
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
+		o.refreshMu.Unlock()
 		if o.gen != gen {
 			return errTokenCleared
 		}
@@ -176,6 +183,18 @@ func (o *OAuth) storeToken(path string, tok *oauthToken) {
 // AccessToken returns a valid access token, refreshing it if expired or soon to expire.
 // The HTTP client calls this when OAuth is set on config.
 func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
+	o.mu.Lock()
+	if tok := o.token; tok != nil && !tok.isExpired() && !tok.expiresSoon() {
+		accessToken := tok.AccessToken
+		o.mu.Unlock()
+		return accessToken, nil
+	}
+	o.mu.Unlock()
+
+	// Only one refresh at a time; it also waits for a Revoke in flight.
+	o.refreshMu.Lock()
+	defer o.refreshMu.Unlock()
+
 	o.mu.Lock()
 	tok := o.token
 	needRefresh := tok == nil || tok.isExpired() || tok.expiresSoon()
@@ -219,10 +238,13 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 // untouched, so call Clear afterwards to drop them locally.
 //
 // The request uses the *http.Client stored in ctx under oauth2.HTTPClient (as
-// token refreshes do), or a client with a 30-second timeout otherwise. A
-// refresh running concurrently in AccessToken may rotate the refresh token
-// after Revoke has read it; revoke when no request is in flight.
+// token refreshes do), or a client with a 30-second timeout otherwise. It is
+// serialized with token refreshes, so it always revokes the latest refresh
+// token rather than one a concurrent refresh is rotating.
 func (o *OAuth) Revoke(ctx context.Context) error {
+	o.refreshMu.Lock()
+	defer o.refreshMu.Unlock()
+
 	o.mu.Lock()
 	tok := o.token
 	o.mu.Unlock()

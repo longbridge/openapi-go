@@ -208,3 +208,71 @@ func TestExchange_SendsPKCEVerifier(t *testing.T) {
 	assert.Equal(t, verifier, form.Get("code_verifier"))
 	assert.Equal(t, "code", form.Get("code"))
 }
+
+func TestRevoke_WaitsForRefreshInFlight(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	tokenForms := make(chan url.Values, 1)
+	revokeForms := make(chan url.Values, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NoError(t, r.ParseForm())
+		switch r.URL.Path {
+		case "/oauth2/token":
+			tokenForms <- r.PostForm
+			<-release
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh","token_type":"Bearer","expires_in":7200}`))
+		case "/oauth2/revoke":
+			revokeForms <- r.PostForm
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "old-refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-tokenForms // refresh is in flight
+
+	revokeErrs := make(chan error, 1)
+	go func() { revokeErrs <- o.Revoke(context.Background()) }()
+	select {
+	case <-revokeForms:
+		t.Fatal("Revoke must wait for the refresh in flight")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(release)
+	assert.NoError(t, <-accessErrs)
+	assert.NoError(t, <-revokeErrs)
+	form := <-revokeForms
+	assert.Equal(t, "new-refresh", form.Get("token"))
+}
+
+func TestAccessToken_ConcurrentCallsRefreshOnce(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	const n = 3
+	results := make(chan string, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			tok, err := o.AccessToken(context.Background())
+			assert.NoError(t, err)
+			results <- tok
+		}()
+	}
+	<-forms
+	close(release)
+	for i := 0; i < n; i++ {
+		assert.Equal(t, "new-access", <-results)
+	}
+	assert.Equal(t, 0, len(forms))
+}
