@@ -270,9 +270,72 @@ func TestAccessToken_ConcurrentCallsRefreshOnce(t *testing.T) {
 		}()
 	}
 	<-forms
+	// Wait until the other callers are queued behind the refresh in flight
+	// (blocked on refreshSem), so they exercise the re-check path.
+	waitFor(t, func() bool { return len(o.refreshSem) == 1 })
+	time.Sleep(50 * time.Millisecond)
 	close(release)
 	for i := 0; i < n; i++ {
 		assert.Equal(t, "new-access", <-results)
 	}
 	assert.Equal(t, 0, len(forms))
+}
+
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition not met")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestAccessToken_WaitingHonorsContext(t *testing.T) {
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	t.Cleanup(func() { close(release) })
+	o := NewWithBaseURL("my-client", srv.URL)
+	t.Setenv("HOME", t.TempDir())
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	go func() { _, _ = o.AccessToken(context.Background()) }()
+	<-forms // first refresh holds refreshSem
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, err := o.AccessToken(ctx)
+	assert.Equal(t, context.DeadlineExceeded, err)
+}
+
+func TestBuild_ReusesTokenRefreshedWhileWaiting(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	stale := &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+	assert.NoError(t, saveTokenToPath(path, stale))
+	o.token = stale
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-forms // AccessToken refresh in flight
+
+	buildErrs := make(chan error, 1)
+	go func() { buildErrs <- o.Build(context.Background()) }()
+	time.Sleep(50 * time.Millisecond) // Build reads the stale file and queues
+	close(release)
+
+	assert.NoError(t, <-accessErrs)
+	assert.NoError(t, <-buildErrs)
+	assert.Equal(t, 0, len(forms)) // Build did not refresh with the stale token
+	tok, err := o.AccessToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "new-access", tok)
 }

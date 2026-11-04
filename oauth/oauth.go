@@ -68,10 +68,12 @@ type OAuth struct {
 	baseURL      string
 	openURL      func(string)
 
-	// refreshMu serializes token refreshes with each other and with Revoke,
-	// so Revoke never reads a refresh token that a refresh is about to
-	// rotate. Lock order: refreshMu before mu.
-	refreshMu sync.Mutex
+	// refreshSem (capacity 1) serializes token refreshes with each other and
+	// with Revoke, so Revoke never reads a refresh token that a refresh is
+	// about to rotate. It is a channel rather than a mutex so that waiting
+	// honors ctx. Lock order: refreshSem before mu.
+	refreshSem     chan struct{}
+	refreshSemOnce sync.Once
 
 	mu    sync.Mutex
 	token *oauthToken
@@ -119,6 +121,21 @@ func (o *OAuth) ClientID() string {
 	return o.clientID
 }
 
+// acquireRefresh takes refreshSem, or returns ctx.Err() if ctx is done first.
+func (o *OAuth) acquireRefresh(ctx context.Context) error {
+	o.refreshSemOnce.Do(func() { o.refreshSem = make(chan struct{}, 1) })
+	select {
+	case o.refreshSem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (o *OAuth) releaseRefresh() {
+	<-o.refreshSem
+}
+
 // Build loads a token from ~/.longbridge/openapi/tokens/<client_id> or runs the
 // authorization flow, then stores the token in memory and on disk. Call this
 // once before passing the OAuth to config. If a token exists and is expired,
@@ -142,10 +159,25 @@ func (o *OAuth) Build(ctx context.Context) error {
 	gen := o.gen
 	if loaded != nil && loaded.RefreshToken != "" {
 		o.mu.Unlock()
-		o.refreshMu.Lock()
+		if err := o.acquireRefresh(ctx); err != nil {
+			o.mu.Lock()
+			return err
+		}
+		o.mu.Lock()
+		// A refresh that finished while we waited has already rotated the
+		// refresh token loaded above: use its result instead of refreshing
+		// with the stale one.
+		if o.gen != gen {
+			o.releaseRefresh()
+			if o.token != nil && !o.token.isExpired() {
+				return nil
+			}
+			return errTokenCleared
+		}
+		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
-		o.refreshMu.Unlock()
+		o.releaseRefresh()
 		if o.gen != gen {
 			return errTokenCleared
 		}
@@ -192,8 +224,10 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	o.mu.Unlock()
 
 	// Only one refresh at a time; it also waits for a Revoke in flight.
-	o.refreshMu.Lock()
-	defer o.refreshMu.Unlock()
+	if err := o.acquireRefresh(ctx); err != nil {
+		return "", err
+	}
+	defer o.releaseRefresh()
 
 	o.mu.Lock()
 	tok := o.token
@@ -239,11 +273,16 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 //
 // The request uses the *http.Client stored in ctx under oauth2.HTTPClient (as
 // token refreshes do), or a client with a 30-second timeout otherwise. It is
-// serialized with token refreshes, so it always revokes the latest refresh
-// token rather than one a concurrent refresh is rotating.
+// serialized with token refreshes (in AccessToken and Build), so it never
+// revokes a refresh token that a concurrent refresh is rotating; while it
+// runs, AccessToken calls that need a refresh wait for it. It is not
+// serialized with a browser authorization still running in Build, which
+// stores a new token afterwards.
 func (o *OAuth) Revoke(ctx context.Context) error {
-	o.refreshMu.Lock()
-	defer o.refreshMu.Unlock()
+	if err := o.acquireRefresh(ctx); err != nil {
+		return err
+	}
+	defer o.releaseRefresh()
 
 	o.mu.Lock()
 	tok := o.token
