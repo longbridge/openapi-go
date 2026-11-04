@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -74,6 +75,8 @@ type OAuth struct {
 	// honors ctx. Lock order: refreshSem before mu.
 	refreshSem     chan struct{}
 	refreshSemOnce sync.Once
+	// refreshWaiters counts AccessToken callers on the refresh path (tests).
+	refreshWaiters atomic.Int32
 
 	mu    sync.Mutex
 	token *oauthToken
@@ -224,6 +227,8 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	o.mu.Unlock()
 
 	// Only one refresh at a time; it also waits for a Revoke in flight.
+	o.refreshWaiters.Add(1)
+	defer o.refreshWaiters.Add(-1)
 	if err := o.acquireRefresh(ctx); err != nil {
 		return "", err
 	}

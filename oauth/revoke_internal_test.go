@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -238,6 +239,11 @@ func TestRevoke_WaitsForRefreshInFlight(t *testing.T) {
 	}()
 	<-tokenForms // refresh is in flight
 
+	var releaseOnce sync.Once
+	// Registered after the server's cleanup, so it runs first and unblocks
+	// the token handler if the test fails early.
+	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) })
+
 	revokeErrs := make(chan error, 1)
 	go func() { revokeErrs <- o.Revoke(context.Background()) }()
 	select {
@@ -246,7 +252,7 @@ func TestRevoke_WaitsForRefreshInFlight(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	close(release)
+	releaseOnce.Do(func() { close(release) })
 	assert.NoError(t, <-accessErrs)
 	assert.NoError(t, <-revokeErrs)
 	form := <-revokeForms
@@ -270,10 +276,9 @@ func TestAccessToken_ConcurrentCallsRefreshOnce(t *testing.T) {
 		}()
 	}
 	<-forms
-	// Wait until the other callers are queued behind the refresh in flight
-	// (blocked on refreshSem), so they exercise the re-check path.
-	waitFor(t, func() bool { return len(o.refreshSem) == 1 })
-	time.Sleep(50 * time.Millisecond)
+	// Wait until the other callers are queued behind the refresh in flight,
+	// so they exercise the re-check path rather than the fast path.
+	waitFor(t, func() bool { return o.refreshWaiters.Load() == n })
 	close(release)
 	for i := 0; i < n; i++ {
 		assert.Equal(t, "new-access", <-results)
@@ -293,20 +298,28 @@ func waitFor(t *testing.T, cond func() bool) {
 }
 
 func TestAccessToken_WaitingHonorsContext(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	release := make(chan struct{})
 	srv, forms := tokenServer(t, release)
-	t.Cleanup(func() { close(release) })
 	o := NewWithBaseURL("my-client", srv.URL)
-	t.Setenv("HOME", t.TempDir())
 	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
 
-	go func() { _, _ = o.AccessToken(context.Background()) }()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = o.AccessToken(context.Background())
+	}()
 	<-forms // first refresh holds refreshSem
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	_, err := o.AccessToken(ctx)
 	assert.Equal(t, context.DeadlineExceeded, err)
+
+	// Let the first refresh finish (and store its token under the temp
+	// HOME) before the test returns and HOME is restored.
+	close(release)
+	<-done
 }
 
 func TestBuild_ReusesTokenRefreshedWhileWaiting(t *testing.T) {
