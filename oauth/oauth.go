@@ -172,17 +172,14 @@ func (o *OAuth) Build(ctx context.Context) error {
 		// with the stale one.
 		if o.gen != gen {
 			o.releaseRefresh()
-			if o.token != nil && !o.token.isExpired() {
-				return nil
-			}
-			return ErrTokenCleared
+			return o.replacementOrCleared()
 		}
 		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
 		o.releaseRefresh()
 		if o.gen != gen {
-			return ErrTokenCleared
+			return o.replacementOrCleared()
 		}
 		if err == nil {
 			o.storeToken(path, refreshed)
@@ -198,15 +195,22 @@ func (o *OAuth) Build(ctx context.Context) error {
 		return err
 	}
 	if o.gen != gen {
-		// Cleared, or replaced by a concurrent refresh / Build: keep a
-		// valid replacement, and never resurrect a cleared token.
-		if o.token != nil && !o.token.isExpired() {
-			return nil
-		}
-		return ErrTokenCleared
+		return o.replacementOrCleared()
 	}
 	o.storeToken(path, tok)
 	return nil
+}
+
+// replacementOrCleared decides Build's result when the token changed (gen
+// bumped) while Build released mu: the token was cleared, or replaced by a
+// concurrent refresh / Build. It keeps a valid replacement and never stores
+// the token Build obtained, so a cleared token is not resurrected. The caller
+// must hold o.mu.
+func (o *OAuth) replacementOrCleared() error {
+	if o.token != nil && !o.token.isExpired() {
+		return nil
+	}
+	return ErrTokenCleared
 }
 
 var (

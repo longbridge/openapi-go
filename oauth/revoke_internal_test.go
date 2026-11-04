@@ -380,3 +380,30 @@ func TestAccessToken_NoTokenIsErrNoToken(t *testing.T) {
 	_, err := o.AccessToken(context.Background())
 	assert.True(t, errors.Is(err, ErrNoToken))
 }
+
+func TestBuild_RefreshKeepsReplacementStoredMeanwhile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	assert.NoError(t, saveTokenToPath(path, &oauthToken{
+		AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1,
+	}))
+
+	buildErrs := make(chan error, 1)
+	go func() { buildErrs <- o.Build(context.Background()) }()
+	<-forms // Build's refresh is in flight
+
+	// Another path (e.g. a concurrent Build's authorization) stores a token.
+	o.mu.Lock()
+	o.storeToken(path, &oauthToken{AccessToken: "replacement", ExpiresAt: time.Now().Unix() + 7200})
+	o.mu.Unlock()
+	close(release)
+
+	assert.NoError(t, <-buildErrs)
+	tok, err := o.AccessToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "replacement", tok)
+}
