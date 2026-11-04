@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`OAuth.Revoke(ctx)`** (ports longbridge/openapi#616) — revokes the current token on the server through the RFC 7009 endpoint (`POST /oauth2/revoke`): the refresh token when present, otherwise the access token. It only contacts the server; the in-memory and cached tokens are left untouched. A failed revocation returns an error carrying the server's `error` / `error_description`. The request uses the `*http.Client` in `ctx` under `oauth2.HTTPClient` when present, like token refreshes, otherwise a client with a 30-second timeout
+- **`OAuth.Clear()`** (ports longbridge/openapi#616) — drops the token locally: deletes the cached token file (`~/.longbridge/openapi/tokens/<client_id>`; a missing file is not an error) and then clears the in-memory token. It does not contact the server, so call `Revoke` first to disconnect completely. After `Clear`, `AccessToken` fails until `Build` is called again. If deleting the file fails, the error is returned and the in-memory token is kept; a refresh or authorization that was in flight in `AccessToken` or `Build` when `Clear` ran is discarded instead of storing the token again (`Build` then returns an error)
+
+### Fixed
+
+- **The OAuth browser authorization flow uses PKCE** (RFC 7636, `S256`; ports longbridge/openapi#616) — the authorization request carries a `code_challenge` and the token exchange sends the matching `code_verifier`. The server requires PKCE for `public` clients, so such clients (e.g. those created through dynamic client registration) previously could not authorize through the SDK. Clients that don't require PKCE are unaffected
+
 ## [v0.30.1] - 2026-11-02
 
 ### Added

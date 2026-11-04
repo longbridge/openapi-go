@@ -2,7 +2,8 @@
 //
 // Use OAuth by setting it on config (like the Rust SDK). The token is stored
 // internally and in ~/.longbridge/openapi/tokens/<client_id>; it is refreshed
-// automatically when expired. Do not use or expose OAuthToken.
+// automatically when expired. Do not use or expose OAuthToken. Revoke revokes
+// the token on the server and Clear drops it locally (memory and file).
 //
 // # Example
 //
@@ -18,11 +19,15 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +41,7 @@ const (
 	defaultCallbackPort  = 60355
 	expiresSoonSecs      = 3600
 	tokenDir             = ".longbridge/openapi/tokens"
+	revokeTimeout        = 30 * time.Second
 )
 
 // oauthToken is the internal token type (not exported).
@@ -64,6 +70,9 @@ type OAuth struct {
 
 	mu    sync.Mutex
 	token *oauthToken
+	// gen is bumped by Clear so a refresh that was in flight when the token
+	// was cleared does not store (or persist) it again.
+	gen uint64
 }
 
 // New creates a new OAuth client with the given client ID.
@@ -123,13 +132,18 @@ func (o *OAuth) Build(ctx context.Context) error {
 		o.token = loaded
 		return nil
 	}
+	// The lock is released during network I/O; gen detects a Clear (or
+	// another Build) in the meantime, so a cleared token is not stored again.
+	gen := o.gen
 	if loaded != nil && loaded.RefreshToken != "" {
 		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
+		if o.gen != gen {
+			return errTokenCleared
+		}
 		if err == nil {
-			_ = saveTokenToPath(path, refreshed)
-			o.token = refreshed
+			o.storeToken(path, refreshed)
 			return nil
 		}
 	}
@@ -141,9 +155,22 @@ func (o *OAuth) Build(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	o.token = tok
-	_ = saveTokenToPath(path, tok)
+	if o.gen != gen {
+		return errTokenCleared
+	}
+	o.storeToken(path, tok)
 	return nil
+}
+
+var errTokenCleared = errors.New("oauth: token was cleared while it was being obtained")
+
+// storeToken replaces the token in memory and on disk. It bumps gen so that a
+// refresh of the previous token that is still in flight is discarded. The
+// caller must hold o.mu.
+func (o *OAuth) storeToken(path string, tok *oauthToken) {
+	o.token = tok
+	o.gen++
+	_ = saveTokenToPath(path, tok)
 }
 
 // AccessToken returns a valid access token, refreshing it if expired or soon to expire.
@@ -155,15 +182,25 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	if needRefresh && tok != nil && tok.RefreshToken != "" {
 		// Copy so we can refresh without holding the lock (network I/O).
 		tokCopy := *tok
+		gen := o.gen
 		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, &tokCopy)
 		if err != nil {
 			return "", err
 		}
 		o.mu.Lock()
-		o.token = refreshed
+		if o.gen != gen {
+			// The token was cleared or replaced while refreshing: never
+			// store this result; use the replacement if there is one.
+			cur := o.token
+			o.mu.Unlock()
+			if cur == nil || cur.isExpired() {
+				return "", errTokenCleared
+			}
+			return cur.AccessToken, nil
+		}
 		path, _ := o.tokenPath()
-		_ = saveTokenToPath(path, refreshed)
+		o.storeToken(path, refreshed)
 		o.mu.Unlock()
 		return refreshed.AccessToken, nil
 	}
@@ -174,6 +211,97 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	accessToken := tok.AccessToken
 	o.mu.Unlock()
 	return accessToken, nil
+}
+
+// Revoke revokes the current token on the server (RFC 7009,
+// POST /oauth2/revoke): the refresh token when present, otherwise the access
+// token. It only contacts the server; the in-memory and cached tokens are left
+// untouched, so call Clear afterwards to drop them locally.
+//
+// The request uses the *http.Client stored in ctx under oauth2.HTTPClient (as
+// token refreshes do), or a client with a 30-second timeout otherwise. A
+// refresh running concurrently in AccessToken may rotate the refresh token
+// after Revoke has read it; revoke when no request is in flight.
+func (o *OAuth) Revoke(ctx context.Context) error {
+	o.mu.Lock()
+	tok := o.token
+	o.mu.Unlock()
+	if tok == nil {
+		return fmt.Errorf("oauth: no token available to revoke")
+	}
+
+	form := url.Values{"client_id": {o.clientID}}
+	if tok.RefreshToken != "" {
+		form.Set("token", tok.RefreshToken)
+		form.Set("token_type_hint", "refresh_token")
+	} else {
+		form.Set("token", tok.AccessToken)
+		form.Set("token_type_hint", "access_token")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		o.baseURL+"/oauth2/revoke", strings.NewReader(form.Encode()))
+	if err != nil {
+		return fmt.Errorf("oauth: revoke token: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
+	if client == nil {
+		client = &http.Client{Timeout: revokeTimeout}
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("oauth: revoke token: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("oauth: revoke token: %s", revokeErrorMessage(resp.StatusCode, body))
+	}
+	return nil
+}
+
+// revokeErrorMessage describes a failed revocation response, including the
+// server's error and error_description when the body carries them.
+func revokeErrorMessage(status int, body []byte) string {
+	var e struct {
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
+	}
+	if json.Unmarshal(body, &e) == nil && e.Error != "" {
+		if e.ErrorDescription != "" {
+			return e.Error + ": " + e.ErrorDescription
+		}
+		return e.Error
+	}
+	return fmt.Sprintf("server returned HTTP %d", status)
+}
+
+// Clear drops the token locally: it deletes the cached token file
+// (~/.longbridge/openapi/tokens/<client_id>; a missing file is not an error)
+// and then clears the in-memory token. It does not contact the server, so call
+// Revoke first to disconnect the application completely. After Clear,
+// AccessToken fails until Build is called again.
+//
+// The file is deleted first: if that fails the error is returned and the
+// in-memory token is kept, so memory and disk never disagree about whether
+// the client is logged in.
+func (o *OAuth) Clear() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	path, err := o.tokenPath()
+	if err != nil {
+		return err
+	}
+	if err := deleteTokenAtPath(path); err != nil {
+		return err
+	}
+	o.token = nil
+	o.gen++
+	return nil
 }
 
 func (o *OAuth) tokenPath() (string, error) {
@@ -209,8 +337,7 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	redirectURI := fmt.Sprintf("http://localhost:%d/callback", port)
 
 	cfg := o.oauth2Config(redirectURI)
-	state := oauth2.GenerateVerifier()
-	authURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	authURL, state, verifier := buildAuthorizeURL(cfg)
 
 	if o.openURL != nil {
 		o.openURL(authURL)
@@ -263,11 +390,22 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 		return nil, fmt.Errorf("oauth: CSRF state mismatch")
 	}
 
-	t, err := cfg.Exchange(ctx, res.code)
+	t, err := cfg.Exchange(ctx, res.code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}
 	return tokenFromOAuth2(t), nil
+}
+
+// buildAuthorizeURL returns the authorization URL with a fresh CSRF state and
+// PKCE challenge (RFC 7636, S256). The server requires PKCE for public clients
+// and ignores it for clients that don't need it; the returned verifier must be
+// sent with the token exchange.
+func buildAuthorizeURL(cfg *oauth2.Config) (authURL, state, verifier string) {
+	state = oauth2.GenerateVerifier()
+	verifier = oauth2.GenerateVerifier()
+	authURL = cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.S256ChallengeOption(verifier))
+	return authURL, state, verifier
 }
 
 func (o *OAuth) oauth2Config(redirectURI string) *oauth2.Config {
@@ -320,6 +458,14 @@ func saveTokenToPath(path string, t *oauthToken) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0600)
+}
+
+// deleteTokenAtPath removes the token file. A missing file is not an error.
+func deleteTokenAtPath(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("oauth: failed to delete token file %s: %w", path, err)
+	}
+	return nil
 }
 
 const callbackStyle = `<style>html{font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;` +
