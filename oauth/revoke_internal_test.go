@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -80,18 +81,23 @@ func TestRevoke_ServerError(t *testing.T) {
 	err := o.Revoke(context.Background())
 	assert.True(t, err != nil)
 	assert.Contains(t, err.Error(), "unsupported_token_type: token type not supported")
+	var revokeErr *RevokeError
+	assert.True(t, errors.As(err, &revokeErr))
+	assert.Equal(t, http.StatusBadRequest, revokeErr.StatusCode)
+	assert.Equal(t, "unsupported_token_type", revokeErr.Code)
+	assert.Equal(t, "token type not supported", revokeErr.Description)
 }
 
 func TestRevoke_WithoutToken(t *testing.T) {
 	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
 	err := o.Revoke(context.Background())
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "no token available")
+	assert.True(t, errors.Is(err, ErrNoToken))
 }
 
 func TestRevokeErrorMessage(t *testing.T) {
-	assert.Equal(t, "invalid_request", revokeErrorMessage(400, []byte(`{"error":"invalid_request"}`)))
-	assert.Equal(t, "server returned HTTP 502", revokeErrorMessage(502, []byte("bad gateway")))
+	assert.Equal(t, "oauth: revoke token: invalid_request", newRevokeError(400, []byte(`{"error":"invalid_request"}`)).Error())
+	assert.Equal(t, "oauth: revoke token: server returned HTTP 502", newRevokeError(502, []byte("bad gateway")).Error())
 }
 
 func TestClear_DropsMemoryAndFile(t *testing.T) {
@@ -164,7 +170,7 @@ func TestAccessToken_RefreshDiscardedAfterClear(t *testing.T) {
 
 	err = <-errs
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "cleared")
+	assert.True(t, errors.Is(err, ErrTokenCleared))
 	_, statErr := os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr))
 	o.mu.Lock()
@@ -191,7 +197,7 @@ func TestBuild_RefreshDiscardedAfterClear(t *testing.T) {
 
 	err = <-errs
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "cleared")
+	assert.True(t, errors.Is(err, ErrTokenCleared))
 	_, statErr := os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr))
 }
@@ -351,4 +357,19 @@ func TestBuild_ReusesTokenRefreshedWhileWaiting(t *testing.T) {
 	tok, err := o.AccessToken(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, "new-access", tok)
+}
+
+func TestWithTokenHTTPClient(t *testing.T) {
+	c := withTokenHTTPClient(context.Background()).Value(oauth2.HTTPClient).(*http.Client)
+	assert.Equal(t, tokenRequestTimeout, c.Timeout)
+
+	custom := &http.Client{}
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, custom)
+	assert.True(t, withTokenHTTPClient(ctx).Value(oauth2.HTTPClient).(*http.Client) == custom)
+}
+
+func TestAccessToken_NoTokenIsErrNoToken(t *testing.T) {
+	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
+	_, err := o.AccessToken(context.Background())
+	assert.True(t, errors.Is(err, ErrNoToken))
 }
