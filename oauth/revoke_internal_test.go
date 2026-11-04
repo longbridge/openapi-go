@@ -98,6 +98,8 @@ func TestRevoke_WithoutToken(t *testing.T) {
 func TestRevokeErrorMessage(t *testing.T) {
 	assert.Equal(t, "oauth: revoke token: invalid_request", newRevokeError(400, []byte(`{"error":"invalid_request"}`)).Error())
 	assert.Equal(t, "oauth: revoke token: server returned HTTP 502", newRevokeError(502, []byte("bad gateway")).Error())
+	assert.Equal(t, "oauth: revoke token: server returned HTTP 400: bad token",
+		newRevokeError(400, []byte(`{"error_description":"bad token"}`)).Error())
 }
 
 func TestClear_DropsMemoryAndFile(t *testing.T) {
@@ -361,6 +363,11 @@ func TestBuild_ReusesTokenRefreshedWhileWaiting(t *testing.T) {
 
 func TestWithTokenHTTPClient(t *testing.T) {
 	c := withTokenHTTPClient(context.Background()).Value(oauth2.HTTPClient).(*http.Client)
+	assert.Equal(t, tokenRequestTimeout, c.Timeout)
+
+	// A nil client falls back to the default instead of panicking.
+	nilCtx := context.WithValue(context.Background(), oauth2.HTTPClient, (*http.Client)(nil))
+	c = withTokenHTTPClient(nilCtx).Value(oauth2.HTTPClient).(*http.Client)
 	assert.Equal(t, tokenRequestTimeout, c.Timeout)
 
 	custom := &http.Client{}

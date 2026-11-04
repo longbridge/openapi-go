@@ -36,13 +36,13 @@ import (
 )
 
 const (
-	authTimeout          = 5 * time.Minute
-	oauthBaseURL         = "https://openapi.longbridge.com"
-	oauthBaseURLStaging  = "https://openapi-global.longbridge.xyz"
-	defaultCallbackPort  = 60355
-	expiresSoonSecs      = 3600
-	tokenDir             = ".longbridge/openapi/tokens"
-	tokenRequestTimeout  = 30 * time.Second
+	authTimeout         = 5 * time.Minute
+	oauthBaseURL        = "https://openapi.longbridge.com"
+	oauthBaseURLStaging = "https://openapi-global.longbridge.xyz"
+	defaultCallbackPort = 60355
+	expiresSoonSecs     = 3600
+	tokenDir            = ".longbridge/openapi/tokens"
+	tokenRequestTimeout = 30 * time.Second
 )
 
 // oauthToken is the internal token type (not exported).
@@ -198,6 +198,11 @@ func (o *OAuth) Build(ctx context.Context) error {
 		return err
 	}
 	if o.gen != gen {
+		// Cleared, or replaced by a concurrent refresh / Build: keep a
+		// valid replacement, and never resurrect a cleared token.
+		if o.token != nil && !o.token.isExpired() {
+			return nil
+		}
 		return ErrTokenCleared
 	}
 	o.storeToken(path, tok)
@@ -206,8 +211,8 @@ func (o *OAuth) Build(ctx context.Context) error {
 
 var (
 	// ErrNoToken is returned when there is no usable token: Build has not
-	// been called, the token was cleared, or it expired without a refresh
-	// token.
+	// been called, the token was cleared, or it has expired (or expires
+	// within an hour) and there is no refresh token.
 	ErrNoToken = errors.New("oauth: no valid token; call Build(ctx) first or re-run authorization")
 	// ErrTokenCleared is returned when Clear ran while a refresh or
 	// authorization was in flight; its result was discarded.
@@ -230,17 +235,19 @@ func (e *RevokeError) Error() string {
 		return "oauth: revoke token: " + e.Code + ": " + e.Description
 	case e.Code != "":
 		return "oauth: revoke token: " + e.Code
+	case e.Description != "":
+		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
 	default:
 		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
 	}
 }
 
 // withTokenHTTPClient returns ctx carrying the *http.Client used for token
-// requests: the one already stored under oauth2.HTTPClient, or one with a
-// 30-second timeout. Refreshes and revocations block other callers (see
+// requests: the one already stored under oauth2.HTTPClient (unless nil), or
+// one with a 30-second timeout. Refreshes and revocations block other callers (see
 // refreshSem), so they must not hang forever.
 func withTokenHTTPClient(ctx context.Context) context.Context {
-	if _, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok && c != nil {
 		return ctx
 	}
 	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: tokenRequestTimeout})
@@ -490,7 +497,7 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 		return nil, fmt.Errorf("oauth: CSRF state mismatch")
 	}
 
-	t, err := cfg.Exchange(ctx, res.code, oauth2.VerifierOption(verifier))
+	t, err := cfg.Exchange(withTokenHTTPClient(ctx), res.code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}
