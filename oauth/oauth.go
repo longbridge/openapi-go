@@ -29,19 +29,20 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/oauth2"
 )
 
 const (
-	authTimeout          = 5 * time.Minute
-	oauthBaseURL         = "https://openapi.longbridge.com"
-	oauthBaseURLStaging  = "https://openapi-global.longbridge.xyz"
-	defaultCallbackPort  = 60355
-	expiresSoonSecs      = 3600
-	tokenDir             = ".longbridge/openapi/tokens"
-	revokeTimeout        = 30 * time.Second
+	authTimeout         = 5 * time.Minute
+	oauthBaseURL        = "https://openapi.longbridge.com"
+	oauthBaseURLStaging = "https://openapi-global.longbridge.xyz"
+	defaultCallbackPort = 60355
+	expiresSoonSecs     = 3600
+	tokenDir            = ".longbridge/openapi/tokens"
+	tokenRequestTimeout = 30 * time.Second
 )
 
 // oauthToken is the internal token type (not exported).
@@ -67,6 +68,15 @@ type OAuth struct {
 	callbackPort int
 	baseURL      string
 	openURL      func(string)
+
+	// refreshSem (capacity 1) serializes token refreshes with each other and
+	// with Revoke, so Revoke never reads a refresh token that a refresh is
+	// about to rotate. It is a channel rather than a mutex so that waiting
+	// honors ctx. Lock order: refreshSem before mu.
+	refreshSem     chan struct{}
+	refreshSemOnce sync.Once
+	// refreshWaiters counts AccessToken callers on the refresh path (tests).
+	refreshWaiters atomic.Int32
 
 	mu    sync.Mutex
 	token *oauthToken
@@ -114,6 +124,21 @@ func (o *OAuth) ClientID() string {
 	return o.clientID
 }
 
+// acquireRefresh takes refreshSem, or returns ctx.Err() if ctx is done first.
+func (o *OAuth) acquireRefresh(ctx context.Context) error {
+	o.refreshSemOnce.Do(func() { o.refreshSem = make(chan struct{}, 1) })
+	select {
+	case o.refreshSem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (o *OAuth) releaseRefresh() {
+	<-o.refreshSem
+}
+
 // Build loads a token from ~/.longbridge/openapi/tokens/<client_id> or runs the
 // authorization flow, then stores the token in memory and on disk. Call this
 // once before passing the OAuth to config. If a token exists and is expired,
@@ -137,10 +162,24 @@ func (o *OAuth) Build(ctx context.Context) error {
 	gen := o.gen
 	if loaded != nil && loaded.RefreshToken != "" {
 		o.mu.Unlock()
+		if err := o.acquireRefresh(ctx); err != nil {
+			o.mu.Lock()
+			return err
+		}
+		o.mu.Lock()
+		// A refresh that finished while we waited has already rotated the
+		// refresh token loaded above: use its result instead of refreshing
+		// with the stale one.
+		if o.gen != gen {
+			o.releaseRefresh()
+			return o.replacementOrCleared()
+		}
+		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
+		o.releaseRefresh()
 		if o.gen != gen {
-			return errTokenCleared
+			return o.replacementOrCleared()
 		}
 		if err == nil {
 			o.storeToken(path, refreshed)
@@ -156,13 +195,67 @@ func (o *OAuth) Build(ctx context.Context) error {
 		return err
 	}
 	if o.gen != gen {
-		return errTokenCleared
+		return o.replacementOrCleared()
 	}
 	o.storeToken(path, tok)
 	return nil
 }
 
-var errTokenCleared = errors.New("oauth: token was cleared while it was being obtained")
+// replacementOrCleared decides Build's result when the token changed (gen
+// bumped) while Build released mu: the token was cleared, or replaced by a
+// concurrent refresh / Build. It keeps a valid replacement and never stores
+// the token Build obtained, so a cleared token is not resurrected. The caller
+// must hold o.mu.
+func (o *OAuth) replacementOrCleared() error {
+	if o.token != nil && !o.token.isExpired() {
+		return nil
+	}
+	return ErrTokenCleared
+}
+
+var (
+	// ErrNoToken is returned when there is no usable token: Build has not
+	// been called, the token was cleared, or it has expired (or expires
+	// within an hour) and there is no refresh token.
+	ErrNoToken = errors.New("oauth: no valid token; call Build(ctx) first or re-run authorization")
+	// ErrTokenCleared is returned when Clear ran while a refresh or
+	// authorization was in flight; its result was discarded.
+	ErrTokenCleared = errors.New("oauth: token was cleared while it was being obtained")
+)
+
+// RevokeError is returned by Revoke when the server rejects the revocation.
+type RevokeError struct {
+	// StatusCode is the HTTP status of the response.
+	StatusCode int
+	// Code is the OAuth error code (e.g. "unsupported_token_type"), if any.
+	Code string
+	// Description is the OAuth error_description, if any.
+	Description string
+}
+
+func (e *RevokeError) Error() string {
+	switch {
+	case e.Code != "" && e.Description != "":
+		return "oauth: revoke token: " + e.Code + ": " + e.Description
+	case e.Code != "":
+		return "oauth: revoke token: " + e.Code
+	case e.Description != "":
+		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
+	default:
+		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
+	}
+}
+
+// withTokenHTTPClient returns ctx carrying the *http.Client used for token
+// requests: the one already stored under oauth2.HTTPClient (unless nil), or
+// one with a 30-second timeout. Refreshes and revocations block other callers (see
+// refreshSem), so they must not hang forever.
+func withTokenHTTPClient(ctx context.Context) context.Context {
+	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok && c != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: tokenRequestTimeout})
+}
 
 // storeToken replaces the token in memory and on disk. It bumps gen so that a
 // refresh of the previous token that is still in flight is discarded. The
@@ -177,6 +270,22 @@ func (o *OAuth) storeToken(path string, tok *oauthToken) {
 // The HTTP client calls this when OAuth is set on config.
 func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	o.mu.Lock()
+	if tok := o.token; tok != nil && !tok.isExpired() && !tok.expiresSoon() {
+		accessToken := tok.AccessToken
+		o.mu.Unlock()
+		return accessToken, nil
+	}
+	o.mu.Unlock()
+
+	// Only one refresh at a time; it also waits for a Revoke in flight.
+	o.refreshWaiters.Add(1)
+	defer o.refreshWaiters.Add(-1)
+	if err := o.acquireRefresh(ctx); err != nil {
+		return "", err
+	}
+	defer o.releaseRefresh()
+
+	o.mu.Lock()
 	tok := o.token
 	needRefresh := tok == nil || tok.isExpired() || tok.expiresSoon()
 	if needRefresh && tok != nil && tok.RefreshToken != "" {
@@ -185,19 +294,22 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		gen := o.gen
 		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, &tokCopy)
-		if err != nil {
-			return "", err
-		}
 		o.mu.Lock()
+		// Check gen before err, like Build: a Clear or replacement during the
+		// refresh decides the result even if the refresh itself failed.
 		if o.gen != gen {
 			// The token was cleared or replaced while refreshing: never
 			// store this result; use the replacement if there is one.
 			cur := o.token
 			o.mu.Unlock()
 			if cur == nil || cur.isExpired() {
-				return "", errTokenCleared
+				return "", ErrTokenCleared
 			}
 			return cur.AccessToken, nil
+		}
+		if err != nil {
+			o.mu.Unlock()
+			return "", err
 		}
 		path, _ := o.tokenPath()
 		o.storeToken(path, refreshed)
@@ -206,7 +318,7 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 	}
 	if needRefresh {
 		o.mu.Unlock()
-		return "", fmt.Errorf("oauth: no valid token; call Build(ctx) first or re-run authorization")
+		return "", ErrNoToken
 	}
 	accessToken := tok.AccessToken
 	o.mu.Unlock()
@@ -219,15 +331,25 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 // untouched, so call Clear afterwards to drop them locally.
 //
 // The request uses the *http.Client stored in ctx under oauth2.HTTPClient (as
-// token refreshes do), or a client with a 30-second timeout otherwise. A
-// refresh running concurrently in AccessToken may rotate the refresh token
-// after Revoke has read it; revoke when no request is in flight.
+// token refreshes do), or a client with a 30-second timeout otherwise (token
+// refreshes use the same default). A rejection is returned as *RevokeError;
+// with no token it returns an error wrapping ErrNoToken. It is
+// serialized with token refreshes (in AccessToken and Build), so it never
+// revokes a refresh token that a concurrent refresh is rotating; while it
+// runs, AccessToken calls that need a refresh wait for it. It is not
+// serialized with a browser authorization still running in Build, which
+// stores a new token afterwards.
 func (o *OAuth) Revoke(ctx context.Context) error {
+	if err := o.acquireRefresh(ctx); err != nil {
+		return err
+	}
+	defer o.releaseRefresh()
+
 	o.mu.Lock()
 	tok := o.token
 	o.mu.Unlock()
 	if tok == nil {
-		return fmt.Errorf("oauth: no token available to revoke")
+		return fmt.Errorf("%w (nothing to revoke)", ErrNoToken)
 	}
 
 	form := url.Values{"client_id": {o.clientID}}
@@ -247,10 +369,7 @@ func (o *OAuth) Revoke(ctx context.Context) error {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
-	if client == nil {
-		client = &http.Client{Timeout: revokeTimeout}
-	}
+	client := withTokenHTTPClient(ctx).Value(oauth2.HTTPClient).(*http.Client)
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("oauth: revoke token: %w", err)
@@ -258,25 +377,20 @@ func (o *OAuth) Revoke(ctx context.Context) error {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("oauth: revoke token: %s", revokeErrorMessage(resp.StatusCode, body))
+		return newRevokeError(resp.StatusCode, body)
 	}
 	return nil
 }
 
-// revokeErrorMessage describes a failed revocation response, including the
-// server's error and error_description when the body carries them.
-func revokeErrorMessage(status int, body []byte) string {
+// newRevokeError builds the error for a failed revocation response, keeping
+// the server's error and error_description when the body carries them.
+func newRevokeError(status int, body []byte) *RevokeError {
 	var e struct {
 		Error            string `json:"error"`
 		ErrorDescription string `json:"error_description"`
 	}
-	if json.Unmarshal(body, &e) == nil && e.Error != "" {
-		if e.ErrorDescription != "" {
-			return e.Error + ": " + e.ErrorDescription
-		}
-		return e.Error
-	}
-	return fmt.Sprintf("server returned HTTP %d", status)
+	_ = json.Unmarshal(body, &e)
+	return &RevokeError{StatusCode: status, Code: e.Error, Description: e.ErrorDescription}
 }
 
 // Clear drops the token locally: it deletes the cached token file
@@ -314,7 +428,7 @@ func (o *OAuth) tokenPath() (string, error) {
 
 func (o *OAuth) refreshToken(ctx context.Context, tok *oauthToken) (*oauthToken, error) {
 	cfg := o.oauth2Config("")
-	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: tok.RefreshToken})
+	src := cfg.TokenSource(withTokenHTTPClient(ctx), &oauth2.Token{RefreshToken: tok.RefreshToken})
 	t, err := src.Token()
 	if err != nil {
 		return nil, fmt.Errorf("oauth: refresh token: %w", err)
@@ -390,7 +504,7 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 		return nil, fmt.Errorf("oauth: CSRF state mismatch")
 	}
 
-	t, err := cfg.Exchange(ctx, res.code, oauth2.VerifierOption(verifier))
+	t, err := cfg.Exchange(withTokenHTTPClient(ctx), res.code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}

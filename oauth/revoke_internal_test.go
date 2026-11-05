@@ -2,11 +2,13 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -79,18 +81,25 @@ func TestRevoke_ServerError(t *testing.T) {
 	err := o.Revoke(context.Background())
 	assert.True(t, err != nil)
 	assert.Contains(t, err.Error(), "unsupported_token_type: token type not supported")
+	var revokeErr *RevokeError
+	assert.True(t, errors.As(err, &revokeErr))
+	assert.Equal(t, http.StatusBadRequest, revokeErr.StatusCode)
+	assert.Equal(t, "unsupported_token_type", revokeErr.Code)
+	assert.Equal(t, "token type not supported", revokeErr.Description)
 }
 
 func TestRevoke_WithoutToken(t *testing.T) {
 	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
 	err := o.Revoke(context.Background())
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "no token available")
+	assert.True(t, errors.Is(err, ErrNoToken))
 }
 
 func TestRevokeErrorMessage(t *testing.T) {
-	assert.Equal(t, "invalid_request", revokeErrorMessage(400, []byte(`{"error":"invalid_request"}`)))
-	assert.Equal(t, "server returned HTTP 502", revokeErrorMessage(502, []byte("bad gateway")))
+	assert.Equal(t, "oauth: revoke token: invalid_request", newRevokeError(400, []byte(`{"error":"invalid_request"}`)).Error())
+	assert.Equal(t, "oauth: revoke token: server returned HTTP 502", newRevokeError(502, []byte("bad gateway")).Error())
+	assert.Equal(t, "oauth: revoke token: server returned HTTP 400: bad token",
+		newRevokeError(400, []byte(`{"error_description":"bad token"}`)).Error())
 }
 
 func TestClear_DropsMemoryAndFile(t *testing.T) {
@@ -163,7 +172,7 @@ func TestAccessToken_RefreshDiscardedAfterClear(t *testing.T) {
 
 	err = <-errs
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "cleared")
+	assert.True(t, errors.Is(err, ErrTokenCleared))
 	_, statErr := os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr))
 	o.mu.Lock()
@@ -190,7 +199,7 @@ func TestBuild_RefreshDiscardedAfterClear(t *testing.T) {
 
 	err = <-errs
 	assert.True(t, err != nil)
-	assert.Contains(t, err.Error(), "cleared")
+	assert.True(t, errors.Is(err, ErrTokenCleared))
 	_, statErr := os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr))
 }
@@ -207,4 +216,226 @@ func TestExchange_SendsPKCEVerifier(t *testing.T) {
 	form := <-forms
 	assert.Equal(t, verifier, form.Get("code_verifier"))
 	assert.Equal(t, "code", form.Get("code"))
+}
+
+func TestRevoke_WaitsForRefreshInFlight(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	tokenForms := make(chan url.Values, 1)
+	revokeForms := make(chan url.Values, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NoError(t, r.ParseForm())
+		switch r.URL.Path {
+		case "/oauth2/token":
+			tokenForms <- r.PostForm
+			<-release
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh","token_type":"Bearer","expires_in":7200}`))
+		case "/oauth2/revoke":
+			revokeForms <- r.PostForm
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "old-refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-tokenForms // refresh is in flight
+
+	var releaseOnce sync.Once
+	// Registered after the server's cleanup, so it runs first and unblocks
+	// the token handler if the test fails early.
+	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) })
+
+	revokeErrs := make(chan error, 1)
+	go func() { revokeErrs <- o.Revoke(context.Background()) }()
+	select {
+	case <-revokeForms:
+		t.Fatal("Revoke must wait for the refresh in flight")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	releaseOnce.Do(func() { close(release) })
+	assert.NoError(t, <-accessErrs)
+	assert.NoError(t, <-revokeErrs)
+	form := <-revokeForms
+	assert.Equal(t, "new-refresh", form.Get("token"))
+}
+
+func TestAccessToken_ConcurrentCallsRefreshOnce(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	const n = 3
+	results := make(chan string, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			tok, err := o.AccessToken(context.Background())
+			assert.NoError(t, err)
+			results <- tok
+		}()
+	}
+	<-forms
+	// Wait until the other callers are queued behind the refresh in flight,
+	// so they exercise the re-check path rather than the fast path.
+	waitFor(t, func() bool { return o.refreshWaiters.Load() == n })
+	close(release)
+	for i := 0; i < n; i++ {
+		assert.Equal(t, "new-access", <-results)
+	}
+	assert.Equal(t, 0, len(forms))
+}
+
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition not met")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestAccessToken_WaitingHonorsContext(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = o.AccessToken(context.Background())
+	}()
+	<-forms // first refresh holds refreshSem
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, err := o.AccessToken(ctx)
+	assert.Equal(t, context.DeadlineExceeded, err)
+
+	// Let the first refresh finish (and store its token under the temp
+	// HOME) before the test returns and HOME is restored.
+	close(release)
+	<-done
+}
+
+func TestBuild_ReusesTokenRefreshedWhileWaiting(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	stale := &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+	assert.NoError(t, saveTokenToPath(path, stale))
+	o.token = stale
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-forms // AccessToken refresh in flight
+
+	buildErrs := make(chan error, 1)
+	go func() { buildErrs <- o.Build(context.Background()) }()
+	time.Sleep(50 * time.Millisecond) // Build reads the stale file and queues
+	close(release)
+
+	assert.NoError(t, <-accessErrs)
+	assert.NoError(t, <-buildErrs)
+	assert.Equal(t, 0, len(forms)) // Build did not refresh with the stale token
+	tok, err := o.AccessToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "new-access", tok)
+}
+
+func TestWithTokenHTTPClient(t *testing.T) {
+	c := withTokenHTTPClient(context.Background()).Value(oauth2.HTTPClient).(*http.Client)
+	assert.Equal(t, tokenRequestTimeout, c.Timeout)
+
+	// A nil client falls back to the default instead of panicking.
+	nilCtx := context.WithValue(context.Background(), oauth2.HTTPClient, (*http.Client)(nil))
+	c = withTokenHTTPClient(nilCtx).Value(oauth2.HTTPClient).(*http.Client)
+	assert.Equal(t, tokenRequestTimeout, c.Timeout)
+
+	custom := &http.Client{}
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, custom)
+	assert.True(t, withTokenHTTPClient(ctx).Value(oauth2.HTTPClient).(*http.Client) == custom)
+}
+
+func TestAccessToken_NoTokenIsErrNoToken(t *testing.T) {
+	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
+	_, err := o.AccessToken(context.Background())
+	assert.True(t, errors.Is(err, ErrNoToken))
+}
+
+func TestBuild_RefreshKeepsReplacementStoredMeanwhile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	assert.NoError(t, saveTokenToPath(path, &oauthToken{
+		AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1,
+	}))
+
+	buildErrs := make(chan error, 1)
+	go func() { buildErrs <- o.Build(context.Background()) }()
+	<-forms // Build's refresh is in flight
+
+	// Another path (e.g. a concurrent Build's authorization) stores a token.
+	o.mu.Lock()
+	o.storeToken(path, &oauthToken{AccessToken: "replacement", ExpiresAt: time.Now().Unix() + 7200})
+	o.mu.Unlock()
+	close(release)
+
+	assert.NoError(t, <-buildErrs)
+	tok, err := o.AccessToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "replacement", tok)
+	// Build's refreshed token was discarded, not written over the file.
+	onDisk, err := loadTokenFromPath(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "replacement", onDisk.AccessToken)
+}
+
+func TestAccessToken_FailedRefreshAfterClearIsErrTokenCleared(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	forms := make(chan url.Values, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NoError(t, r.ParseForm())
+		forms <- r.PostForm
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+	}))
+	t.Cleanup(srv.Close)
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		errs <- err
+	}()
+	<-forms // the refresh is in flight and will fail
+	assert.NoError(t, o.Clear())
+	close(release)
+
+	assert.True(t, errors.Is(<-errs, ErrTokenCleared))
 }

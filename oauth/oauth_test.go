@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/longbridgeapp/assert"
 	"github.com/longbridge/openapi-go/oauth"
+	"github.com/longbridgeapp/assert"
 )
 
 func TestOAuth_New(t *testing.T) {
