@@ -406,4 +406,36 @@ func TestBuild_RefreshKeepsReplacementStoredMeanwhile(t *testing.T) {
 	tok, err := o.AccessToken(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, "replacement", tok)
+	// Build's refreshed token was discarded, not written over the file.
+	onDisk, err := loadTokenFromPath(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "replacement", onDisk.AccessToken)
+}
+
+func TestAccessToken_FailedRefreshAfterClearIsErrTokenCleared(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	forms := make(chan url.Values, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NoError(t, r.ParseForm())
+		forms <- r.PostForm
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+	}))
+	t.Cleanup(srv.Close)
+	o := NewWithBaseURL("my-client", srv.URL)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		errs <- err
+	}()
+	<-forms // the refresh is in flight and will fail
+	assert.NoError(t, o.Clear())
+	close(release)
+
+	assert.True(t, errors.Is(<-errs, ErrTokenCleared))
 }

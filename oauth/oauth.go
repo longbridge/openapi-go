@@ -294,10 +294,9 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		gen := o.gen
 		o.mu.Unlock()
 		refreshed, err := o.refreshToken(ctx, &tokCopy)
-		if err != nil {
-			return "", err
-		}
 		o.mu.Lock()
+		// Check gen before err, like Build: a Clear or replacement during the
+		// refresh decides the result even if the refresh itself failed.
 		if o.gen != gen {
 			// The token was cleared or replaced while refreshing: never
 			// store this result; use the replacement if there is one.
@@ -307,6 +306,10 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 				return "", ErrTokenCleared
 			}
 			return cur.AccessToken, nil
+		}
+		if err != nil {
+			o.mu.Unlock()
+			return "", err
 		}
 		path, _ := o.tokenPath()
 		o.storeToken(path, refreshed)
