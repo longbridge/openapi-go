@@ -80,8 +80,10 @@ type OAuth struct {
 
 	mu    sync.Mutex
 	token *oauthToken
-	// gen is bumped by Clear so a refresh that was in flight when the token
-	// was cleared does not store (or persist) it again.
+	// gen is bumped whenever the token is cleared or replaced (Clear,
+	// storeToken, Build loading a different token), so a refresh or
+	// authorization that was in flight meanwhile can tell its result is
+	// outdated.
 	gen uint64
 }
 
@@ -184,6 +186,10 @@ func (o *OAuth) Build(ctx context.Context) error {
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
 		o.releaseRefresh()
+		if o.gen != gen && err == nil && o.replacementIsStale(loaded.RefreshToken) {
+			o.storeToken(path, refreshed)
+			return nil
+		}
 		if o.gen != gen {
 			return o.replacementOrCleared()
 		}
@@ -205,6 +211,14 @@ func (o *OAuth) Build(ctx context.Context) error {
 	}
 	o.storeToken(path, tok)
 	return nil
+}
+
+// replacementIsStale reports whether the token stored while a refresh was in
+// flight still carries the refresh token that refresh consumed. Such a
+// "replacement" is stale (the server may have rotated that refresh token), so
+// a successful refresh result wins over it. The caller must hold o.mu.
+func (o *OAuth) replacementIsStale(consumedRefreshToken string) bool {
+	return o.token != nil && o.token.RefreshToken == consumedRefreshToken
 }
 
 // replacementOrCleared decides Build's result when the token changed (gen
@@ -308,10 +322,7 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		o.mu.Lock()
 		// Check gen before err, like Build: a Clear or replacement during the
 		// refresh decides the result even if the refresh itself failed.
-		// A "replacement" that still carries the refresh token this refresh
-		// just consumed is stale (the server may have rotated it), so the
-		// refreshed token wins over it.
-		if o.gen != gen && err == nil && o.token != nil && o.token.RefreshToken == tokCopy.RefreshToken {
+		if o.gen != gen && err == nil && o.replacementIsStale(tokCopy.RefreshToken) {
 			path, _ := o.tokenPath()
 			o.storeToken(path, refreshed)
 			o.mu.Unlock()

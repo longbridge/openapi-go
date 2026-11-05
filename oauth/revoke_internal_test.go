@@ -539,3 +539,66 @@ func TestAccessToken_KeepsRefreshWhenAnotherProcessWroteTheSameStaleToken(t *tes
 	o.mu.Unlock()
 	assert.Equal(t, "new-refresh", got.RefreshToken)
 }
+
+func TestAccessToken_FailedRefreshIsReportedWhenBuildReloadsTheSameToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	forms := make(chan url.Values, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NoError(t, r.ParseForm())
+		forms <- r.PostForm
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+	}))
+	t.Cleanup(srv.Close)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	tok := &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 600}
+	assert.NoError(t, saveTokenToPath(path, tok))
+	o.token = tok
+
+	errs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		errs <- err
+	}()
+	<-forms // the refresh is in flight and will fail
+	// Reloading the very token this client wrote is not a replacement.
+	assert.NoError(t, o.Build(context.Background()))
+	close(release)
+
+	err = <-errs
+	assert.True(t, err != nil)
+	assert.Contains(t, err.Error(), "invalid_grant")
+}
+
+func TestBuild_RefreshWinsOverAStaleReplacement(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	assert.NoError(t, saveTokenToPath(path, &oauthToken{
+		AccessToken: "expired", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1,
+	}))
+
+	buildErrs := make(chan error, 1)
+	go func() { buildErrs <- o.Build(context.Background()) }()
+	<-forms // Build's refresh with "refresh" is in flight
+
+	// A late copy from another process, still carrying the consumed token.
+	o.mu.Lock()
+	o.storeToken(path, &oauthToken{AccessToken: "late-copy", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 600})
+	o.mu.Unlock()
+	close(release)
+	assert.NoError(t, <-buildErrs)
+
+	o.mu.Lock()
+	got := *o.token
+	o.mu.Unlock()
+	assert.Equal(t, "new-refresh", got.RefreshToken)
+}
