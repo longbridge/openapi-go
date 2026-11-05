@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"golang.org/x/oauth2"
 )
@@ -492,31 +494,50 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	}
 
 	type result struct {
-		code  string
-		state string
-		err   error
+		code string
+		err  error
 	}
 	ch := make(chan result, 1)
+	// The first redirect for this request decides the outcome; later ones
+	// must not block their handler.
+	deliver := func(res result) {
+		select {
+		case ch <- res:
+		default:
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		if oauthErr := q.Get("error"); oauthErr != "" {
+		// Check the CSRF state first, for error redirects too. A redirect
+		// with a wrong or missing state is answered and ignored: the flow
+		// keeps waiting, so another page can neither end it nor inject an
+		// error text of its choosing.
+		if q.Get("state") != state {
 			writeHTML(w, http.StatusBadRequest,
-				fmt.Sprintf("<h1>Authorization Failed</h1><p>Error: %s</p>", oauthErr))
-			ch <- result{err: fmt.Errorf("oauth: authorization failed: %s", oauthErr)}
+				"<h1>Not the pending authorization</h1><p>This page belongs to an earlier or "+
+					"different authorization request. Finish the authorization in the most "+
+					"recently opened window.</p>")
 			return
 		}
-		code, st := q.Get("code"), q.Get("state")
-		if code == "" || st == "" {
+		if oauthErr := q.Get("error"); oauthErr != "" {
+			message := callbackErrorMessage(oauthErr, q.Get("error_description"))
 			writeHTML(w, http.StatusBadRequest,
-				"<h1>Missing Parameters</h1><p>Authorization code or state not received</p>")
-			ch <- result{err: fmt.Errorf("oauth: missing code or state in callback")}
+				"<h1>Authorization Failed</h1><p>Error: "+html.EscapeString(message)+"</p>")
+			deliver(result{err: fmt.Errorf("oauth: authorization failed: %s", message)})
+			return
+		}
+		code := q.Get("code")
+		if code == "" {
+			writeHTML(w, http.StatusBadRequest,
+				"<h1>Missing Parameters</h1><p>Authorization code not received</p>")
+			deliver(result{err: fmt.Errorf("oauth: missing code in callback")})
 			return
 		}
 		writeHTML(w, http.StatusOK,
 			"<h1>✓ Authorization Successful!</h1><p>You can close this window and return to the terminal.</p>")
-		ch <- result{code: code, state: st}
+		deliver(result{code: code})
 	})
 
 	srv := &http.Server{Handler: mux}
@@ -534,15 +555,55 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	if res.err != nil {
 		return nil, res.err
 	}
-	if res.state != state {
-		return nil, fmt.Errorf("oauth: CSRF state mismatch")
-	}
 
 	t, err := cfg.Exchange(withTokenHTTPClient(ctx), res.code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}
 	return tokenFromOAuth2(t), nil
+}
+
+// maxCallbackErrorLen caps each redirect-supplied error field (in runes).
+const maxCallbackErrorLen = 512
+
+// callbackErrorMessage builds the message for an error redirect (RFC 6749
+// §4.1.2.1): error, followed by the human-readable error_description when
+// present. Both come from the redirect query string, so they are sanitized
+// before reaching errors, logs and terminals.
+func callbackErrorMessage(oauthErr, description string) string {
+	if description == "" {
+		return sanitizeCallbackText(oauthErr)
+	}
+	return sanitizeCallbackText(oauthErr) + ": " + sanitizeCallbackText(description)
+}
+
+// sanitizeCallbackText replaces characters that can hide or reorder text in a
+// terminal or log (control characters including ANSI escapes, line/paragraph
+// separators, zero-width characters, bidirectional overrides) with spaces and
+// caps the length.
+func sanitizeCallbackText(s string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range s {
+		if n == maxCallbackErrorLen {
+			b.WriteString("…")
+			break
+		}
+		if isUnsafeRune(r) {
+			r = ' '
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return b.String()
+}
+
+func isUnsafeRune(r rune) bool {
+	return unicode.IsControl(r) ||
+		(r >= 0x200B && r <= 0x200F) ||
+		(r >= 0x2028 && r <= 0x202E) ||
+		(r >= 0x2060 && r <= 0x2069) ||
+		r == 0xFEFF
 }
 
 // buildAuthorizeURL returns the authorization URL with a fresh CSRF state and
