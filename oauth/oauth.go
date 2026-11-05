@@ -267,19 +267,21 @@ func (e *RevokeError) Error() string {
 }
 
 // withTokenHTTPClient returns ctx carrying the *http.Client used for token
-// requests: the one already stored under oauth2.HTTPClient (unless nil), or
-// one with a 30-second timeout. Refreshes and revocations block other callers (see
+// requests: the one already stored under oauth2.HTTPClient (unless nil), or a
+// copy of http.DefaultClient with a 30-second timeout if it has none. Refreshes and revocations block other callers (see
 // refreshSem), so they must not hang forever.
 func withTokenHTTPClient(ctx context.Context) context.Context {
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok && c != nil {
 		return ctx
 	}
-	// Keep http.DefaultClient's transport (what oauth2 used before), so a
-	// proxy or mTLS transport configured there still applies.
-	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{
-		Transport: http.DefaultClient.Transport,
-		Timeout:   tokenRequestTimeout,
-	})
+	// Start from http.DefaultClient (what oauth2 used before), so a proxy or
+	// mTLS transport, cookie jar or redirect policy configured there still
+	// applies; only add a timeout if it has none.
+	c := *http.DefaultClient
+	if c.Timeout == 0 {
+		c.Timeout = tokenRequestTimeout
+	}
+	return context.WithValue(ctx, oauth2.HTTPClient, &c)
 }
 
 // storeToken replaces the token in memory and on disk. It bumps gen so that a

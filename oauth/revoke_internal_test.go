@@ -386,6 +386,16 @@ func TestWithTokenHTTPClient_KeepsDefaultTransport(t *testing.T) {
 	assert.Equal(t, tokenRequestTimeout, c.Timeout)
 }
 
+func TestWithTokenHTTPClient_KeepsDefaultClientTimeout(t *testing.T) {
+	orig := http.DefaultClient.Timeout
+	t.Cleanup(func() { http.DefaultClient.Timeout = orig })
+	http.DefaultClient.Timeout = 5 * time.Second
+
+	c := withTokenHTTPClient(context.Background()).Value(oauth2.HTTPClient).(*http.Client)
+	assert.Equal(t, 5*time.Second, c.Timeout)
+	assert.True(t, c != http.DefaultClient) // a copy; DefaultClient is not modified
+}
+
 func TestBuild_LoadingAValidFileDiscardsAnInFlightRefresh(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	release := make(chan struct{})
