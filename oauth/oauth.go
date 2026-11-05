@@ -155,6 +155,9 @@ func (o *OAuth) Build(ctx context.Context) error {
 	loaded, _ := loadTokenFromPath(path)
 	if loaded != nil && !loaded.isExpired() {
 		o.token = loaded
+		// A refresh of the previous in-memory token that is still in flight
+		// must not overwrite the token just loaded.
+		o.gen++
 		return nil
 	}
 	// The lock is released during network I/O; gen detects a Clear (or
@@ -254,7 +257,12 @@ func withTokenHTTPClient(ctx context.Context) context.Context {
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok && c != nil {
 		return ctx
 	}
-	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: tokenRequestTimeout})
+	// Keep http.DefaultClient's transport (what oauth2 used before), so a
+	// proxy or mTLS transport configured there still applies.
+	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{
+		Transport: http.DefaultClient.Transport,
+		Timeout:   tokenRequestTimeout,
+	})
 }
 
 // storeToken replaces the token in memory and on disk. It bumps gen so that a
@@ -300,12 +308,13 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		if o.gen != gen {
 			// The token was cleared or replaced while refreshing: never
 			// store this result; use the replacement if there is one.
-			cur := o.token
-			o.mu.Unlock()
-			if cur == nil || cur.isExpired() {
-				return "", ErrTokenCleared
+			err := o.replacementOrCleared()
+			var accessToken string
+			if err == nil {
+				accessToken = o.token.AccessToken
 			}
-			return cur.AccessToken, nil
+			o.mu.Unlock()
+			return accessToken, err
 		}
 		if err != nil {
 			o.mu.Unlock()

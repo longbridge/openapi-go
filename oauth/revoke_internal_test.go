@@ -375,6 +375,47 @@ func TestWithTokenHTTPClient(t *testing.T) {
 	assert.True(t, withTokenHTTPClient(ctx).Value(oauth2.HTTPClient).(*http.Client) == custom)
 }
 
+func TestWithTokenHTTPClient_KeepsDefaultTransport(t *testing.T) {
+	orig := http.DefaultClient.Transport
+	t.Cleanup(func() { http.DefaultClient.Transport = orig })
+	custom := &http.Transport{}
+	http.DefaultClient.Transport = custom
+
+	c := withTokenHTTPClient(context.Background()).Value(oauth2.HTTPClient).(*http.Client)
+	assert.True(t, c.Transport == custom)
+	assert.Equal(t, tokenRequestTimeout, c.Timeout)
+}
+
+func TestBuild_LoadingAValidFileDiscardsAnInFlightRefresh(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() - 1}
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-forms // AccessToken's refresh is in flight
+
+	// Another process writes a valid token; Build loads it.
+	assert.NoError(t, saveTokenToPath(path, &oauthToken{AccessToken: "from-disk", ExpiresAt: time.Now().Unix() + 7200}))
+	assert.NoError(t, o.Build(context.Background()))
+	close(release)
+	assert.NoError(t, <-accessErrs)
+
+	tok, err := o.AccessToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "from-disk", tok)
+	onDisk, err := loadTokenFromPath(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "from-disk", onDisk.AccessToken)
+}
+
 func TestAccessToken_NoTokenIsErrNoToken(t *testing.T) {
 	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
 	_, err := o.AccessToken(context.Background())
