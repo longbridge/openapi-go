@@ -154,10 +154,13 @@ func (o *OAuth) Build(ctx context.Context) error {
 
 	loaded, _ := loadTokenFromPath(path)
 	if loaded != nil && !loaded.isExpired() {
-		o.token = loaded
-		// A refresh of the previous in-memory token that is still in flight
-		// must not overwrite the token just loaded.
-		o.gen++
+		// The file is usually the token this client wrote itself. Only a
+		// different token replaces the in-memory one (bumping gen, so an
+		// in-flight refresh of the previous token does not overwrite it).
+		if o.token == nil || *o.token != *loaded {
+			o.token = loaded
+			o.gen++
+		}
 		return nil
 	}
 	// The lock is released during network I/O; gen detects a Clear (or
@@ -305,6 +308,15 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		o.mu.Lock()
 		// Check gen before err, like Build: a Clear or replacement during the
 		// refresh decides the result even if the refresh itself failed.
+		// A "replacement" that still carries the refresh token this refresh
+		// just consumed is stale (the server may have rotated it), so the
+		// refreshed token wins over it.
+		if o.gen != gen && err == nil && o.token != nil && o.token.RefreshToken == tokCopy.RefreshToken {
+			path, _ := o.tokenPath()
+			o.storeToken(path, refreshed)
+			o.mu.Unlock()
+			return refreshed.AccessToken, nil
+		}
 		if o.gen != gen {
 			// The token was cleared or replaced while refreshing: never
 			// store this result; use the replacement if there is one.

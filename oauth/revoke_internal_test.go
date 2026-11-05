@@ -480,3 +480,62 @@ func TestAccessToken_FailedRefreshAfterClearIsErrTokenCleared(t *testing.T) {
 
 	assert.True(t, errors.Is(<-errs, ErrTokenCleared))
 }
+
+func TestAccessToken_RotatedRefreshSurvivesBuildReloadingTheSameToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	// Valid but expiring soon: AccessToken refreshes, Build would load it.
+	tok := &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 600}
+	assert.NoError(t, saveTokenToPath(path, tok))
+	o.token = tok
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-forms // the refresh (which rotates "refresh") is in flight
+	assert.NoError(t, o.Build(context.Background()))
+	close(release)
+	assert.NoError(t, <-accessErrs)
+
+	o.mu.Lock()
+	got := *o.token
+	o.mu.Unlock()
+	assert.Equal(t, "new-refresh", got.RefreshToken)
+	onDisk, err := loadTokenFromPath(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "new-refresh", onDisk.RefreshToken)
+}
+
+func TestAccessToken_KeepsRefreshWhenAnotherProcessWroteTheSameStaleToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	release := make(chan struct{})
+	srv, forms := tokenServer(t, release)
+	o := NewWithBaseURL("my-client", srv.URL)
+	path, err := o.tokenPath()
+	assert.NoError(t, err)
+	o.token = &oauthToken{AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 600}
+
+	accessErrs := make(chan error, 1)
+	go func() {
+		_, err := o.AccessToken(context.Background())
+		accessErrs <- err
+	}()
+	<-forms
+	// A different copy carrying the same (now consumed) refresh token.
+	o.mu.Lock()
+	o.storeToken(path, &oauthToken{AccessToken: "other-copy", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 600})
+	o.mu.Unlock()
+	close(release)
+	assert.NoError(t, <-accessErrs)
+
+	o.mu.Lock()
+	got := *o.token
+	o.mu.Unlock()
+	assert.Equal(t, "new-refresh", got.RefreshToken)
+}
