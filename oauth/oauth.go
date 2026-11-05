@@ -80,8 +80,10 @@ type OAuth struct {
 
 	mu    sync.Mutex
 	token *oauthToken
-	// gen is bumped by Clear so a refresh that was in flight when the token
-	// was cleared does not store (or persist) it again.
+	// gen is bumped whenever the token is cleared or replaced (Clear,
+	// storeToken, Build loading a different token), so a refresh or
+	// authorization that was in flight meanwhile can tell its result is
+	// outdated.
 	gen uint64
 }
 
@@ -154,7 +156,13 @@ func (o *OAuth) Build(ctx context.Context) error {
 
 	loaded, _ := loadTokenFromPath(path)
 	if loaded != nil && !loaded.isExpired() {
-		o.token = loaded
+		// The file is usually the token this client wrote itself. Only a
+		// different token replaces the in-memory one (bumping gen, so an
+		// in-flight refresh of the previous token does not overwrite it).
+		if o.token == nil || *o.token != *loaded {
+			o.token = loaded
+			o.gen++
+		}
 		return nil
 	}
 	// The lock is released during network I/O; gen detects a Clear (or
@@ -178,6 +186,10 @@ func (o *OAuth) Build(ctx context.Context) error {
 		refreshed, err := o.refreshToken(ctx, loaded)
 		o.mu.Lock()
 		o.releaseRefresh()
+		if o.gen != gen && err == nil && o.replacementIsStale(loaded.RefreshToken) {
+			o.storeToken(path, refreshed)
+			return nil
+		}
 		if o.gen != gen {
 			return o.replacementOrCleared()
 		}
@@ -199,6 +211,14 @@ func (o *OAuth) Build(ctx context.Context) error {
 	}
 	o.storeToken(path, tok)
 	return nil
+}
+
+// replacementIsStale reports whether the token stored while a refresh was in
+// flight still carries the refresh token that refresh consumed. Such a
+// "replacement" is stale (the server may have rotated that refresh token), so
+// a successful refresh result wins over it. The caller must hold o.mu.
+func (o *OAuth) replacementIsStale(consumedRefreshToken string) bool {
+	return o.token != nil && o.token.RefreshToken == consumedRefreshToken
 }
 
 // replacementOrCleared decides Build's result when the token changed (gen
@@ -247,14 +267,21 @@ func (e *RevokeError) Error() string {
 }
 
 // withTokenHTTPClient returns ctx carrying the *http.Client used for token
-// requests: the one already stored under oauth2.HTTPClient (unless nil), or
-// one with a 30-second timeout. Refreshes and revocations block other callers (see
+// requests: the one already stored under oauth2.HTTPClient (unless nil), or a
+// copy of http.DefaultClient with a 30-second timeout if it has none. Refreshes and revocations block other callers (see
 // refreshSem), so they must not hang forever.
 func withTokenHTTPClient(ctx context.Context) context.Context {
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok && c != nil {
 		return ctx
 	}
-	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: tokenRequestTimeout})
+	// Start from http.DefaultClient (what oauth2 used before), so a proxy or
+	// mTLS transport, cookie jar or redirect policy configured there still
+	// applies; only add a timeout if it has none.
+	c := *http.DefaultClient
+	if c.Timeout == 0 {
+		c.Timeout = tokenRequestTimeout
+	}
+	return context.WithValue(ctx, oauth2.HTTPClient, &c)
 }
 
 // storeToken replaces the token in memory and on disk. It bumps gen so that a
@@ -297,15 +324,22 @@ func (o *OAuth) AccessToken(ctx context.Context) (string, error) {
 		o.mu.Lock()
 		// Check gen before err, like Build: a Clear or replacement during the
 		// refresh decides the result even if the refresh itself failed.
+		if o.gen != gen && err == nil && o.replacementIsStale(tokCopy.RefreshToken) {
+			path, _ := o.tokenPath()
+			o.storeToken(path, refreshed)
+			o.mu.Unlock()
+			return refreshed.AccessToken, nil
+		}
 		if o.gen != gen {
 			// The token was cleared or replaced while refreshing: never
 			// store this result; use the replacement if there is one.
-			cur := o.token
-			o.mu.Unlock()
-			if cur == nil || cur.isExpired() {
-				return "", ErrTokenCleared
+			err := o.replacementOrCleared()
+			var accessToken string
+			if err == nil {
+				accessToken = o.token.AccessToken
 			}
-			return cur.AccessToken, nil
+			o.mu.Unlock()
+			return accessToken, err
 		}
 		if err != nil {
 			o.mu.Unlock()
