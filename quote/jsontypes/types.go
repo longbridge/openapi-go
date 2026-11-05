@@ -86,7 +86,7 @@ type OptionVolumeDaily struct {
 }
 
 // OptionChainContractList is the response for QuoteContext.OptionChainInfoByDate
-// (GET /v1/gemini/option/option_chain_list).
+// (POST /v1/quote/options/strikes).
 type OptionChainContractList struct {
 	List []*OptionChainContract `json:"list"`
 }

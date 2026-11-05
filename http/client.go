@@ -7,9 +7,10 @@ import (
 	"errors"
 	"io"
 	nhttp "net/http"
-	"time"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-querystring/query"
 
@@ -22,6 +23,41 @@ type apiResponse struct {
 	Message string
 	Data    json.RawMessage
 	TraceID string
+	// RetryAfter comes from the Retry-After header, not the body.
+	RetryAfter time.Duration `json:"-"`
+}
+
+// UnmarshalJSON accepts `code` as either a JSON number or a numeric string:
+// the unified gateway reports its own errors (e.g. rate limiting) as
+// {"code":"459101",...}. Any other code value becomes 500.
+func (r *apiResponse) UnmarshalJSON(b []byte) error {
+	type plain apiResponse
+	aux := struct {
+		*plain
+		Code json.RawMessage
+	}{plain: (*plain)(r)}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	r.Code = parseCode(aux.Code)
+	return nil
+}
+
+func parseCode(raw json.RawMessage) int {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0
+	}
+	s := string(raw)
+	if raw[0] == '"' {
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return nhttp.StatusInternalServerError
+		}
+	}
+	code, err := strconv.Atoi(s)
+	if err != nil {
+		return nhttp.StatusInternalServerError
+	}
+	return code
 }
 
 type otpResponse struct {
@@ -75,32 +111,84 @@ func WithRequestTimeout(d time.Duration) RequestOption {
 	}
 }
 
-// region returns the data center region derived from the client's credentials.
+// region returns the data center region derived from the client's static
+// API-key credentials. For an OAuth session the region lives in the access
+// token, which can only be read with a context; region reports AP for OAuth
+// sessions. Use regionCtx wherever a context is available.
 func (c *Client) region() dcRegion {
 	if c.opts.OAuthClient != nil {
-		// OAuth token inspection is async; cannot determine synchronously.
-		// Default to AP (the gateway default) so AP-only guards don't fire.
 		return dcRegionAp
 	}
 	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken)
 }
 
-// IsUS reports whether the configured credentials belong to the US data center.
+// regionCtx returns the data center region of the current session. For an
+// OAuth session it reads the access token (refreshing it if needed), exactly
+// as Call does when deriving the x-dc-region header, and returns any error
+// from obtaining the token.
+func (c *Client) regionCtx(ctx context.Context) (dcRegion, error) {
+	if c.opts.OAuthClient != nil {
+		token, err := c.opts.OAuthClient.AccessToken(ctx)
+		if err != nil {
+			return dcRegionAp, err
+		}
+		return dcRegionFromCredential(token), nil
+	}
+	return dcRegionFromCredentials(c.opts.AppKey, c.opts.AppSecret, c.opts.AccessToken), nil
+}
+
+// IsUS reports whether the configured API-key credentials belong to the US
+// data center.
+//
+// Deprecated: IsUS cannot see the region of an OAuth session (it reports
+// false for every OAuth session). Use IsUSCtx.
 func (c *Client) IsUS() bool {
 	return c.region() == dcRegionUs
 }
 
-// CheckRegion verifies that the current session's region matches required.
-// Returns *RegionRestrictedError if it does not; nil otherwise.
-// required must be "US" or "AP".
-func (c *Client) CheckRegion(path, required string) error {
-	var req dcRegion
-	if required == "US" {
-		req = dcRegionUs
-	} else {
-		req = dcRegionAp
+// IsUSCtx reports whether the current session belongs to the US data center.
+// For an OAuth session the region is derived from the access token's "us_"
+// prefix; an error is returned if the token cannot be obtained.
+func (c *Client) IsUSCtx(ctx context.Context) (bool, error) {
+	r, err := c.regionCtx(ctx)
+	if err != nil {
+		return false, err
 	}
-	cur := c.region()
+	return r == dcRegionUs, nil
+}
+
+// CheckRegion verifies that the configured API-key credentials' region matches
+// required. Returns *RegionRestrictedError if it does not; nil otherwise.
+// required must be "US" or "AP" (compared case-insensitively; anything
+// other than "US" means AP).
+//
+// Deprecated: CheckRegion treats every OAuth session as AP, so it blocks US
+// OAuth users from US-only APIs and never blocks them from AP-only ones. Use
+// CheckRegionCtx.
+func (c *Client) CheckRegion(path, required string) error {
+	return checkRegion(path, required, c.region())
+}
+
+// CheckRegionCtx verifies that the current session's region matches required.
+// For an OAuth session the region is derived from the access token, the same
+// way Call derives the x-dc-region header; an error from obtaining the token
+// is returned as is. Returns *RegionRestrictedError if the region does not
+// match; nil otherwise. required must be "US" or "AP" (compared
+// case-insensitively; anything other than "US" means AP).
+func (c *Client) CheckRegionCtx(ctx context.Context, path, required string) error {
+	cur, err := c.regionCtx(ctx)
+	if err != nil {
+		return err
+	}
+	return checkRegion(path, required, cur)
+}
+
+// checkRegion returns *RegionRestrictedError when cur does not satisfy required.
+func checkRegion(path, required string, cur dcRegion) error {
+	req := dcRegionAp
+	if strings.EqualFold(required, "US") {
+		req = dcRegionUs
+	}
 	if cur.allows(req) {
 		return nil
 	}
@@ -237,18 +325,33 @@ func readErrorBody(httpResp *nhttp.Response) error {
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
-	}
-	if isJSON(httpResp.Header.Get("content-type")) {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
 	return NewError(httpResp.StatusCode, apiResp)
+}
+
+// decodeAPIResponse decodes a response body into an apiResponse. A non-200
+// body that isn't a valid JSON envelope (e.g. an empty or truncated 429)
+// keeps its raw text as the message, so the caller still gets an *ApiError
+// carrying the HTTP status rather than a decode error.
+func decodeAPIResponse(httpResp *nhttp.Response, rb []byte) (*apiResponse, error) {
+	traceID := httpResp.Header.Get("x-trace-id")
+	retryAfter := parseRetryAfter(httpResp.Header.Get("retry-after"))
+	apiResp := &apiResponse{TraceID: traceID, RetryAfter: retryAfter}
+	if !isJSON(httpResp.Header.Get("content-type")) {
+		apiResp.Message = string(rb)
+		return apiResp, nil
+	}
+	if err := jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
+		if httpResp.StatusCode == nhttp.StatusOK {
+			return nil, err
+		}
+		log.Debugf("http call decode error response body: %v", err)
+		return &apiResponse{TraceID: traceID, RetryAfter: retryAfter, Message: string(rb)}, nil
+	}
+	return apiResp, nil
 }
 
 // Call will send request with signature to http server
@@ -263,6 +366,31 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 		defer cancel()
 	}
 
+	// A rate-limited request was rejected before reaching the service, so
+	// it is safe to retry whatever the method.
+	delay := retryInitialDelay
+	for i := 0; ; i++ {
+		err = c.call(ctx, method, path, queryParams, body, resp, ro)
+		ae := rateLimitError(err)
+		if i == retryCount || ae == nil || ae.RetryAfter > maxRetryAfter {
+			return err
+		}
+		wait := delay
+		if ae.RetryAfter > 0 {
+			wait = ae.RetryAfter
+		}
+		log.Debugf("http call rate limited, retry in %v: %v", wait, err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(wait):
+		}
+		delay *= retryFactor
+	}
+}
+
+// call sends a single request; see Call.
+func (c *Client) call(ctx context.Context, method, path string, queryParams interface{}, body interface{}, resp interface{}, ro *RequestOptions) (err error) {
 	req, bb, err := c.buildRequest(ctx, method, path, queryParams, body, ro)
 	if err != nil {
 		return err
@@ -282,19 +410,11 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 	}
 	log.Debugf("http call response body:%s", rb)
 
-	apiResp := &apiResponse{}
-
-	if v := httpResp.Header.Get("x-trace-id"); v != "" {
-		apiResp.TraceID = v
+	apiResp, err := decodeAPIResponse(httpResp, rb)
+	if err != nil {
+		return err
 	}
-
-	if isJSON(httpResp.Header.Get("content-type")) {
-		if err = jsonUnmarshal(bytes.NewReader(rb), apiResp); err != nil {
-			return err
-		}
-	} else {
-		apiResp.Message = string(rb)
-	}
+	jsonBody := isJSON(httpResp.Header.Get("content-type"))
 
 	if httpResp.StatusCode != nhttp.StatusOK || apiResp.Code != 0 {
 		return NewError(httpResp.StatusCode, apiResp)
@@ -302,6 +422,12 @@ func (c *Client) Call(ctx context.Context, method, path string, queryParams inte
 
 	if resp == nil {
 		return
+	}
+	// A raw-message caller decides itself what an absent `data` means. Only
+	// for a JSON envelope: a non-JSON 200 (e.g. a proxy page) stays an error.
+	if raw, ok := resp.(*json.RawMessage); ok && jsonBody && len(apiResp.Data) == 0 {
+		*raw = nil
+		return nil
 	}
 
 	if err = jsonUnmarshal(bytes.NewReader(apiResp.Data), resp); err != nil {
