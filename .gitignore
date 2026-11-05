@@ -7,3 +7,5 @@ go.work
 go.work.sum
 test_new_apis
 cmd/test_new_apis
+!config/testdata/*.yaml
+!config/testdata/*.toml

@@ -33,7 +33,7 @@ type CryptoOverview struct {
 // Path: GET /v1/us/gemini/crypto-overview
 // US token required; returns *http.RegionRestrictedError for non-US credentials.
 func (c *QuoteContext) CryptoOverview(ctx context.Context, symbol string) (*CryptoOverview, error) {
-	if err := c.opts.httpClient.CheckRegion("/v1/us/gemini/crypto-overview", "US"); err != nil {
+	if err := c.opts.httpClient.CheckRegionCtx(ctx, "/v1/us/gemini/crypto-overview", "US"); err != nil {
 		return nil, err
 	}
 	q := url.Values{}

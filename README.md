@@ -162,6 +162,7 @@ type Config struct {
     TradeUrl    string        `env:"LONGBRIDGE_TRADE_URL" yaml:"trade_url" toml:"trade_url"`
     QuoteUrl    string        `env:"LONGBRIDGE_QUOTE_URL" yaml:"quote_url" toml:"quote_url"`
     EnableOvernight bool          `env:"LONGBRIDGE_ENABLE_OVERNIGHT" yaml:"enable_overnight" toml:"enable_overnight"`
+    QuoteTransport  string        `env:"LONGBRIDGE_QUOTE_TRANSPORT" yaml:"quote_transport" toml:"quote_transport"`
     Language    openapi.Language `env:"LONGBRIDGE_LANGUAGE" yaml:"language" toml:"language"`
 
     LogLevel string `env:"LONGBRIDGE_LOG_LEVEL" yaml:"log_level" toml:"log_level"`
@@ -423,6 +424,7 @@ Support load env from `.env` file.
 | LONGBRIDGE_READ_BUFFER_SIZE | Longbridge protocol read buffer size                                                                  | 4096                                |         |                |
 | LONGBRIDGE_MIN_GZIP_SIZE    | Longbridge protocol minimal gzip size                                                                 | 1024                                |         |                |
 | LONGBRIDGE_ENABLE_OVERNIGHT | enable overnight quote subscription feature                                                           | false                               |         |                |
+| LONGBRIDGE_QUOTE_TRANSPORT  | transport for quote pull APIs: `ws` (quote WebSocket) or `http` (`POST /quote/*`)                     | ws                                  |         |                |
 | LONGBRIDGE_LANGUAGE         | set user language for some information.                                                              | -                                   | en      | en,zh-CN,zh-HK |
 
 ## License

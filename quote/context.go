@@ -50,7 +50,10 @@ type QuoteContext struct {
 	core *core
 }
 
-// Profile obtain the user quote profile
+// Profile obtain the user quote profile.
+//
+// With TransportHTTP the profile is fetched on first use, which dials the
+// quote WebSocket; nil is returned if that fails.
 func (c *QuoteContext) Profile() *UserProfile {
 	return c.core.Profile()
 }
@@ -162,8 +165,9 @@ func (c *QuoteContext) Depth(ctx context.Context, symbol string) (securityDepth 
 //	qctx, err := quote.NewFromEnv()
 //	brokers, err := qctx.Brokers(context.Background(), "AAPL.HK")
 func (c *QuoteContext) Brokers(ctx context.Context, symbol string) (securityBrokers *SecurityBrokers, err error) {
-	// Broker queue via WebSocket is served only by the AP data center.
-	if err = c.opts.httpClient.CheckRegion("quote/brokers (WebSocket)", "AP"); err != nil {
+	// The broker queue is served only by the AP data center, over either
+	// transport.
+	if err = c.opts.httpClient.CheckRegionCtx(ctx, "quote/brokers", "AP"); err != nil {
 		return
 	}
 	return c.core.Brokers(ctx, symbol)
@@ -289,11 +293,11 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 
 // OptionChainInfoByDate obtains a list of option contracts by the option chain expiry date.
 //
-// This calls GET /v1/gemini/option/option_chain_list. Every contract is an independent
+// This calls POST /v1/quote/options/strikes. Every contract is an independent
 // entry — calls and puts are not paired — so filter on Direction to separate them.
 //
 // standardOnly filters out the legacy contracts produced by corporate actions (e.g.
-// BABA2261218C10000.US) server-side; when false the parameter is omitted and the endpoint
+// BABA2261218C10000.US) server-side; when false the field is omitted and the endpoint
 // returns everything.
 //
 // Example:
@@ -302,16 +306,19 @@ func (c *QuoteContext) OptionChainExpiryDateList(ctx context.Context, symbol str
 //	date := time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC)
 //	list, err := qctx.OptionChainInfoByDate(context.Background(), "AAPL.US", date, false)
 func (c *QuoteContext) OptionChainInfoByDate(ctx context.Context, symbol string, expiryDate time.Time, standardOnly bool) (contracts []*OptionChainContract, err error) {
-	values := url.Values{}
-	values.Set("symbol", symbol)
-	values.Set("expiry_date", util.FormatDateSimple(&expiryDate))
-	// `false` and an omitted parameter mean the same thing to the endpoint, so send
-	// nothing rather than standard_only=false.
-	if standardOnly {
-		values.Set("standard_only", "true")
+	// `false` and an omitted field mean the same thing to the endpoint, so send
+	// nothing rather than "standard_only": false.
+	body := struct {
+		Symbol       string `json:"symbol"`
+		ExpiryDate   string `json:"expiry_date"`
+		StandardOnly bool   `json:"standard_only,omitempty"`
+	}{
+		Symbol:       symbol,
+		ExpiryDate:   util.FormatDateSimple(&expiryDate),
+		StandardOnly: standardOnly,
 	}
 	var resp jsontypes.OptionChainContractList
-	if err = c.opts.httpClient.Get(ctx, "/v1/gemini/option/option_chain_list", values, &resp); err != nil {
+	if err = c.opts.httpClient.Post(ctx, "/v1/quote/options/strikes", body, &resp); err != nil {
 		return
 	}
 	contracts = make([]*OptionChainContract, 0, len(resp.List))
@@ -713,11 +720,14 @@ func NewFromCfg(cfg *config.Config) (*QuoteContext, error) {
 		WithLbOptions(lbOpts),
 		WithEnableOvernight(cfg.EnableOvernight),
 		WithLanguage(cfg.Language),
+		WithTransport(Transport(cfg.QuoteTransport)), // validated by WithTransport
 	)
 }
 
 // New return QuoteContext with option.
-// A connection will be created with quote server.
+// With the default TransportWebSocket a connection to the quote server is
+// created immediately; with TransportHTTP it is only dialed when an API that
+// needs it (subscriptions, push events, Profile, ...) is first used.
 func New(opt ...Option) (*QuoteContext, error) {
 	opts := newOptions(opt...)
 	core, err := newCore(opts)

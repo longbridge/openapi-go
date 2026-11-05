@@ -1,0 +1,16 @@
+[longbridge]
+http_url = "http://test"
+http_timeout = "12s"
+app_key = "test_app_key"
+app_secret = "test_app_secret"
+access_token = "test_access_token"
+trade_url = "http://trade_test"
+quote_url = "http://quote_test"
+enable_overnight = true
+auth_timeout = "12s"
+timeout = "12s"
+write_queue_size = 12
+read_queue_size = 12
+read_buffer_size = 12
+min_gzip_size = 12
+region = "hk"
