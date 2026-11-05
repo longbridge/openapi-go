@@ -500,15 +500,10 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	ch := make(chan result, 1)
 	// The first redirect for this request decides the outcome; later ones
 	// must not block their handler.
-	deliver := func(res result) {
-		select {
-		case ch <- res:
-		default:
-		}
-	}
+	deliver := func(res result) { deliverFirst(ch, res) }
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /callback", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		// Check the CSRF state first, for error redirects too. A redirect
 		// with a wrong or missing state is answered and ignored: the flow
@@ -542,6 +537,15 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 
 	srv := &http.Server{Handler: mux}
 	go srv.Serve(listener) //nolint:errcheck
+	// Shut the server down with the flow, keep-alive connections included,
+	// so the browser cannot reach the handler afterwards. Shutdown (unlike
+	// Close) lets the request that delivered the result finish writing its
+	// page first.
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, authTimeout)
 	defer cancel()
@@ -561,6 +565,18 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}
 	return tokenFromOAuth2(t), nil
+}
+
+// deliverFirst sends v unless ch is already full, and reports whether it was
+// sent. The callback channel has room for exactly one result, so only the
+// first one is kept and a later redirect never blocks its handler.
+func deliverFirst[T any](ch chan T, v T) bool {
+	select {
+	case ch <- v:
+		return true
+	default:
+		return false
+	}
 }
 
 // maxCallbackErrorLen caps each redirect-supplied error field (in runes).
@@ -681,8 +697,8 @@ const callbackStyle = `<style>html{font-family:system-ui,-apple-system,BlinkMacS
 	`font-size:16px;color:#e0e0e0;background:#202020;padding:2rem;text-align:center;}</style>`
 
 func writeHTML(w http.ResponseWriter, status int, body string) {
-	html := fmt.Sprintf("<html><body>%s%s</body></html>", callbackStyle, body)
+	page := fmt.Sprintf("<html><body>%s%s</body></html>", callbackStyle, body)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprint(w, html)
+	fmt.Fprint(w, page)
 }
