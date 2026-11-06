@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"golang.org/x/oauth2"
 )
@@ -251,19 +253,26 @@ type RevokeError struct {
 	Code string
 	// Description is the OAuth error_description, if any.
 	Description string
+	// URI is the OAuth error_uri, if any.
+	URI string
 }
 
 func (e *RevokeError) Error() string {
+	var s string
 	switch {
 	case e.Code != "" && e.Description != "":
-		return "oauth: revoke token: " + e.Code + ": " + e.Description
+		s = "oauth: revoke token: " + e.Code + ": " + e.Description
 	case e.Code != "":
-		return "oauth: revoke token: " + e.Code
+		s = "oauth: revoke token: " + e.Code
 	case e.Description != "":
-		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
+		s = fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
 	default:
-		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
+		s = fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
 	}
+	if e.URI != "" {
+		s += " (see " + e.URI + ")"
+	}
+	return s
 }
 
 // withTokenHTTPClient returns ctx carrying the *http.Client used for token
@@ -422,9 +431,10 @@ func newRevokeError(status int, body []byte) *RevokeError {
 	var e struct {
 		Error            string `json:"error"`
 		ErrorDescription string `json:"error_description"`
+		ErrorURI         string `json:"error_uri"`
 	}
 	_ = json.Unmarshal(body, &e)
-	return &RevokeError{StatusCode: status, Code: e.Error, Description: e.ErrorDescription}
+	return &RevokeError{StatusCode: status, Code: e.Error, Description: e.ErrorDescription, URI: e.ErrorURI}
 }
 
 // Clear drops the token locally: it deletes the cached token file
@@ -492,35 +502,69 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	}
 
 	type result struct {
-		code  string
-		state string
-		err   error
+		code string
+		err  error
 	}
 	ch := make(chan result, 1)
+	// The first redirect for this request decides the outcome; later ones
+	// must not block their handler.
+	deliver := func(res result) { deliverFirst(ch, res) }
 
 	mux := http.NewServeMux()
+	// Registered without a method pattern and checked by hand, so the route
+	// behaves the same under GODEBUG=httpmuxgo121=1 (pre-Go 1.22 ServeMux).
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		if oauthErr := q.Get("error"); oauthErr != "" {
-			writeHTML(w, http.StatusBadRequest,
-				fmt.Sprintf("<h1>Authorization Failed</h1><p>Error: %s</p>", oauthErr))
-			ch <- result{err: fmt.Errorf("oauth: authorization failed: %s", oauthErr)}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		code, st := q.Get("code"), q.Get("state")
-		if code == "" || st == "" {
+		q := r.URL.Query()
+		// Check the CSRF state first, for error redirects too. A redirect
+		// with a wrong or missing state is answered and ignored: the flow
+		// keeps waiting, so another page can neither end it nor inject an
+		// error text of its choosing.
+		if q.Get("state") != state {
 			writeHTML(w, http.StatusBadRequest,
-				"<h1>Missing Parameters</h1><p>Authorization code or state not received</p>")
-			ch <- result{err: fmt.Errorf("oauth: missing code or state in callback")}
+				"<h1>Not the pending authorization</h1><p>This page belongs to an earlier or "+
+					"different authorization request. Finish the authorization in the most "+
+					"recently opened window.</p>")
+			return
+		}
+		if oauthErr := q.Get("error"); oauthErr != "" {
+			message := callbackErrorMessage(oauthErr, q.Get("error_description"))
+			writeHTML(w, http.StatusBadRequest,
+				"<h1>Authorization Failed</h1><p>Error: "+html.EscapeString(message)+"</p>")
+			deliver(result{err: fmt.Errorf("oauth: authorization failed: %s", message)})
+			return
+		}
+		code := q.Get("code")
+		if code == "" {
+			writeHTML(w, http.StatusBadRequest,
+				"<h1>Missing Parameters</h1><p>Authorization code not received</p>")
+			deliver(result{err: fmt.Errorf("oauth: missing code in callback")})
 			return
 		}
 		writeHTML(w, http.StatusOK,
 			"<h1>✓ Authorization Successful!</h1><p>You can close this window and return to the terminal.</p>")
-		ch <- result{code: code, state: st}
+		deliver(result{code: code})
 	})
 
 	srv := &http.Server{Handler: mux}
 	go srv.Serve(listener) //nolint:errcheck
+	// Shut the server down with the flow, keep-alive connections included,
+	// so the browser cannot reach the handler afterwards. Shutdown (unlike
+	// Close) lets the request that delivered the result finish writing its
+	// page first; it is bounded briefly because a browser's pre-opened
+	// connection that never sends a request only counts as idle after 5s,
+	// after which Close drops whatever is left.
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), callbackShutdownTimeout)
+		defer cancel()
+		if srv.Shutdown(shutdownCtx) != nil {
+			_ = srv.Close()
+		}
+	}()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, authTimeout)
 	defer cancel()
@@ -534,15 +578,71 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	if res.err != nil {
 		return nil, res.err
 	}
-	if res.state != state {
-		return nil, fmt.Errorf("oauth: CSRF state mismatch")
-	}
 
 	t, err := cfg.Exchange(withTokenHTTPClient(ctx), res.code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("oauth: failed to exchange code for token: %w", err)
 	}
 	return tokenFromOAuth2(t), nil
+}
+
+// callbackShutdownTimeout bounds how long the end of the authorization flow
+// waits for the callback server's in-flight requests.
+const callbackShutdownTimeout = 300 * time.Millisecond
+
+// deliverFirst sends v unless ch is already full, and reports whether it was
+// sent. The callback channel has room for exactly one result, so only the
+// first one is kept and a later redirect never blocks its handler.
+func deliverFirst[T any](ch chan T, v T) bool {
+	select {
+	case ch <- v:
+		return true
+	default:
+		return false
+	}
+}
+
+// maxCallbackErrorLen caps each redirect-supplied error field (in runes).
+const maxCallbackErrorLen = 512
+
+// callbackErrorMessage builds the message for an error redirect (RFC 6749
+// §4.1.2.1): error, followed by the human-readable error_description when
+// present. Both come from the redirect query string, so they are sanitized
+// before reaching errors, logs and terminals.
+func callbackErrorMessage(oauthErr, description string) string {
+	if description == "" {
+		return sanitizeCallbackText(oauthErr)
+	}
+	return sanitizeCallbackText(oauthErr) + ": " + sanitizeCallbackText(description)
+}
+
+// sanitizeCallbackText replaces characters that can hide or reorder text in a
+// terminal or log (control characters including ANSI escapes, line/paragraph
+// separators, zero-width characters, bidirectional overrides) with spaces and
+// caps the length.
+func sanitizeCallbackText(s string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range s {
+		if n == maxCallbackErrorLen {
+			b.WriteString("…")
+			break
+		}
+		if isUnsafeRune(r) {
+			r = ' '
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return b.String()
+}
+
+func isUnsafeRune(r rune) bool {
+	return unicode.IsControl(r) ||
+		(r >= 0x200B && r <= 0x200F) ||
+		(r >= 0x2028 && r <= 0x202E) ||
+		(r >= 0x2060 && r <= 0x2069) ||
+		r == 0xFEFF
 }
 
 // buildAuthorizeURL returns the authorization URL with a fresh CSRF state and
@@ -620,8 +720,8 @@ const callbackStyle = `<style>html{font-family:system-ui,-apple-system,BlinkMacS
 	`font-size:16px;color:#e0e0e0;background:#202020;padding:2rem;text-align:center;}</style>`
 
 func writeHTML(w http.ResponseWriter, status int, body string) {
-	html := fmt.Sprintf("<html><body>%s%s</body></html>", callbackStyle, body)
+	page := fmt.Sprintf("<html><body>%s%s</body></html>", callbackStyle, body)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprint(w, html)
+	fmt.Fprint(w, page)
 }
