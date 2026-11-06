@@ -253,19 +253,26 @@ type RevokeError struct {
 	Code string
 	// Description is the OAuth error_description, if any.
 	Description string
+	// URI is the OAuth error_uri, if any.
+	URI string
 }
 
 func (e *RevokeError) Error() string {
+	var s string
 	switch {
 	case e.Code != "" && e.Description != "":
-		return "oauth: revoke token: " + e.Code + ": " + e.Description
+		s = "oauth: revoke token: " + e.Code + ": " + e.Description
 	case e.Code != "":
-		return "oauth: revoke token: " + e.Code
+		s = "oauth: revoke token: " + e.Code
 	case e.Description != "":
-		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
+		s = fmt.Sprintf("oauth: revoke token: server returned HTTP %d: %s", e.StatusCode, e.Description)
 	default:
-		return fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
+		s = fmt.Sprintf("oauth: revoke token: server returned HTTP %d", e.StatusCode)
 	}
+	if e.URI != "" {
+		s += " (see " + e.URI + ")"
+	}
+	return s
 }
 
 // withTokenHTTPClient returns ctx carrying the *http.Client used for token
@@ -424,9 +431,10 @@ func newRevokeError(status int, body []byte) *RevokeError {
 	var e struct {
 		Error            string `json:"error"`
 		ErrorDescription string `json:"error_description"`
+		ErrorURI         string `json:"error_uri"`
 	}
 	_ = json.Unmarshal(body, &e)
-	return &RevokeError{StatusCode: status, Code: e.Error, Description: e.ErrorDescription}
+	return &RevokeError{StatusCode: status, Code: e.Error, Description: e.ErrorDescription, URI: e.ErrorURI}
 }
 
 // Clear drops the token locally: it deletes the cached token file
@@ -503,7 +511,14 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	deliver := func(res result) { deliverFirst(ch, res) }
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /callback", func(w http.ResponseWriter, r *http.Request) {
+	// Registered without a method pattern and checked by hand, so the route
+	// behaves the same under GODEBUG=httpmuxgo121=1 (pre-Go 1.22 ServeMux).
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		q := r.URL.Query()
 		// Check the CSRF state first, for error redirects too. A redirect
 		// with a wrong or missing state is answered and ignored: the flow
@@ -540,11 +555,15 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	// Shut the server down with the flow, keep-alive connections included,
 	// so the browser cannot reach the handler afterwards. Shutdown (unlike
 	// Close) lets the request that delivered the result finish writing its
-	// page first.
+	// page first; it is bounded briefly because a browser's pre-opened
+	// connection that never sends a request only counts as idle after 5s,
+	// after which Close drops whatever is left.
 	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), callbackShutdownTimeout)
 		defer cancel()
-		_ = srv.Shutdown(shutdownCtx)
+		if srv.Shutdown(shutdownCtx) != nil {
+			_ = srv.Close()
+		}
 	}()
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, authTimeout)
@@ -566,6 +585,10 @@ func (o *OAuth) authorizeFlow(ctx context.Context) (*oauthToken, error) {
 	}
 	return tokenFromOAuth2(t), nil
 }
+
+// callbackShutdownTimeout bounds how long the end of the authorization flow
+// waits for the callback server's in-flight requests.
+const callbackShutdownTimeout = 300 * time.Millisecond
 
 // deliverFirst sends v unless ch is already full, and reports whether it was
 // sent. The callback channel has room for exactly one result, so only the

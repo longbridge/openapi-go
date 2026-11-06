@@ -2,9 +2,13 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -101,8 +105,7 @@ func TestAuthorizeFlow_IgnoresCallbacksWithAMismatchedState(t *testing.T) {
 		callbackRequest(t, http.MethodGet, redirectURI, url.Values{"error": {"access_denied"}, "state": {state}})
 	})
 
-	assert.True(t, err != nil)
-	assert.Equal(t, "oauth: authorization failed: access_denied", err.Error())
+	assert.EqualError(t, err, "oauth: authorization failed: access_denied")
 	for i := 0; i < 2; i++ {
 		r := <-responses
 		assert.Equal(t, http.StatusBadRequest, r.status)
@@ -123,10 +126,8 @@ func TestAuthorizeFlow_ReportsErrorDescriptionAndEscapesThePage(t *testing.T) {
 		bodies <- body
 	})
 
-	assert.True(t, err != nil)
-	assert.Equal(t,
-		"oauth: authorization failed: internal_server_error: client not found <script>alert(1)</script>",
-		err.Error())
+	assert.EqualError(t, err,
+		"oauth: authorization failed: internal_server_error: client not found <script>alert(1)</script>")
 	body := <-bodies
 	assert.Contains(t, body, "client not found &lt;script&gt;alert(1)&lt;/script&gt;")
 	assert.False(t, strings.Contains(body, "<script>"))
@@ -173,7 +174,7 @@ func TestAuthorizeFlow_CallbackAcceptsOnlyGetAndClosesAfterTheFlow(t *testing.T)
 		// A POST does not end the flow; the GET does.
 		callbackRequest(t, http.MethodGet, redirectURI, url.Values{"error": {"access_denied"}, "state": {state}})
 	})
-	assert.Equal(t, "oauth: authorization failed: access_denied", err.Error())
+	assert.EqualError(t, err, "oauth: authorization failed: access_denied")
 
 	// The server (keep-alive connections included) is closed with the flow.
 	client := &http.Client{Timeout: 2 * time.Second}
@@ -182,4 +183,64 @@ func TestAuthorizeFlow_CallbackAcceptsOnlyGetAndClosesAfterTheFlow(t *testing.T)
 		resp.Body.Close()
 		t.Fatal("callback server still answering after the flow ended")
 	}
+}
+
+// With GODEBUG=httpmuxgo121=1 (pre-Go 1.22 ServeMux rules, which an
+// application can opt into) the callback must still be routed.
+func TestAuthorizeFlow_WorksWithLegacyServeMux(t *testing.T) {
+	if os.Getenv("OAUTH_LEGACY_MUX_CHILD") != "" {
+		t.Skip("running as the child")
+	}
+	exe, err := os.Executable()
+	assert.NoError(t, err)
+	cmd := exec.Command(exe, "-test.run", "^TestAuthorizeFlow_ValidCallbackExchangesTheCode$", "-test.count=1", "-test.v")
+	cmd.Env = append(os.Environ(), "GODEBUG=httpmuxgo121=1", "OAUTH_LEGACY_MUX_CHILD=1")
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, string(out))
+	assert.Contains(t, string(out), "--- PASS: TestAuthorizeFlow_ValidCallbackExchangesTheCode")
+}
+
+func TestAuthorizeFlow_EndsPromptlyWithAPreopenedConnection(t *testing.T) {
+	var elapsed time.Duration
+	o := NewWithBaseURL("my-client", "http://127.0.0.1:1")
+	var conn net.Conn
+	start := time.Now()
+	_, err := startFlow(t, o, func(redirectURI, state string) {
+		// Like a browser's speculative connection: opened, never used.
+		u, _ := url.Parse(callbackURL(redirectURI, nil))
+		c, dialErr := net.Dial("tcp", u.Host)
+		if dialErr != nil {
+			t.Errorf("pre-connecting: %v", dialErr)
+			return
+		}
+		conn = c
+		callbackRequest(t, http.MethodGet, redirectURI, url.Values{"error": {"access_denied"}, "state": {state}})
+		start = time.Now()
+	})
+	elapsed = time.Since(start)
+	if conn != nil {
+		conn.Close()
+	}
+	assert.EqualError(t, err, "oauth: authorization failed: access_denied")
+	assert.True(t, elapsed < time.Second, "flow took %v to end after the callback", elapsed)
+}
+
+func TestRevoke_TransportFailureKeepsTheCause(t *testing.T) {
+	// A port with nothing listening: the connection is refused.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	addr := l.Addr().String()
+	l.Close()
+
+	o := NewWithBaseURL("my-client", "http://"+addr)
+	o.token = &oauthToken{AccessToken: "access", RefreshToken: "refresh", ExpiresAt: time.Now().Unix() + 7200}
+	err = o.Revoke(context.Background())
+	var opErr *net.OpError
+	assert.True(t, errors.As(err, &opErr), "error chain lacks the transport cause: %v", err)
+}
+
+func TestRevokeError_IncludesErrorURI(t *testing.T) {
+	err := newRevokeError(400, []byte(`{"error":"invalid_grant","error_description":"bad token","error_uri":"https://example.com/e"}`))
+	assert.Equal(t, "https://example.com/e", err.URI)
+	assert.EqualError(t, err, "oauth: revoke token: invalid_grant: bad token (see https://example.com/e)")
 }
