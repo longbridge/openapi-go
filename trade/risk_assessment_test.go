@@ -37,12 +37,13 @@ func TestRiskAssessmentUnmarshal(t *testing.T) {
 				`"deadlines":{"pi":"1790000000","risk":1790000001,"x":null},` +
 				`"approvals":{"flag":true,"n":3,"z":null},"strategy_risk_levels":null}`,
 			want: RiskAssessment{
-				Risk:      "R1",
-				Pi:        1,
-				PiEndAt:   1790000000,
-				Score:     42,
-				Deadlines: map[string]int64{"pi": 1790000000, "risk": 1790000001, "x": 0},
-				Approvals: map[string]string{"flag": "true", "n": "3", "z": ""},
+				Risk:               "R1",
+				Pi:                 1,
+				PiEndAt:            1790000000,
+				Score:              42,
+				Deadlines:          map[string]int64{"pi": 1790000000, "risk": 1790000001, "x": 0},
+				Approvals:          map[string]string{"flag": "true", "n": "3", "z": ""},
+				StrategyRiskLevels: []string{},
 			},
 		},
 		{
@@ -61,12 +62,22 @@ func TestRiskAssessmentUnmarshal(t *testing.T) {
 		{
 			name: "null maps",
 			data: `{"approvals":null,"deadlines":null}`,
-			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}},
+			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}, StrategyRiskLevels: []string{}},
+		},
+		{
+			name: "wrong-shaped maps and lists become empty",
+			data: `{"approvals":[],"deadlines":"x","strategy_risk_levels":{"a":1}}`,
+			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}, StrategyRiskLevels: []string{}},
+		},
+		{
+			name: "scalar strategy list",
+			data: `{"strategy_risk_levels":"S1"}`,
+			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}, StrategyRiskLevels: []string{}},
 		},
 		{
 			name: "empty object",
 			data: `{}`,
-			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}},
+			want: RiskAssessment{Approvals: map[string]string{}, Deadlines: map[string]int64{}, StrategyRiskLevels: []string{}},
 		},
 	}
 	for _, tc := range cases {

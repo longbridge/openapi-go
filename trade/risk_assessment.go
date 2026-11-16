@@ -34,45 +34,52 @@ type RiskAssessment struct {
 	// Score is the questionnaire score.
 	Score int32 `json:"score"`
 	// StrategyRiskLevels are the strategy risk levels the member is allowed to
-	// trade.
+	// trade. Never nil.
 	StrategyRiskLevels []string `json:"strategy_risk_levels"`
 }
 
-// UnmarshalJSON decodes the server response leniently, matching the Rust SDK:
-// integers (including map values) are accepted as JSON numbers or numeric
-// strings, and anything else (null, floats, out-of-range values) becomes 0;
-// string fields, approval values and strategy risk levels keep a JSON string
-// as-is, turn null into "", and render any other value as its compact JSON
-// text. Null or missing maps decode to empty, non-nil maps.
+// UnmarshalJSON decodes the server response leniently, following the same rules
+// as the Rust SDK: integers (including map values) are accepted as JSON
+// integers or integer strings, and anything else (null, floats, out-of-range
+// values) becomes 0; string fields, approval values and strategy risk levels
+// keep a JSON string as-is, turn null into "", and render any other value as
+// its compact JSON text (non-integer numbers keep their original text, e.g.
+// "1.50", where Rust normalizes them); a map or list field holding anything
+// other than an object / array (e.g. null, or [] for a map) decodes to an empty,
+// non-nil value.
 func (r *RiskAssessment) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Risk               json.RawMessage                `json:"risk"`
-		Pi                 jsontypes.FlexInt32            `json:"pi"`
-		Approvals          map[string]json.RawMessage     `json:"approvals"`
-		ReAuthentication   json.RawMessage                `json:"re_authentication"`
-		PiEndAt            jsontypes.FlexInt64            `json:"pi_end_at"`
-		Deadlines          map[string]jsontypes.FlexInt64 `json:"deadlines"`
-		RiskAssessmentAt   json.RawMessage                `json:"risk_assessment_at"`
-		Score              jsontypes.FlexInt32            `json:"score"`
-		StrategyRiskLevels []json.RawMessage              `json:"strategy_risk_levels"`
+		Risk               json.RawMessage     `json:"risk"`
+		Pi                 jsontypes.FlexInt32 `json:"pi"`
+		Approvals          json.RawMessage     `json:"approvals"`
+		ReAuthentication   json.RawMessage     `json:"re_authentication"`
+		PiEndAt            jsontypes.FlexInt64 `json:"pi_end_at"`
+		Deadlines          json.RawMessage     `json:"deadlines"`
+		RiskAssessmentAt   json.RawMessage     `json:"risk_assessment_at"`
+		Score              jsontypes.FlexInt32 `json:"score"`
+		StrategyRiskLevels json.RawMessage     `json:"strategy_risk_levels"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	approvals := make(map[string]string, len(raw.Approvals))
-	for k, v := range raw.Approvals {
+	// A wrong-shaped value fails these inner decodes and leaves them empty.
+	var approvalsRaw map[string]json.RawMessage
+	_ = json.Unmarshal(raw.Approvals, &approvalsRaw)
+	approvals := make(map[string]string, len(approvalsRaw))
+	for k, v := range approvalsRaw {
 		approvals[k] = rawJSONText(v)
 	}
-	var strategyRiskLevels []string
-	if raw.StrategyRiskLevels != nil {
-		strategyRiskLevels = make([]string, len(raw.StrategyRiskLevels))
-		for i, v := range raw.StrategyRiskLevels {
-			strategyRiskLevels[i] = rawJSONText(v)
-		}
-	}
-	deadlines := make(map[string]int64, len(raw.Deadlines))
-	for k, v := range raw.Deadlines {
+	var deadlinesRaw map[string]jsontypes.FlexInt64
+	_ = json.Unmarshal(raw.Deadlines, &deadlinesRaw)
+	deadlines := make(map[string]int64, len(deadlinesRaw))
+	for k, v := range deadlinesRaw {
 		deadlines[k] = int64(v)
+	}
+	var levelsRaw []json.RawMessage
+	_ = json.Unmarshal(raw.StrategyRiskLevels, &levelsRaw)
+	strategyRiskLevels := make([]string, len(levelsRaw))
+	for i, v := range levelsRaw {
+		strategyRiskLevels[i] = rawJSONText(v)
 	}
 	*r = RiskAssessment{
 		Risk:               rawJSONText(raw.Risk),
