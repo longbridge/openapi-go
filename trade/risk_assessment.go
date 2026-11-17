@@ -40,8 +40,9 @@ type RiskAssessment struct {
 	RiskAssessmentAt string `json:"risk_assessment_at"`
 	// Score is the questionnaire score.
 	Score int32 `json:"score"`
-	// StrategyRiskLevels are the strategy risk levels the member is allowed to
-	// trade. Never nil.
+	// StrategyRiskLevels are the strategy risk levels of the member. The server
+	// does not document what these levels permit, so do not read them as a
+	// trading entitlement. Never nil.
 	StrategyRiskLevels []string `json:"strategy_risk_levels"`
 }
 
