@@ -12,18 +12,22 @@ import (
 // the current member. It mirrors the server response of
 // GET /v1/members/me/risk-assessment field-for-field.
 type RiskAssessment struct {
-	// Risk is the risk level of the latest questionnaire (e.g. "A5").
+	// Risk is the risk level of the latest questionnaire (e.g. "A5"). The
+	// server does not document the scale, so do not infer an ordering.
 	Risk string `json:"risk"`
-	// Pi is the professional investor (PI) status code.
+	// Pi is the professional investor (PI) status code. The server does not
+	// document the code values; treat it as opaque.
 	Pi int32 `json:"pi"`
 	// Approvals are the approval states keyed by item (e.g. "car", "cka",
-	// "risk_audit", "is_corporate_client"). Never nil.
+	// "risk_audit", "is_corporate_client"). Values are strings, not booleans:
+	// "is_corporate_client" arrives as "true"/"false". Never nil.
 	Approvals map[string]string `json:"approvals"`
 	// ReAuthentication is the re-authentication flag, as returned by the
 	// server (empty when not set).
 	ReAuthentication string `json:"re_authentication"`
 	// PiEndAt is the professional investor status end time, as returned by
-	// the server (0 when not set).
+	// the server (0 when not set). Raw integer: the unit (seconds or
+	// milliseconds) is not documented, so it is not converted to a time.Time.
 	PiEndAt int64 `json:"pi_end_at"`
 	// Deadlines are the deadlines keyed by item, as returned by the server.
 	// Never nil.
