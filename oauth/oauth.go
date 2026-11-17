@@ -617,9 +617,11 @@ func callbackErrorMessage(oauthErr, description string) string {
 }
 
 // sanitizeCallbackText replaces characters that can hide or reorder text in a
-// terminal or log (control characters including ANSI escapes, line/paragraph
-// separators, zero-width characters, bidirectional overrides) with spaces and
-// caps the length.
+// terminal or log (control characters, line/paragraph separators, zero-width
+// characters, bidirectional overrides) with spaces. That also defuses an ANSI
+// escape sequence, since only its leading ESC is a control character and the
+// rest is left as literal text. The length is capped, with "…" appended when
+// the value was truncated.
 func sanitizeCallbackText(s string) string {
 	var b strings.Builder
 	n := 0
