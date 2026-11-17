@@ -35,9 +35,8 @@ type RiskAssessment struct {
 	// RiskAssessmentAt is the date of the latest risk assessment, as returned
 	// by the server (e.g. "2026-10-14"). Kept as the server's string rather
 	// than a time.Time: the "yyyy-mm-dd" form is not documented to be
-	// guaranteed. May be empty; note that lenient decoding also renders a null
-	// or non-string value as "", so emptiness does not by itself mean "never
-	// assessed".
+	// guaranteed. May be empty; a null or absent value also decodes to "", so
+	// emptiness does not by itself mean "never assessed".
 	RiskAssessmentAt string `json:"risk_assessment_at"`
 	// Score is the questionnaire score.
 	Score int32 `json:"score"`
