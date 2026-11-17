@@ -466,6 +466,25 @@ func (f *FlexString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// FlexInt64 is an int64 field that also accepts a numeric string (proto3 JSON
+// encodes int64 as a string); null or an unparsable value (including a float)
+// is left as 0, so a server-side type change cannot fail the whole response.
+type FlexInt64 int64
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexInt64) UnmarshalJSON(data []byte) error {
+	var s FlexString
+	if err := s.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(string(s)), 10, 64)
+	if err != nil {
+		v = 0
+	}
+	*f = FlexInt64(v)
+	return nil
+}
+
 // FlexInt32 is an int32 field that also accepts a numeric string; null or an
 // unparsable value is left as 0, so a server-side type change in a newly added
 // field cannot fail the whole response.
