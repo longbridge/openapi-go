@@ -397,9 +397,9 @@ type ValuationMetricsData struct {
 type ValuationMetricData struct {
 	// Human-readable description with current value and percentile.
 	Desc string
-	// Historical high value.
+	// Upper bound of the fair-value band (not the period maximum; the series can rise above it).
 	High *decimal.Decimal
-	// Historical low value.
+	// Lower bound of the fair-value band (not the period minimum; the series can fall below it).
 	Low *decimal.Decimal
 	// Historical median value.
 	Median *decimal.Decimal
@@ -445,9 +445,9 @@ type ValuationHistoryMetrics struct {
 type ValuationHistoryMetric struct {
 	// Human-readable description.
 	Desc string
-	// Historical high over the period.
+	// Upper bound of the fair-value band (not the period maximum; the series can rise above it).
 	High *decimal.Decimal
-	// Historical low over the period.
+	// Lower bound of the fair-value band (not the period minimum; the series can fall below it).
 	Low *decimal.Decimal
 	// Historical median over the period.
 	Median *decimal.Decimal
