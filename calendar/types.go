@@ -76,7 +76,8 @@ type CalendarEventsResponse struct {
 	Date string
 	// Per-day event groups
 	List []CalendarDateGroup
-	// Pagination cursor; pass as start to fetch the next page, empty when there are no more pages
+	// Pagination cursor: the next date group, empty when there are no more
+	// dates. It moves past truncated dates (see CalendarDateGroup.Count)
 	NextDate string
 }
 
@@ -84,7 +85,8 @@ type CalendarEventsResponse struct {
 type CalendarDateGroup struct {
 	// Date string, e.g. "2025-05-02"
 	Date string
-	// Total event count for this date
+	// Total event count for this date; when it exceeds len(Infos) the date
+	// was truncated by count and the rest can be fetched with offset
 	Count int32
 	// Individual event records
 	Infos []CalendarEventInfo

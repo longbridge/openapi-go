@@ -17,6 +17,10 @@
 - The account routes except `CouponOrders` send `account_channel` (as the Longbridge app and CLI do), read from the access token's JWT payload (`ac` claim, or `account_channel` in the `sub` claim), defaulting to `lb` when the token names none, as the Rust SDK and MCP do; it is left out only when the token is not a decodable JWT. `http.Client` gains `AccountChannelCtx`.
 - Timestamps are `time.Time` (UTC); upstream placeholders (`0`, `"0"`, negative values, 1906 / 1970 dates, the 9999-12-31 long-term sentinel) decode to the zero time. Upstream fields carrying personal data — account holder names and postal addresses, ID / proof-document storage keys, contact people, deposit receipt images, prize redemption secrets (`coupon_secret`, `cash_card_code`), prize delivery details — are not modelled. A coffee coupon's `CouponNo` is kept: it is the voucher template code (e.g. `coffee-50`), not a personal redemption code. Account numbers are returned as upstream sends them (not masked).
 
+### Fixed
+
+- **`CalendarContext.FinanceCalendar` docs describe per-date paging** (ports longbridge/openapi#633, from longbridge/developers#1339) — `count` caps the events returned for each date (not per page), `offset` skips events within a date, a `CalendarDateGroup` holding fewer `Infos` than its `Count` was truncated (call again with `start` = `end` = that date and `offset` = events already received), `NextDate` moves past truncated dates, and `end` is not a hard bound, so filter by date on the client. No code or signature changes
+
 ## [v0.31.0] - 2026-11-19
 
 ### Added
