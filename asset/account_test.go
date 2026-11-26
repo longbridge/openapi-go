@@ -1062,3 +1062,17 @@ func TestDepositsPageSizeCappedAt20(t *testing.T) {
 		t.Errorf("nil params: sent %s", got)
 	}
 }
+
+func TestRewardDeliverStatusIsAddressFilled(t *testing.T) {
+	for s, want := range map[RewardDeliverStatus]bool{
+		RewardDeliverStatusAddressFilled:    true,
+		RewardDeliverStatusAddressFilledAlt: true,
+		RewardDeliverStatusAddressMissing:   false,
+		RewardDeliverStatusShipping:         false,
+		RewardDeliverStatusUnknown:          false,
+	} {
+		if got := s.IsAddressFilled(); got != want {
+			t.Errorf("%d.IsAddressFilled() = %v, want %v", s, got, want)
+		}
+	}
+}

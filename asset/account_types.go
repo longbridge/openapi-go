@@ -442,13 +442,22 @@ const (
 	// RewardDeliverStatusAddressMissing means no delivery address was given.
 	RewardDeliverStatusAddressMissing RewardDeliverStatus = 8
 	// RewardDeliverStatusAddressFilled means the delivery address was given.
+	// The server also sends RewardDeliverStatusAddressFilledAlt (11) for the
+	// same state, so check both, or use IsAddressFilled.
 	RewardDeliverStatusAddressFilled RewardDeliverStatus = 9
 	// RewardDeliverStatusShipping means the prize is being shipped.
 	RewardDeliverStatusShipping RewardDeliverStatus = 10
-	// RewardDeliverStatusAddressFilledAlt is another code the app also shows
-	// as "address filled".
+	// RewardDeliverStatusAddressFilledAlt is another code for the same state
+	// as RewardDeliverStatusAddressFilled (9): the delivery address was given.
+	// Check both, or use IsAddressFilled.
 	RewardDeliverStatusAddressFilledAlt RewardDeliverStatus = 11
 )
+
+// IsAddressFilled reports whether the delivery address was given: either of
+// the two codes the server sends for that state (9 and 11).
+func (s RewardDeliverStatus) IsAddressFilled() bool {
+	return s == RewardDeliverStatusAddressFilled || s == RewardDeliverStatusAddressFilledAlt
+}
 
 // PrizeTypePhysical is the RewardRecord.PrizeType of physical goods (the only
 // prize type with a delivery address and shipping states). Other prize types
