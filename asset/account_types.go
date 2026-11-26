@@ -241,7 +241,7 @@ type TransferStock struct {
 	Amount           string             `json:"amount"`
 	Currency         string             `json:"currency"`
 	Cost             string             `json:"cost"`
-	State            TransferStockState `json:"state"`
+	StateCode        TransferStockState `json:"state_code"`
 	StreetAmount     string             `json:"street_amount"`
 	NomineeAmount    string             `json:"nominee_amount"`
 	OwnAmount        string             `json:"own_amount"`
@@ -483,10 +483,10 @@ type RewardRecord struct {
 	Description   string           `json:"description"`
 	// CardType is set for coupon rewards.
 	CardType string `json:"card_type"`
-	// CardStatus is set only for coupon rewards (DetailKind
-	// RewardDetailKindCard), and is CouponStatusUnknown when upstream sent no
-	// usable status; nil for every other reward.
-	CardStatus *CouponStatus `json:"card_status,omitempty"`
+	// CardStatus applies only to coupon rewards (DetailKind
+	// RewardDetailKindCard). It is CouponStatusUnknown for every other reward
+	// and when upstream sent no usable status (as in the Rust SDK).
+	CardStatus CouponStatus `json:"card_status"`
 	// PrizeType is set only for prizes (DetailKind RewardDetailKindPrize) that
 	// carry an integer prize_type; PrizeTypePhysical is physical goods. nil for
 	// every other reward, and for a prize without a usable prize_type.
@@ -495,10 +495,11 @@ type RewardRecord struct {
 	Currency  string `json:"currency"`
 	// Status is RewardStatusUnknown when upstream sent no usable status.
 	Status RewardStatus `json:"status"`
-	// DeliverStatus is set only for prizes, and is RewardDeliverStatusUnknown
-	// when upstream sent no usable delivery status; nil for every other
-	// reward. It is only meaningful once the prize is RewardStatusIssued.
-	DeliverStatus *RewardDeliverStatus `json:"deliver_status,omitempty"`
+	// DeliverStatus applies only to prizes, and only once the prize is
+	// RewardStatusIssued. It is RewardDeliverStatusUnknown for every other
+	// reward and when upstream sent no usable delivery status (as in the Rust
+	// SDK).
+	DeliverStatus RewardDeliverStatus `json:"deliver_status"`
 	// ExitStatus is the upstream exit_status code, -1 when absent.
 	ExitStatus      int32     `json:"exit_status"`
 	SendTime        time.Time `json:"send_time"`

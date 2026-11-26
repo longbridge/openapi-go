@@ -181,7 +181,7 @@ func toTransferStocks(stocks []jsontypes.TransferStock) []TransferStock {
 			Amount:           string(s.Amount),
 			Currency:         string(s.Currency),
 			Cost:             string(s.Cost),
-			State:            TransferStockState(code(s.State)),
+			StateCode:        TransferStockState(code(s.State)),
 			StreetAmount:     string(s.StreetAmount),
 			NomineeAmount:    string(s.NomineeAmount),
 			OwnAmount:        string(s.OwnAmount),
@@ -270,7 +270,14 @@ func toRewardRecord(item *jsontypes.RewardItem) *RewardRecord {
 	if detail == nil && !item.RewardType.Valid {
 		return nil
 	}
-	rec := &RewardRecord{RewardType: inferred, DetailKind: kind}
+	rec := &RewardRecord{
+		RewardType:    inferred,
+		DetailKind:    kind,
+		Status:        RewardStatusUnknown,
+		CardStatus:    CouponStatusUnknown,
+		DeliverStatus: RewardDeliverStatusUnknown,
+		ExitStatus:    -1,
+	}
 	if item.RewardType.Valid {
 		rec.RewardType = RewardType(item.RewardType.Value)
 	}
@@ -288,15 +295,13 @@ func toRewardRecord(item *jsontypes.RewardItem) *RewardRecord {
 	rec.ExitStatus = code(detail.ExitStatus)
 	switch kind {
 	case RewardDetailKindCard:
-		status := CouponStatus(code(detail.CardStatus))
-		rec.CardStatus = &status
+		rec.CardStatus = CouponStatus(code(detail.CardStatus))
 	case RewardDetailKindPrize:
 		if detail.PrizeType.Valid {
 			prizeType := detail.PrizeType.Value
 			rec.PrizeType = &prizeType
 		}
-		deliver := RewardDeliverStatus(code(detail.DeliverStatus))
-		rec.DeliverStatus = &deliver
+		rec.DeliverStatus = RewardDeliverStatus(code(detail.DeliverStatus))
 	}
 	rec.SendTime = parseTime(detail.SendTime)
 	rec.StartTime = parseTime(detail.StartTime)

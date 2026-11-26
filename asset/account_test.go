@@ -222,7 +222,7 @@ func TestStockTransfersIn(t *testing.T) {
 	if !r.ProcessAt.IsZero() || !r.ExecAt.IsZero() {
 		t.Errorf("placeholder times must be zero: process %v exec %v", r.ProcessAt, r.ExecAt)
 	}
-	if len(r.Stocks) != 1 || r.Stocks[0].Name != "苹果" || r.Stocks[0].Amount != "100" || r.Stocks[0].State != TransferStockStateProcessing {
+	if len(r.Stocks) != 1 || r.Stocks[0].Name != "苹果" || r.Stocks[0].Amount != "100" || r.Stocks[0].StateCode != TransferStockStateProcessing {
 		t.Errorf("stocks = %+v", r.Stocks)
 	}
 	b, _ := json.Marshal(r)
@@ -290,22 +290,22 @@ func TestRewardRecords(t *testing.T) {
 	}
 	prize := list.Records[0]
 	if prize.RewardType != RewardTypeGift || prize.DetailKind != RewardDetailKindPrize || prize.Status != RewardStatusIssued ||
-		prize.DeliverStatus == nil || *prize.DeliverStatus != RewardDeliverStatusAddressMissing ||
-		prize.PrizeType == nil || *prize.PrizeType != PrizeTypePhysical || prize.CardStatus != nil ||
+		prize.DeliverStatus != RewardDeliverStatusAddressMissing ||
+		prize.PrizeType == nil || *prize.PrizeType != PrizeTypePhysical || prize.CardStatus != CouponStatusUnknown ||
 		prize.SendTime.Unix() != 1790000000 || !prize.ReceiveDeadline.IsZero() {
 		t.Errorf("prize = %+v", prize)
 	}
 	cash := list.Records[1]
 	if cash.RewardType != RewardTypeCash || cash.Amount != "38" || !cash.SendTime.IsZero() ||
-		cash.PrizeType != nil || cash.DeliverStatus != nil || cash.CardStatus != nil {
+		cash.PrizeType != nil || cash.DeliverStatus != RewardDeliverStatusUnknown || cash.CardStatus != CouponStatusUnknown {
 		t.Errorf("cash = %+v", cash)
 	}
 	if coupon := list.Records[2]; coupon.RewardType != RewardTypeCoupon || coupon.DetailKind != RewardDetailKindCard || coupon.CardType != "commission" ||
-		coupon.CardStatus == nil || *coupon.CardStatus != CouponStatusUnused || coupon.PrizeType != nil || coupon.DeliverStatus != nil {
+		coupon.CardStatus != CouponStatusUnused || coupon.PrizeType != nil || coupon.DeliverStatus != RewardDeliverStatusUnknown {
 		t.Errorf("coupon = %+v", coupon)
 	}
 	if task := list.Records[3]; task.RewardType != RewardTypeTask || task.DetailKind != RewardDetailKindNone ||
-		task.PrizeType != nil || task.DeliverStatus != nil || task.CardStatus != nil {
+		task.PrizeType != nil || task.DeliverStatus != RewardDeliverStatusUnknown || task.CardStatus != CouponStatusUnknown {
 		t.Errorf("task = %+v", task)
 	}
 	b, _ := json.Marshal(list)
@@ -640,7 +640,7 @@ func TestMissingAndGarbageCodesAreUnknown(t *testing.T) {
 			if err != nil {
 				t.Fatalf("StockTransfersIn: %v", err)
 			}
-			if in.Records[0].StateCode != TransferInStateUnknown || in.Records[0].Stocks[0].State != TransferStockStateUnknown {
+			if in.Records[0].StateCode != TransferInStateUnknown || in.Records[0].Stocks[0].StateCode != TransferStockStateUnknown {
 				t.Errorf("transfer in = %+v", in.Records[0])
 			}
 			out, err := actx.StockTransfersOut(ctx, nil)
@@ -665,10 +665,10 @@ func TestMissingAndGarbageCodesAreUnknown(t *testing.T) {
 			}
 			prize := rewards.Records[0]
 			if prize.RewardType != RewardTypeGift || prize.Status != RewardStatusUnknown || prize.PrizeType != nil ||
-				prize.DeliverStatus == nil || *prize.DeliverStatus != RewardDeliverStatusUnknown || prize.ExitStatus != -1 {
+				prize.DeliverStatus != RewardDeliverStatusUnknown || prize.ExitStatus != -1 {
 				t.Errorf("prize = %+v", prize)
 			}
-			if card := rewards.Records[1]; card.CardStatus == nil || *card.CardStatus != CouponStatusUnknown {
+			if card := rewards.Records[1]; card.CardStatus != CouponStatusUnknown {
 				t.Errorf("card reward = %+v", card)
 			}
 
