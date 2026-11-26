@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **`CalendarContext.FinanceCalendar` docs describe per-date paging** (ports longbridge/openapi#633, from longbridge/developers#1339) — `count` caps the events returned for each date (not per page), `offset` skips events within a date, a `CalendarDateGroup` holding fewer `Infos` than its `Count` was truncated (call again with `start` = `end` = that date and `offset` = events already received), `NextDate` moves past truncated dates, and `end` is not a hard bound, so filter by date on the client. No code or signature changes
+
 ## [v0.31.0] - 2026-11-19
 
 ### Added

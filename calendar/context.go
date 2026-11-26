@@ -51,15 +51,16 @@ func NewFromEnv() (*CalendarContext, error) {
 //
 // count, offset and next are optional pagination controls; pass nil to use the
 // server defaults:
-//   - count — maximum number of events per page. The server caps a page at a
-//     small default (historically ~10) when count is not set, so pass a larger
-//     count to avoid a one-day query looking truncated.
-//   - offset — number of events to skip from the start of the window.
+//   - count — maximum number of events returned for each date.
+//   - offset — number of events to skip within a date.
 //   - next — direction to page from the cursor (see CalendarPageDirection).
 //
-// The response reports a NextDate cursor. To page through the full window,
-// either request a larger count, or re-call passing the returned NextDate as
-// start until NextDate comes back empty.
+// Events come back grouped by date. A group's Count field is that date's
+// total, so a group holding fewer events than its Count was truncated: fetch
+// the rest by calling again with start = end = that date and offset set to the
+// number of events already received. The NextDate cursor points at the next
+// date group and moves past truncated dates. end is not a hard bound: the
+// server may return later dates, so filter by date on the client.
 //
 // Reference: GET /v1/quote/finance_calendar
 func (c *CalendarContext) FinanceCalendar(
