@@ -1,5 +1,7 @@
 // Package asset provides a client for the Longbridge Asset OpenAPI.
-// It covers account asset queries and downloads.
+// It covers account statements and the account money-movement records: bank
+// cards and eDDA authorizations, deposits, withdrawals, stock transfers, reward
+// records and coupons.
 package asset
 
 import (

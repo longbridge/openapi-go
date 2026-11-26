@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Account money-movement and reward records on `AssetContext`** — all AP accounts only (US sessions get `*http.RegionRestrictedError` without sending the request; there is no US equivalent), OAuth scope `account.read`:
+  - `BankCards(ctx)` (`GET /v2/account/bank-cards`): linked cards with `Status` (`BankCardStatus`), `WitnessState`, `BindState` and `AuthList` (eDDA / bank-securities / FPS authorizations; `BankCardAuth.IsEDDA()` for `hk_edda` / `hk_sdda`, `Status` as `AuthorizationStatus`, `Message` = failure reason).
+  - `EddaApplications(ctx, cardID, currency)` (`GET /v1/account/edda-status`): accepts both the `{list[]}` reply and the single-object reply of older builds.
+  - `StockTransfersIn(ctx, *GetStockTransfers)` / `StockTransfersOut(ctx, *GetStockTransfers)` (`GET /v1/account/stock-transfers/in|out`): filters `Market`, `State`, `Start` / `End` (sent as unix seconds), `Page` / `Size`; typed `TransferInState` / `TransferOutState` / `TransferStockState`; `UserNotifiedBroker()` (the user's own "I have notified the broker" tap); `StockTransferOut.Cancellable()` (only the submitted state — upstream `can_modify` is 0 even then).
+  - `RewardRecords(ctx, *GetRewardRecords)` (`GET /v1/account/rewards`): items flattened from their `cash` / `card` / `prize` object, with `RewardType`, `RewardStatus` and `RewardDeliverStatus`.
+  - `Coupons(ctx, *GetCoupons)` (`GET /v1/account/cards`): `TopList` / `List` / `BottomList` (the pinned sections repeat on every page), `CouponStatus`, `NoExpiry` for an end time past 2100, millisecond end times converted, typed `Commission` terms.
+  - `CouponOrders(ctx, cardID, CouponOrderTypeLocked|CouponOrderTypeSettled)` (`GET /v1/account/card-orders`).
+  - `Deposits(ctx, *GetDeposits)` (`GET /v1/account/deposits`): `States` sent as numeric codes, `Currencies`, and new `Start` / `End` date filters (`from_date` / `to_date`); `Total` is capped upstream at the page size.
+  - `Withdrawals(ctx, *GetWithdrawals)` (`GET /v1/account/withdrawals`): new `Start` / `End` date filters (`begin` / `end`).
+- Timestamps are `time.Time` (UTC); upstream placeholders (`0`, `"0"`, negative values, 1906 / 1970 dates, the 9999-12-31 long-term sentinel) decode to the zero time. Upstream fields carrying personal data — account holder names and postal addresses, ID / proof-document storage keys, contact people, deposit receipt images, coupon secrets and redemption codes, prize delivery details — are not modelled. Account numbers are returned as upstream sends them (not masked).
+
 ## [v0.31.0] - 2026-11-19
 
 ### Added

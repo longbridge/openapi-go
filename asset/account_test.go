@@ -1,0 +1,492 @@
+package asset
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	nethttp "net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/longbridge/openapi-go/asset/jsontypes"
+	"github.com/longbridge/openapi-go/http"
+)
+
+func newTestAssetContext(t *testing.T, srvURL, prefix string) *AssetContext {
+	t.Helper()
+	cli, err := http.New(
+		http.WithURL(srvURL),
+		http.WithAppKey(prefix+"key"),
+		http.WithAppSecret(prefix+"secret"),
+		http.WithAccessToken(prefix+"token"),
+	)
+	if err != nil {
+		t.Fatalf("http.New: %v", err)
+	}
+	return &AssetContext{httpClient: cli}
+}
+
+// serve answers every request with data and records the last request.
+func serve(t *testing.T, data string, got **nethttp.Request) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		*got = r
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":0,"message":"","data":` + data + `}`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestParseTimePlaceholders(t *testing.T) {
+	tests := []struct {
+		in   string
+		want int64 // 0 = zero time
+	}{
+		{"", 0},
+		{"0", 0},
+		{"-2000000000", 0},
+		{"1970-01-01T00:00:00Z", 0},
+		{"1906-06-07T18:35:44Z", 0},
+		{"253402214400", 0}, // 9999-12-31 sentinel
+		{"8061747303", 0},   // past 2100
+		{"garbage", 0},
+		{"1792600000", 1792600000},
+		{"1798732800000", 1798732800}, // milliseconds
+		{"2026-11-25T09:59:06Z", 1795600746},
+		{"2026-11-25T17:59:06+08:00", 1795600746},
+	}
+	for _, tt := range tests {
+		got := parseTime(jsontypes.FlexString(tt.in))
+		if tt.want == 0 {
+			if !got.IsZero() {
+				t.Errorf("parseTime(%q) = %v, want zero", tt.in, got)
+			}
+			continue
+		}
+		if got.Unix() != tt.want || got.Location() != time.UTC {
+			t.Errorf("parseTime(%q) = %v, want unix %d UTC", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestBankCards(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"show_add_card_button": true, "list": [{
+		"id": "1024", "bank_id": 12, "bank": "HSBC", "bank_en": "HSBC", "bank_code": "004",
+		"account": "012345678901", "name": "CHAN TAI MAN", "name_en": "CHAN TAI MAN",
+		"account_type": 1, "country": "Hong Kong", "country_display": "Hong Kong",
+		"region": "HK", "region_name": "Hong Kong", "address": "1 Queen's Road",
+		"swift_code": "HSBCHKHHHKH", "status": 1, "witness_state": 3, "support_witness": true,
+		"bind_state": 1, "bind_tip": "", "created_at": "1792600000",
+		"picture_urls": ["id/front.jpg"], "payee_street": "x", "payee_city": "y",
+		"withdraw_fee": "0", "logo": "https://x/logo.png",
+		"auth_list": [
+			{"flow_id": "hk_edda", "name": "eDDA", "currency": "HKD", "status": 3,
+			 "message": "Name mismatch", "is_support": 1, "max_amount": "0",
+			 "max_amount_unlimited": false, "daily_max_count": "5",
+			 "expiry_date": 253402214400, "long_term_valid": true, "custom": "789",
+			 "id": "0", "created_at": "0", "need_sms": 0},
+			{"flow_id": "hk_fps", "currency": "USD", "status": 1, "expiry_date": "1830000000",
+			 "long_term_valid": false, "max_amount": "50000"}
+		]
+	}]}`, &req)
+	actx := newTestAssetContext(t, srv.URL, "")
+	cards, err := actx.BankCards(context.Background())
+	if err != nil {
+		t.Fatalf("BankCards: %v", err)
+	}
+	if req.URL.Path != "/v2/account/bank-cards" || req.URL.Query().Get("from_app_page") != "cards" {
+		t.Errorf("request = %s", req.URL)
+	}
+	if len(cards) != 1 {
+		t.Fatalf("got %d cards", len(cards))
+	}
+	c := cards[0]
+	if c.ID != 1024 || c.BankID != "12" || c.Account != "012345678901" || c.Country != "Hong Kong" ||
+		c.AccountType != "1" || c.Status != BankCardStatusUnderReview ||
+		c.WitnessState != BankCardWitnessStateWitnessed || c.BindState != BankCardBindStateBound ||
+		!c.SupportWitness || c.CreatedAt.Unix() != 1792600000 {
+		t.Errorf("card = %+v", c)
+	}
+	if len(c.AuthList) != 2 {
+		t.Fatalf("auth list = %+v", c.AuthList)
+	}
+	edda := c.AuthList[0]
+	if !edda.IsEDDA() || edda.Status != AuthorizationStatusFailed || edda.Message != "Name mismatch" ||
+		!edda.IsSupport || edda.MaxAmount != "" || edda.DailyMaxCount != 5 ||
+		!edda.LongTermValid || !edda.ExpiryDate.IsZero() {
+		t.Errorf("edda auth = %+v", edda)
+	}
+	fps := c.AuthList[1]
+	if fps.IsEDDA() || fps.Status != AuthorizationStatusAuthorized || fps.ExpiryDate.Unix() != 1830000000 || fps.MaxAmount != "50000" {
+		t.Errorf("fps auth = %+v", fps)
+	}
+	// Sensitive upstream fields must not leak into the public type.
+	b, _ := json.Marshal(c)
+	for _, leaked := range []string{"CHAN TAI MAN", "Queen", "front.jpg", "payee", "logo"} {
+		if strings.Contains(string(b), leaked) {
+			t.Errorf("marshalled card contains %q: %s", leaked, b)
+		}
+	}
+}
+
+func TestEddaApplicationsShapes(t *testing.T) {
+	var req *nethttp.Request
+	for _, tt := range []struct {
+		name string
+		data string
+		want int
+	}{
+		{"list", `{"list": [{"id": 77, "flow_id": "hk_sdda", "currency": "HKD", "status": 2, "created_at": 1792600000}, {"id": "78", "status": 3, "message": "Rejected by bank"}]}`, 2},
+		{"legacy object", `{"id": "77", "status": 1, "message": ""}`, 1},
+		{"empty", `{}`, 0},
+		{"null", `null`, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := serve(t, tt.data, &req)
+			apps, err := newTestAssetContext(t, srv.URL, "").EddaApplications(context.Background(), 1024, " hkd ")
+			if err != nil {
+				t.Fatalf("EddaApplications: %v", err)
+			}
+			if q := req.URL.Query(); req.URL.Path != "/v1/account/edda-status" || q.Get("card_id") != "1024" || q.Get("currency") != "HKD" {
+				t.Errorf("request = %s", req.URL)
+			}
+			if apps == nil || len(apps) != tt.want {
+				t.Fatalf("got %+v, want %d applications", apps, tt.want)
+			}
+			if tt.name == "list" {
+				if apps[0].ID != "77" || apps[0].Status != AuthorizationStatusAuthorizing || apps[0].CreatedAt.Unix() != 1792600000 ||
+					apps[1].Status != AuthorizationStatusFailed || apps[1].Message != "Rejected by bank" {
+					t.Errorf("apps = %+v %+v", apps[0], apps[1])
+				}
+			}
+			if tt.name == "legacy object" && (apps[0].ID != "77" || apps[0].Status != AuthorizationStatusAuthorized) {
+				t.Errorf("app = %+v", apps[0])
+			}
+		})
+	}
+	actx := newTestAssetContext(t, "http://127.0.0.1:0", "")
+	if _, err := actx.EddaApplications(context.Background(), 0, "HKD"); err == nil {
+		t.Error("card id 0 must be rejected")
+	}
+	if _, err := actx.EddaApplications(context.Background(), 1, ""); err == nil {
+		t.Error("empty currency must be rejected")
+	}
+}
+
+func TestStockTransfersIn(t *testing.T) {
+	var req *nethttp.Request
+	// Shape of a real canary transfer-in record, 2026-11-25.
+	srv := serve(t, `{"total": 1, "records": [{
+		"id": "7053", "order_id": "TI202611250001", "market": "US", "market_symbol": "US",
+		"broker": "富途证券", "broker_id": "9", "broker_en": "Futu Securities", "code": "FUTU",
+		"account": "11222333444555", "name": "CHAN TAI MAN", "contact": "Mr Lee",
+		"contact_phone": "12345678", "contact_email": "a@b.c", "user_email": "me@x.y",
+		"state": "已提交", "state_code": 0, "app_state": "noticed", "can_modify": 1,
+		"created_at": 1795600746, "updated_at": "1795600746", "process_at": "0",
+		"exec_at": "1970-01-01T00:00:00Z", "cancel_at": -1990000000,
+		"attachments": "[\"ai/proof.pdf\"]", "cash": [],
+		"stocks": [{"code": "AAPL", "name": "苹果", "market": "US", "counter_id": "ST/US/AAPL",
+			"amount": 100, "currency": "USD", "cost": "180.5", "state": 0,
+			"usi_attachments": ["k"], "is_reality": 0, "street_amount": "0"}]
+	}]}`, &req)
+	state := int32(TransferInStateSubmitted)
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.FixedZone("HKT", 8*3600))
+	list, err := newTestAssetContext(t, srv.URL, "ap_").StockTransfersIn(context.Background(), &GetStockTransfers{
+		Market: "us", State: &state, Start: start,
+	})
+	if err != nil {
+		t.Fatalf("StockTransfersIn: %v", err)
+	}
+	q := req.URL.Query()
+	want := url.Values{"market": {"US"}, "state": {"0"}, "start": {"1767196800"}, "page": {"1"}, "size": {"20"}}
+	if req.URL.Path != "/v1/account/stock-transfers/in" || q.Encode() != want.Encode() {
+		t.Errorf("request = %s", req.URL)
+	}
+	if list.Total != 1 || len(list.Records) != 1 {
+		t.Fatalf("list = %+v", list)
+	}
+	r := list.Records[0]
+	if r.ID != "7053" || r.BrokerEn != "Futu Securities" || r.BrokerCode != "FUTU" || r.Account != "11222333444555" ||
+		r.StateCode != TransferInStateSubmitted || !r.CanModify || !r.UserNotifiedBroker() ||
+		r.CreatedAt.Unix() != 1795600746 || r.UpdatedAt.Unix() != 1795600746 {
+		t.Errorf("record = %+v", r)
+	}
+	if !r.ProcessAt.IsZero() || !r.ExecAt.IsZero() {
+		t.Errorf("placeholder times must be zero: process %v exec %v", r.ProcessAt, r.ExecAt)
+	}
+	if len(r.Stocks) != 1 || r.Stocks[0].Name != "苹果" || r.Stocks[0].Amount != "100" || r.Stocks[0].State != TransferStockStateProcessing {
+		t.Errorf("stocks = %+v", r.Stocks)
+	}
+	b, _ := json.Marshal(r)
+	for _, leaked := range []string{"CHAN TAI MAN", "Mr Lee", "12345678\"", "a@b.c", "me@x.y", "proof.pdf", "usi_attachments"} {
+		if strings.Contains(string(b), leaked) {
+			t.Errorf("marshalled record contains %q: %s", leaked, b)
+		}
+	}
+}
+
+func TestStockTransfersOut(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"records": [{
+		"id": 88, "name_en": "Futu Securities", "broker": "富途证券", "state_code": 0, "can_modify": 0,
+		"app_state": "default", "created_at": "1795600746", "agree_at": "1906-06-07T18:35:44Z",
+		"refuse_at": "0", "cancel_at": "1970-01-01T00:00:00Z", "stocks": null
+	}, {"id": "89", "state_code": 7, "refuse_at": 1795700000}]}`, &req)
+	end := time.Date(2026, 1, 31, 23, 59, 59, 0, time.FixedZone("HKT", 8*3600))
+	list, err := newTestAssetContext(t, srv.URL, "").StockTransfersOut(context.Background(), &GetStockTransfers{End: end, Page: 2, Size: 50})
+	if err != nil {
+		t.Fatalf("StockTransfersOut: %v", err)
+	}
+	q := req.URL.Query()
+	if req.URL.Path != "/v1/account/stock-transfers/out" || q.Get("end") != "1769875199" || q.Get("page") != "2" || q.Get("size") != "50" || q.Has("start") || q.Has("state") {
+		t.Errorf("request = %s", req.URL)
+	}
+	if len(list.Records) != 2 {
+		t.Fatalf("list = %+v", list)
+	}
+	r := list.Records[0]
+	if r.ID != "88" || r.BrokerEn != "Futu Securities" || !r.Cancellable() || r.UserNotifiedBroker() ||
+		!r.AgreeAt.IsZero() || !r.RefuseAt.IsZero() || !r.CancelAt.IsZero() || r.Stocks == nil {
+		t.Errorf("record 0 = %+v", r)
+	}
+	r = list.Records[1]
+	if r.StateCode != TransferOutStateRejected || r.Cancellable() || r.RefuseAt.Unix() != 1795700000 {
+		t.Errorf("record 1 = %+v", r)
+	}
+}
+
+func TestRewardRecords(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"total": 4, "list": [
+		{"reward_type": 1, "prize": {"record_id": "r1", "activity_title": "Open account", "title": "Coffee",
+			"status": 12, "deliver_status": 8, "prize_type": 0, "send_time": 1790000000,
+			"receive_deadline": "0", "coupon_secret": {"secret": "ABC-123"}, "coupon_secret_id": "s1",
+			"cash_card_code": "CC-9", "express_info": {"phone": "12345678", "address": "Somewhere"},
+			"addresses": [{"detail": "Somewhere"}]}},
+		{"reward_type": 0, "cash": {"record_id": "r2", "status": 12, "amount": 38, "currency": "HKD", "send_time": "0"}},
+		{"card": {"record_id": "r3", "card_type": "commission", "card_status": 0, "status": 12}},
+		{"reward_type": 3},
+		{"unknown": {}}
+	]}`, &req)
+	rt := RewardTypeGift
+	list, err := newTestAssetContext(t, srv.URL, "").RewardRecords(context.Background(), &GetRewardRecords{RewardType: &rt, PageSize: 50})
+	if err != nil {
+		t.Fatalf("RewardRecords: %v", err)
+	}
+	q := req.URL.Query()
+	if req.URL.Path != "/v1/account/rewards" || q.Get("current") != "1" || q.Get("page_size") != "50" || q.Get("reward_type") != "1" {
+		t.Errorf("request = %s", req.URL)
+	}
+	if list.Total != 4 || len(list.Records) != 4 {
+		t.Fatalf("list = %+v", list)
+	}
+	prize := list.Records[0]
+	if prize.RewardType != RewardTypeGift || prize.DetailKind != RewardDetailKindPrize || prize.Status != RewardStatusIssued ||
+		prize.DeliverStatus != RewardDeliverStatusAddressMissing || prize.PrizeType != PrizeTypePhysical ||
+		prize.SendTime.Unix() != 1790000000 || !prize.ReceiveDeadline.IsZero() {
+		t.Errorf("prize = %+v", prize)
+	}
+	cash := list.Records[1]
+	if cash.RewardType != RewardTypeCash || cash.Amount != "38" || !cash.SendTime.IsZero() {
+		t.Errorf("cash = %+v", cash)
+	}
+	if coupon := list.Records[2]; coupon.RewardType != RewardTypeCoupon || coupon.DetailKind != RewardDetailKindCard || coupon.CardType != "commission" {
+		t.Errorf("coupon = %+v", coupon)
+	}
+	if task := list.Records[3]; task.RewardType != RewardTypeTask || task.DetailKind != RewardDetailKindNone {
+		t.Errorf("task = %+v", task)
+	}
+	b, _ := json.Marshal(list)
+	for _, leaked := range []string{"ABC-123", "s1", "CC-9", "12345678", "Somewhere"} {
+		if strings.Contains(string(b), leaked) {
+			t.Errorf("marshalled rewards contain %q", leaked)
+		}
+	}
+}
+
+func TestCoupons(t *testing.T) {
+	var req *nethttp.Request
+	// Shape of a real production lifetime commission card, 2026-11-25.
+	srv := serve(t, `{"total": 3, "expired_count": 5, "tags": [{"name": "all"}],
+		"top_list": [{"card_id": "0123456789abcdef0123456789abcdef", "card_type": "commission",
+			"start_time": 1750313704, "end_time": "8061747303", "card_status": 4, "activate_time": "0",
+			"commission": {"markets": ["US"], "bz_types": [0, 2, 3], "commission_expired_time": "0",
+				"rebate_rate": 1, "usage_count": "3", "lave_usage_count": 7, "unlimited": true},
+			"markets": ["US"], "rebate_rate": "1", "quote_duration": "0",
+			"available_trade_session": "夜盘、盘中+盘前盘后", "cover": "https://x/c.png",
+			"coffee_coupon": {"code": "SECRET-1"}}],
+		"list": [{"card_id": "ffffffffffffffffffffffffffffffff", "card_type": "quote", "end_time": 1798732800000,
+			"card_status": 0, "quote": {"current_end_time": "0"}, "stock": null}],
+		"bottom_list": [{"card_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "end_time": "0", "card_status": 2}]
+	}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), &GetCoupons{CardType: "commission"})
+	if err != nil {
+		t.Fatalf("Coupons: %v", err)
+	}
+	q := req.URL.Query()
+	if req.URL.Path != "/v1/account/cards" || q.Get("card_status") != "-1" || q.Get("card_type") != "commission" || q.Get("current") != "1" || q.Get("page_size") != "20" {
+		t.Errorf("request = %s", req.URL)
+	}
+	if list.Total != 3 || list.ExpiredCount != 5 || len(list.TopList) != 1 || len(list.List) != 1 || len(list.BottomList) != 1 {
+		t.Fatalf("list = %+v", list)
+	}
+	top := list.TopList[0]
+	if !top.NoExpiry || !top.EndTime.IsZero() || !top.ActivateTime.IsZero() || top.StartTime.Unix() != 1750313704 ||
+		top.CardStatus != CouponStatusInUse || top.Commission == nil {
+		t.Fatalf("top = %+v", top)
+	}
+	cm := top.Commission
+	if len(cm.BzTypes) != 3 || cm.BzTypes[1] != CouponTargetTypeWarrants || cm.Markets[0] != "US" || cm.RebateRate != "1" ||
+		!cm.CommissionExpiredTime.IsZero() || cm.UsageCount != 3 || cm.LaveUsageCount != 7 || !cm.Unlimited {
+		t.Errorf("commission = %+v", cm)
+	}
+	quote := list.List[0]
+	if quote.NoExpiry || quote.EndTime.Unix() != 1798732800 || string(quote.Quote) == "" || quote.Stock != nil || quote.Commission != nil {
+		t.Errorf("quote coupon = %+v", quote)
+	}
+	if expired := list.BottomList[0]; expired.NoExpiry || !expired.EndTime.IsZero() || expired.CardStatus != CouponStatusExpired {
+		t.Errorf("expired = %+v", expired)
+	}
+	b, _ := json.Marshal(list)
+	if strings.Contains(string(b), "SECRET-1") || strings.Contains(string(b), "c.png") {
+		t.Errorf("marshalled coupons leak coffee_coupon or styling: %s", b)
+	}
+
+	if _, err = newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), &GetCoupons{Status: CouponStatusFilterExpired, Page: 2}); err != nil {
+		t.Fatalf("Coupons: %v", err)
+	}
+	if q := req.URL.Query(); q.Get("card_status") != "2" || q.Get("current") != "2" || q.Has("card_type") {
+		t.Errorf("request = %s", req.URL)
+	}
+}
+
+func TestCouponOrders(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"orders": [{"order_id": "1179", "state": "已成交", "state_val": "FilledStatus",
+		"executed_price": 180.5, "executed_quantity": "100", "currency": "USD",
+		"settlement_currency": "HKD", "rebate": "1.2", "rebate_dt": "2026-11-20", "state_color": "#000"}]}`, &req)
+	actx := newTestAssetContext(t, srv.URL, "")
+	const id = "0123456789abcdef0123456789abcdef"
+	orders, err := actx.CouponOrders(context.Background(), id, CouponOrderTypeSettled)
+	if err != nil {
+		t.Fatalf("CouponOrders: %v", err)
+	}
+	if q := req.URL.Query(); req.URL.Path != "/v1/account/card-orders" || q.Get("card_id") != id || q.Get("order_type") != "settled" {
+		t.Errorf("request = %s", req.URL)
+	}
+	if len(orders) != 1 || orders[0].OrderID != "1179" || orders[0].ExecutedPrice != "180.5" || orders[0].StateVal != "FilledStatus" {
+		t.Errorf("orders = %+v", orders)
+	}
+	if _, err := actx.CouponOrders(context.Background(), "1024", CouponOrderTypeLocked); err == nil {
+		t.Error("a bank card id must be rejected")
+	}
+	if _, err := actx.CouponOrders(context.Background(), id, "all"); err == nil {
+		t.Error("an unknown order type must be rejected")
+	}
+}
+
+func TestDeposits(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"total": 20, "items": [{"id": 501, "created_at": "1795600746", "updated_at": 0,
+		"currency": "HKD", "amount": "10000.00", "receivable_amount": "0", "state": "处理中", "state_code": 0,
+		"sub_state_code": 2, "bank_operation_type_id": 3, "bank_operation_type_name": "FPS",
+		"reference_no": "FPS123", "can_cancel": true, "user_bank_swift_code": "HSBCHKHH",
+		"vouchers": [{"key": "voucher/a.jpg", "img_url": "https://x/a.jpg"}], "disable_link": false}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Deposits(context.Background(), &GetDeposits{
+		States:     []DepositState{DepositStateProcessing, DepositStateCredited},
+		Currencies: []string{"hkd", " USD"},
+		Start:      time.Unix(1767196800, 0),
+		End:        time.Unix(1769875199, 0),
+		Size:       50,
+	})
+	if err != nil {
+		t.Fatalf("Deposits: %v", err)
+	}
+	want := url.Values{"page": {"1"}, "size": {"50"}, "states": {"0,1"}, "currencies": {"HKD,USD"}, "from_date": {"1767196800"}, "to_date": {"1769875199"}}
+	if req.URL.Path != "/v1/account/deposits" || req.URL.Query().Encode() != want.Encode() {
+		t.Errorf("request = %s", req.URL)
+	}
+	d := list.Items[0]
+	if list.Total != 20 || d.ID != "501" || d.CreatedAt.Unix() != 1795600746 || !d.UpdatedAt.IsZero() ||
+		d.StateCode != DepositStateProcessing || d.BankOperationTypeID != "3" || !d.CanCancel || d.ReceivableAmount != "0" {
+		t.Errorf("deposit = %+v", d)
+	}
+	if b, _ := json.Marshal(d); strings.Contains(string(b), "voucher") {
+		t.Errorf("marshalled deposit leaks vouchers: %s", b)
+	}
+}
+
+func TestWithdrawals(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"total": 1, "list": [{"id": "9", "order_id": "W1", "created_at": 1795600746,
+		"currency": "HKD", "amount": "500", "fee": "0", "settlement_amount": "500", "state": 4,
+		"raw_state": 7, "state_description": "已汇款", "bank_account": "012345678901",
+		"display_bank_account": "尾号 8901", "account_channel": "lb"}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Withdrawals(context.Background(), &GetWithdrawals{Start: time.Unix(1767196800, 0)})
+	if err != nil {
+		t.Fatalf("Withdrawals: %v", err)
+	}
+	if q := req.URL.Query(); req.URL.Path != "/v1/account/withdrawals" || q.Get("begin") != "1767196800" || q.Has("end") || q.Get("page") != "1" || q.Get("size") != "20" {
+		t.Errorf("request = %s", req.URL)
+	}
+	w := list.List[0]
+	if w.State != WithdrawalStateRemitted || w.RawState != "7" || w.BankAccount != "012345678901" || w.CreatedAt.Unix() != 1795600746 || w.AccountChannel != "lb" {
+		t.Errorf("withdrawal = %+v", w)
+	}
+}
+
+func TestAccountEndpointsAreAPOnly(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		called = true
+	}))
+	defer srv.Close()
+	actx := newTestAssetContext(t, srv.URL, "us_")
+	ctx := context.Background()
+	calls := map[string]func() error{
+		"BankCards":         func() error { _, err := actx.BankCards(ctx); return err },
+		"EddaApplications":  func() error { _, err := actx.EddaApplications(ctx, 1, "HKD"); return err },
+		"StockTransfersIn":  func() error { _, err := actx.StockTransfersIn(ctx, nil); return err },
+		"StockTransfersOut": func() error { _, err := actx.StockTransfersOut(ctx, nil); return err },
+		"RewardRecords":     func() error { _, err := actx.RewardRecords(ctx, nil); return err },
+		"Coupons":           func() error { _, err := actx.Coupons(ctx, nil); return err },
+		"CouponOrders": func() error {
+			_, err := actx.CouponOrders(ctx, "0123456789abcdef0123456789abcdef", CouponOrderTypeLocked)
+			return err
+		},
+		"Deposits":    func() error { _, err := actx.Deposits(ctx, nil); return err },
+		"Withdrawals": func() error { _, err := actx.Withdrawals(ctx, nil); return err },
+	}
+	for name, call := range calls {
+		var rr *http.RegionRestrictedError
+		if err := call(); !errors.As(err, &rr) || rr.Required != "AP" {
+			t.Errorf("%s: err = %v, want *http.RegionRestrictedError for AP", name, err)
+		}
+	}
+	if called {
+		t.Error("a US session must not send the request")
+	}
+}
+
+func TestNilParamsUseDefaults(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		got  url.Values
+		want string
+	}{
+		{"transfers", (*GetStockTransfers)(nil).Values(), "page=1&size=20"},
+		{"rewards", (*GetRewardRecords)(nil).Values(), "current=1&page_size=20"},
+		{"coupons", (*GetCoupons)(nil).Values(), "card_status=-1&current=1&page_size=20"},
+		{"deposits", (*GetDeposits)(nil).Values(), "page=1&size=20"},
+		{"withdrawals", (*GetWithdrawals)(nil).Values(), "page=1&size=20"},
+	} {
+		if got := tt.got.Encode(); got != tt.want {
+			t.Errorf("%s: %s, want %s", tt.name, got, tt.want)
+		}
+	}
+}
