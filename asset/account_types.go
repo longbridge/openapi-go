@@ -566,24 +566,79 @@ const (
 	CouponCardTypeCash              = "cash"
 )
 
-// CouponTargetType is an instrument type a commission coupon applies to.
-// Undocumented integer codes are kept verbatim.
+// CouponTargetType is an instrument type a coupon applies to (the server's
+// bz_types / underlying_type, sent as a proto enum name such as
+// "HkStockWarrant" or as its number). Undocumented integer codes are kept
+// verbatim.
 type CouponTargetType int32
 
 const (
-	// CouponTargetTypeUnknown is an entry upstream sent that is not an
-	// integer.
+	// CouponTargetTypeUnknown is an entry upstream sent that is neither an
+	// integer nor a known name.
 	CouponTargetTypeUnknown CouponTargetType = -1
-	// CouponTargetTypeStocks is stocks.
+	// CouponTargetTypeStocks is stocks (StockTrade).
 	CouponTargetTypeStocks CouponTargetType = 0
-	// CouponTargetTypeOptions is options.
+	// CouponTargetTypeOptions is US stock options (UsStockOptions).
 	CouponTargetTypeOptions CouponTargetType = 1
-	// CouponTargetTypeWarrants is warrants.
+	// CouponTargetTypeWarrants is HK warrants (HkStockWarrant).
 	CouponTargetTypeWarrants CouponTargetType = 2
 	// CouponTargetTypeETF is ETFs.
 	CouponTargetTypeETF CouponTargetType = 3
 	// CouponTargetTypeLOF is LOFs.
 	CouponTargetTypeLOF CouponTargetType = 4
+)
+
+// IpoCouponTargetType is an IPO subscription type an IPO commission coupon
+// applies to (sent as a proto enum name or number). The proto's unset value
+// 0 decodes to IpoCouponTargetTypeUnknown.
+type IpoCouponTargetType int32
+
+const (
+	// IpoCouponTargetTypeUnknown is an unset or unrecognised entry.
+	IpoCouponTargetTypeUnknown IpoCouponTargetType = -1
+	// IpoCouponTargetTypeFinancing is a financing (margin) IPO subscription
+	// (FinancingIPO).
+	IpoCouponTargetTypeFinancing IpoCouponTargetType = 1
+	// IpoCouponTargetTypeCash is a cash IPO subscription (CashIPO).
+	IpoCouponTargetTypeCash IpoCouponTargetType = 2
+)
+
+// CommissionUnlimitedType is the server's `unlimited` code of a commission
+// coupon (a proto enum sent as a name or a number). Undocumented integer
+// codes are kept verbatim.
+type CommissionUnlimitedType int32
+
+const (
+	// CommissionUnlimitedTypeUnknown means upstream sent no usable value.
+	CommissionUnlimitedTypeUnknown CommissionUnlimitedType = -1
+	// CommissionUnlimitedTypeProportionate is `Proportionate`.
+	CommissionUnlimitedTypeProportionate CommissionUnlimitedType = 0
+	// CommissionUnlimitedTypeFull is `Full`.
+	CommissionUnlimitedTypeFull CommissionUnlimitedType = 1
+	// CommissionUnlimitedTypeLifetime is `Lifetime`.
+	CommissionUnlimitedTypeLifetime CommissionUnlimitedType = 2
+	// CommissionUnlimitedTypeByAmountPer is `ByAmountPer`.
+	CommissionUnlimitedTypeByAmountPer CommissionUnlimitedType = 6
+	// CommissionUnlimitedTypeByRatePer is `ByRatePer`.
+	CommissionUnlimitedTypeByRatePer CommissionUnlimitedType = 7
+)
+
+// QuoteInvestorType is the investor type a quote coupon applies to (a proto
+// enum sent as a name or a number). Undocumented integer codes are kept
+// verbatim.
+type QuoteInvestorType int32
+
+const (
+	// QuoteInvestorTypeUnknown means upstream sent no usable value.
+	QuoteInvestorTypeUnknown QuoteInvestorType = -1
+	// QuoteInvestorTypeAny is any investor (INVESTOR_TYPE_ANY).
+	QuoteInvestorTypeAny QuoteInvestorType = 0
+	// QuoteInvestorTypeNonProfessional is non-professional investors
+	// (INVESTOR_TYPE_NON_PROFESSIONAL).
+	QuoteInvestorTypeNonProfessional QuoteInvestorType = 1
+	// QuoteInvestorTypeProfessional is professional investors
+	// (INVESTOR_TYPE_PROFESSIONAL).
+	QuoteInvestorTypeProfessional QuoteInvestorType = 2
 )
 
 // CouponCommission is the commission terms of a commission coupon.
@@ -593,19 +648,195 @@ type CouponCommission struct {
 	// BzTypes are the instrument types the coupon applies to.
 	BzTypes            []CouponTargetType `json:"bz_types"`
 	CommissionBalance  string             `json:"commission_balance"`
-	CommissionDuration string             `json:"commission_duration"`
-	Unlimited          bool               `json:"unlimited"`
+	CommissionDuration int64              `json:"commission_duration"`
+	// Unlimited is the server's `unlimited` code.
+	Unlimited CommissionUnlimitedType `json:"unlimited"`
 	// CommissionExpiredTime is zero when unset.
 	CommissionExpiredTime time.Time `json:"commission_expired_time"`
 	UsageCount            int64     `json:"usage_count"`
 	LaveUsageCount        int64     `json:"lave_usage_count"`
 	SettlementModel       string    `json:"settlement_model"`
+	// AmountLimit is the amount limit, as returned by the server.
+	AmountLimit int64 `json:"amount_limit"`
+	// Superposition reports whether the coupon can be combined with others.
+	Superposition bool `json:"superposition"`
 }
 
-// Coupon is a coupon card. Only the commission terms are modelled: the
-// quote, stock, platform_fee_deduct and coffee_coupon objects (the last can
-// carry redemption codes), deprecated top-level duplicates of the commission
-// terms and app styling are not.
+// CouponAiBenefit is the terms of an AI benefit coupon.
+type CouponAiBenefit struct {
+	// BenefitDays is the benefit days, as returned by the server.
+	BenefitDays int32 `json:"benefit_days"`
+	// BenefitStart and BenefitEnd are zero when unset.
+	BenefitStart time.Time `json:"benefit_start"`
+	BenefitEnd   time.Time `json:"benefit_end"`
+	BenefitTag   string    `json:"benefit_tag"`
+}
+
+// CouponCash is the terms of a cash coupon.
+type CouponCash struct {
+	// ReceiveDuration is the receive duration, as returned by the server.
+	ReceiveDuration int64 `json:"receive_duration"`
+}
+
+// CouponCoffeeStore is a store of a coffee coupon.
+type CouponCoffeeStore struct {
+	StoreID   int64  `json:"store_id"`
+	StoreName string `json:"store_name"`
+}
+
+// CouponCoffee is the terms of a coffee coupon. String fields are as
+// returned by the server.
+type CouponCoffee struct {
+	CouponChannel       string `json:"coupon_channel"`
+	CouponID            string `json:"coupon_id"`
+	CouponNo            string `json:"coupon_no"`
+	IsAvailableAllStore bool   `json:"is_available_all_store"`
+	// PeriodType is e.g. "day".
+	PeriodType string `json:"period_type"`
+	// SettledStoreID is 0 when the coupon was not settled at a store.
+	SettledStoreID int64               `json:"settled_store_id"`
+	StoreIDList    []int64             `json:"store_id_list"`
+	StoreList      []CouponCoffeeStore `json:"store_list"`
+	Threshold      int64               `json:"threshold"`
+	// UseLimit is "total" or "period".
+	UseLimit string `json:"use_limit"`
+}
+
+// CouponCryptoCounter is a counter (security) of a crypto coupon.
+type CouponCryptoCounter struct {
+	CounterID string `json:"counter_id"`
+}
+
+// CouponCryptoFallback is the fallback of a crypto coupon.
+type CouponCryptoFallback struct {
+	Enabled   bool   `json:"enabled"`
+	CounterID string `json:"counter_id"`
+}
+
+// CouponCrypto is the terms of a crypto coupon.
+type CouponCrypto struct {
+	Fallback         CouponCryptoFallback  `json:"fallback"`
+	OptionalCounters []CouponCryptoCounter `json:"optional_counters"`
+}
+
+// CouponFinanceInterest is the terms of a finance interest coupon.
+type CouponFinanceInterest struct {
+	// DiscountMode is the discount mode, as returned by the server.
+	DiscountMode int32 `json:"discount_mode"`
+	// DiscountRate is the discount rate as decimal text.
+	DiscountRate  string `json:"discount_rate"`
+	Superposition bool   `json:"superposition"`
+}
+
+// CouponFundDeduct is the terms of a fund deduction coupon. String fields
+// are as returned by the server.
+type CouponFundDeduct struct {
+	MaxRiskLevel     int32    `json:"max_risk_level"`
+	MinOrderAmount   string   `json:"min_order_amount"`
+	OrderTypes       []string `json:"order_types"`
+	UnderlyingType   string   `json:"underlying_type"`
+	UnderlyingValues []string `json:"underlying_values"`
+	UnderlyingNames  []string `json:"underlying_names"`
+}
+
+// CouponQuote is the terms of a quote (market data) or fundamental-data
+// coupon.
+type CouponQuote struct {
+	// CurrentEndTime is zero when unset.
+	CurrentEndTime time.Time         `json:"current_end_time"`
+	Inapplicable   bool              `json:"inapplicable"`
+	InvestorType   QuoteInvestorType `json:"investor_type"`
+	ManualActivate bool              `json:"manual_activate"`
+	Markets        []string          `json:"markets"`
+	// MemberInvestorType is the member's investor type, as returned by the
+	// server.
+	MemberInvestorType int32  `json:"member_investor_type"`
+	PairSpuNo          string `json:"pair_spu_no"`
+	// QuoteDuration is the quote duration, as returned by the server.
+	QuoteDuration int64    `json:"quote_duration"`
+	QuoteMarket   string   `json:"quote_market"`
+	QuoteTags     []string `json:"quote_tags"`
+	Superposition bool     `json:"superposition"`
+}
+
+// CouponIpo is the terms of an IPO coupon.
+type CouponIpo struct {
+	SubscriptionID string `json:"subscription_id"`
+}
+
+// CouponIpoCommission is the terms of an IPO commission coupon.
+type CouponIpoCommission struct {
+	BzTypes     []IpoCouponTargetType `json:"bz_types"`
+	CounterID   string                `json:"counter_id"`
+	CounterName string                `json:"counter_name"`
+	// FinancingLimit is the financing limit, as returned by the server.
+	FinancingLimit string `json:"financing_limit"`
+}
+
+// CouponIpoInterest is the terms of an IPO interest coupon.
+type CouponIpoInterest struct {
+	// DiscountRate is the discount rate, as returned by the server.
+	DiscountRate string `json:"discount_rate"`
+}
+
+// CouponPlatformFeeDeduct is the terms of a platform fee deduction coupon.
+type CouponPlatformFeeDeduct struct {
+	BzTypes        []CouponTargetType `json:"bz_types"`
+	CounterID      string             `json:"counter_id"`
+	CounterName    string             `json:"counter_name"`
+	Markets        []string           `json:"markets"`
+	UsageCount     int64              `json:"usage_count"`
+	LaveUsageCount int64              `json:"lave_usage_count"`
+	Superposition  bool               `json:"superposition"`
+}
+
+// CouponStockCounter is an optional counter of a stock coupon.
+type CouponStockCounter struct {
+	CounterID string `json:"counter_id"`
+	// Shares is as returned by the server.
+	Shares string `json:"shares"`
+}
+
+// CouponStockFallback is the fallback of a stock coupon. String fields are
+// as returned by the server.
+type CouponStockFallback struct {
+	Enabled bool `json:"enabled"`
+	// Type is the server's `type`.
+	Type      string `json:"type"`
+	CounterID string `json:"counter_id"`
+	Shares    string `json:"shares"`
+}
+
+// CouponStock is the terms of a stock coupon.
+type CouponStock struct {
+	CounterID   string `json:"counter_id"`
+	CounterName string `json:"counter_name"`
+	// Amount is decimal text.
+	Amount string `json:"amount"`
+	// RedemptionType is "by_card_value" or "shares_number".
+	RedemptionType string `json:"redemption_type"`
+	// SendWay is "card_exchange" or "account_transfer".
+	SendWay          string               `json:"send_way"`
+	OptionalCounters []CouponStockCounter `json:"optional_counters"`
+	Fallback         CouponStockFallback  `json:"fallback"`
+}
+
+// CouponStockFragment is the terms of a stock fragment coupon.
+type CouponStockFragment struct {
+	CounterID      string           `json:"counter_id"`
+	CounterName    string           `json:"counter_name"`
+	Market         string           `json:"market"`
+	Markets        []string         `json:"markets"`
+	UnderlyingType CouponTargetType `json:"underlying_type"`
+	// Amounts is as returned by the server.
+	Amounts map[string]string `json:"amounts"`
+}
+
+// Coupon is a coupon card. The type-specific terms are in the pointer field
+// named after the card type (Commission, Quote, Stock, …); the fields of the
+// other types are nil. The fund_interest object (an arbitrary object in the
+// proto), deprecated top-level duplicates of the commission terms and app
+// styling are not modelled.
 type Coupon struct {
 	// CardID is the 32-hex coupon id (use it with CouponOrders).
 	CardID      string       `json:"card_id"`
@@ -629,8 +860,23 @@ type Coupon struct {
 	// coupon applies to.
 	AvailableTradeSession string   `json:"available_trade_session"`
 	TradeSessions         []string `json:"trade_sessions"`
-	// Commission is the terms of a commission coupon (nil for other types).
-	Commission *CouponCommission `json:"commission,omitempty"`
+	// SubscriptionID is as returned by the server.
+	SubscriptionID    string                   `json:"subscription_id,omitempty"`
+	AiBenefit         *CouponAiBenefit         `json:"ai_benefit,omitempty"`
+	Cash              *CouponCash              `json:"cash,omitempty"`
+	CoffeeCoupon      *CouponCoffee            `json:"coffee_coupon,omitempty"`
+	Commission        *CouponCommission        `json:"commission,omitempty"`
+	Crypto            *CouponCrypto            `json:"crypto,omitempty"`
+	FinanceInterest   *CouponFinanceInterest   `json:"finance_interest,omitempty"`
+	FundDeduct        *CouponFundDeduct        `json:"fund_deduct,omitempty"`
+	Fundamental       *CouponQuote             `json:"fundamental,omitempty"`
+	Ipo               *CouponIpo               `json:"ipo,omitempty"`
+	IpoCommission     *CouponIpoCommission     `json:"ipo_commission,omitempty"`
+	IpoInterest       *CouponIpoInterest       `json:"ipo_interest,omitempty"`
+	PlatformFeeDeduct *CouponPlatformFeeDeduct `json:"platform_fee_deduct,omitempty"`
+	Quote             *CouponQuote             `json:"quote,omitempty"`
+	Stock             *CouponStock             `json:"stock,omitempty"`
+	StockFragment     *CouponStockFragment     `json:"stock_fragment,omitempty"`
 }
 
 // CouponList is one page of coupon cards. Upstream splits the list into pinned

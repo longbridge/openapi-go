@@ -115,3 +115,41 @@ func (f *FlexStrings) UnmarshalJSON(data []byte) error {
 	*f = out
 	return nil
 }
+
+// FlexStringMap is a string-to-string object whose values are decoded as
+// FlexString; a value that is not an object decodes to nil.
+type FlexStringMap map[string]string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexStringMap) UnmarshalJSON(data []byte) error {
+	var items map[string]FlexString
+	if err := json.Unmarshal(data, &items); err != nil || items == nil {
+		*f = nil
+		return nil
+	}
+	out := make(map[string]string, len(items))
+	for k, v := range items {
+		out[k] = string(v)
+	}
+	*f = out
+	return nil
+}
+
+// FlexInt64s is an int64 list whose items are decoded as FlexInt64; a value
+// that is not an array decodes to nil.
+type FlexInt64s []int64
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexInt64s) UnmarshalJSON(data []byte) error {
+	var items []FlexInt64
+	if err := json.Unmarshal(data, &items); err != nil {
+		*f = nil
+		return nil
+	}
+	out := make([]int64, len(items))
+	for i, item := range items {
+		out[i] = int64(item)
+	}
+	*f = out
+	return nil
+}

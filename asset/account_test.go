@@ -318,17 +318,23 @@ func TestRewardRecords(t *testing.T) {
 
 func TestCoupons(t *testing.T) {
 	var req *nethttp.Request
-	// Shape of a real production lifetime commission card, 2026-11-25.
+	// Wire shape of production coupon cards (synthetic values): every
+	// per-type object key is present, null for the types that do not apply.
 	srv := serve(t, `{"total": 3, "expired_count": 5, "tags": [{"name": "all"}],
 		"top_list": [{"card_id": "0123456789abcdef0123456789abcdef", "card_type": "commission",
 			"start_time": 1750313704, "end_time": "8061747303", "card_status": 4, "activate_time": "0",
 			"commission": {"markets": ["US"], "bz_types": [0, 2, 3], "commission_expired_time": "0",
-				"rebate_rate": 1, "usage_count": "3", "lave_usage_count": 7, "unlimited": true},
+				"rebate_rate": 1, "usage_count": "3", "lave_usage_count": 7, "unlimited": 2,
+				"commission_duration": "0", "superposition": false},
 			"markets": ["US"], "rebate_rate": "1", "quote_duration": "0",
 			"available_trade_session": "夜盘、盘中+盘前盘后", "cover": "https://x/c.png",
-			"coffee_coupon": {"code": "SECRET-1"}}],
-		"list": [{"card_id": "ffffffffffffffffffffffffffffffff", "card_type": "quote", "end_time": 1798732800000,
-			"card_status": 0, "quote": {"current_end_time": "0"}, "stock": null}],
+			"coffee_coupon": null, "quote": null, "stock": null, "cash": null}],
+		"list": [{"card_id": "ffffffffffffffffffffffffffffffff", "card_type": "coffee_coupon", "end_time": 1798732800000,
+			"card_status": 0, "commission": null, "quote": null, "stock": null,
+			"coffee_coupon": {"coupon_channel": "chan", "coupon_id": "", "coupon_no": "NO-1",
+				"is_available_all_store": false, "period_type": "day", "settled_store_id": "0",
+				"store_id_list": ["101", 102], "store_list": [{"store_id": "101", "store_name": "Store A"}],
+				"threshold": "1", "use_limit": "period"}}],
 		"bottom_list": [{"card_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "end_time": "0", "card_status": 2}]
 	}`, &req)
 	list, err := newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), &GetCoupons{CardType: "commission"})
@@ -349,18 +355,25 @@ func TestCoupons(t *testing.T) {
 	}
 	cm := top.Commission
 	if len(cm.BzTypes) != 3 || cm.BzTypes[1] != CouponTargetTypeWarrants || cm.Markets[0] != "US" || cm.RebateRate != "1" ||
-		!cm.CommissionExpiredTime.IsZero() || cm.UsageCount != 3 || cm.LaveUsageCount != 7 || !cm.Unlimited {
+		!cm.CommissionExpiredTime.IsZero() || cm.UsageCount != 3 || cm.LaveUsageCount != 7 ||
+		cm.Unlimited != CommissionUnlimitedTypeLifetime || top.CoffeeCoupon != nil || top.Quote != nil || top.Cash != nil {
 		t.Errorf("commission = %+v", cm)
 	}
-	quote := list.List[0]
-	if quote.NoExpiry || quote.EndTime.Unix() != 1798732800 || quote.Commission != nil {
-		t.Errorf("quote coupon = %+v", quote)
+	coffee := list.List[0]
+	if coffee.NoExpiry || coffee.EndTime.Unix() != 1798732800 || coffee.Commission != nil || coffee.CoffeeCoupon == nil {
+		t.Fatalf("coffee coupon = %+v", coffee)
+	}
+	if cc := coffee.CoffeeCoupon; cc.CouponChannel != "chan" || cc.CouponNo != "NO-1" || cc.IsAvailableAllStore ||
+		cc.PeriodType != "day" || cc.SettledStoreID != 0 || len(cc.StoreIDList) != 2 || cc.StoreIDList[1] != 102 ||
+		len(cc.StoreList) != 1 || cc.StoreList[0].StoreID != 101 || cc.StoreList[0].StoreName != "Store A" ||
+		cc.Threshold != 1 || cc.UseLimit != "period" {
+		t.Errorf("coffee terms = %+v", cc)
 	}
 	if expired := list.BottomList[0]; expired.NoExpiry || !expired.EndTime.IsZero() || expired.CardStatus != CouponStatusExpired {
 		t.Errorf("expired = %+v", expired)
 	}
 	b, _ := json.Marshal(list)
-	for _, dropped := range []string{"SECRET-1", "c.png", "current_end_time", `"quote":`, `"stock":`, "platform_fee_deduct"} {
+	for _, dropped := range []string{"c.png", `"cover"`, `"quote":`, `"stock":`, "platform_fee_deduct", "quote_duration"} {
 		if strings.Contains(string(b), dropped) {
 			t.Errorf("marshalled coupons contain %q: %s", dropped, b)
 		}
@@ -371,6 +384,97 @@ func TestCoupons(t *testing.T) {
 	}
 	if q := req.URL.Query(); q.Get("card_status") != "2" || q.Get("current") != "2" || q.Has("card_type") {
 		t.Errorf("request = %s", req.URL)
+	}
+}
+
+func TestCouponTypeTerms(t *testing.T) {
+	var req *nethttp.Request
+	// Synthetic values in the server's wire format: int64 as strings, enums
+	// as names or numbers, "0" for unset times.
+	srv := serve(t, `{"list": [{"card_id": "c", "subscription_id": "SUB",
+		"ai_benefit": {"benefit_days": 30, "benefit_start": "1767196800", "benefit_end": "0", "benefit_tag": "tag"},
+		"cash": {"receive_duration": "7"},
+		"commission": {"bz_types": ["StockTrade", "HkStockWarrant", 9], "unlimited": "ByRatePer",
+			"amount_limit": "500", "superposition": true, "commission_duration": "30"},
+		"crypto": {"fallback": {"enabled": true, "counter_id": "C1"}, "optional_counters": [{"counter_id": "C2"}]},
+		"finance_interest": {"discount_mode": 1, "discount_rate": 0.5, "superposition": true},
+		"fund_deduct": {"max_risk_level": "3", "min_order_amount": "100", "order_types": ["buy"],
+			"underlying_type": "fund", "underlying_values": ["F1"], "underlying_names": ["Fund"]},
+		"fund_interest": {},
+		"fundamental": {"investor_type": "INVESTOR_TYPE_PROFESSIONAL", "markets": ["US"]},
+		"ipo": {"subscription_id": "S1"},
+		"ipo_commission": {"bz_types": [1, "CashIPO", 0, "_"], "counter_id": "C3", "counter_name": "IPO", "financing_limit": "10"},
+		"ipo_interest": {"discount_rate": "0.8"},
+		"platform_fee_deduct": {"bz_types": ["UsStockOptions", "4"], "markets": ["US"], "usage_count": "1",
+			"lave_usage_count": "4", "superposition": true, "counter_id": "C6", "counter_name": "P"},
+		"quote": {"current_end_time": "1767196800", "investor_type": 1, "member_investor_type": "2",
+			"quote_duration": "30", "quote_tags": ["L2"], "manual_activate": true, "inapplicable": false,
+			"pair_spu_no": "SPU", "quote_market": "US", "superposition": false},
+		"stock": {"amount": 12.5, "counter_id": "C4", "counter_name": "Stock", "redemption_type": "shares_number",
+			"send_way": "account_transfer", "optional_counters": [{"counter_id": "C5", "shares": "3"}],
+			"fallback": {"enabled": true, "type": "cash", "counter_id": "C7", "shares": "1"}},
+		"stock_fragment": {"amounts": {"a": "1", "b": 2}, "counter_id": "C8", "counter_name": "F", "market": "US",
+			"markets": ["US"], "underlying_type": "ETF"}}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Coupons: %v", err)
+	}
+	c := list.List[0]
+	if c.SubscriptionID != "SUB" {
+		t.Errorf("subscription id = %q", c.SubscriptionID)
+	}
+	if a := c.AiBenefit; a == nil || a.BenefitDays != 30 || a.BenefitStart.Unix() != 1767196800 || !a.BenefitEnd.IsZero() || a.BenefitTag != "tag" {
+		t.Errorf("ai benefit = %+v", a)
+	}
+	if c.Cash == nil || c.Cash.ReceiveDuration != 7 {
+		t.Errorf("cash = %+v", c.Cash)
+	}
+	if m := c.Commission; m == nil || len(m.BzTypes) != 3 || m.BzTypes[0] != CouponTargetTypeStocks ||
+		m.BzTypes[1] != CouponTargetTypeWarrants || m.BzTypes[2] != 9 || m.Unlimited != CommissionUnlimitedTypeByRatePer ||
+		m.AmountLimit != 500 || !m.Superposition || m.CommissionDuration != 30 {
+		t.Errorf("commission = %+v", m)
+	}
+	if m := c.Crypto; m == nil || !m.Fallback.Enabled || m.Fallback.CounterID != "C1" || len(m.OptionalCounters) != 1 || m.OptionalCounters[0].CounterID != "C2" {
+		t.Errorf("crypto = %+v", m)
+	}
+	if m := c.FinanceInterest; m == nil || m.DiscountMode != 1 || m.DiscountRate != "0.5" || !m.Superposition {
+		t.Errorf("finance interest = %+v", m)
+	}
+	if m := c.FundDeduct; m == nil || m.MaxRiskLevel != 3 || m.MinOrderAmount != "100" || m.OrderTypes[0] != "buy" ||
+		m.UnderlyingType != "fund" || m.UnderlyingValues[0] != "F1" || m.UnderlyingNames[0] != "Fund" {
+		t.Errorf("fund deduct = %+v", m)
+	}
+	if m := c.Fundamental; m == nil || m.InvestorType != QuoteInvestorTypeProfessional || m.Markets[0] != "US" {
+		t.Errorf("fundamental = %+v", m)
+	}
+	if c.Ipo == nil || c.Ipo.SubscriptionID != "S1" {
+		t.Errorf("ipo = %+v", c.Ipo)
+	}
+	if m := c.IpoCommission; m == nil || len(m.BzTypes) != 4 || m.BzTypes[0] != IpoCouponTargetTypeFinancing ||
+		m.BzTypes[1] != IpoCouponTargetTypeCash || m.BzTypes[2] != IpoCouponTargetTypeUnknown ||
+		m.BzTypes[3] != IpoCouponTargetTypeUnknown || m.CounterID != "C3" || m.FinancingLimit != "10" {
+		t.Errorf("ipo commission = %+v", m)
+	}
+	if c.IpoInterest == nil || c.IpoInterest.DiscountRate != "0.8" {
+		t.Errorf("ipo interest = %+v", c.IpoInterest)
+	}
+	if m := c.PlatformFeeDeduct; m == nil || len(m.BzTypes) != 2 || m.BzTypes[0] != CouponTargetTypeOptions ||
+		m.BzTypes[1] != CouponTargetTypeLOF || m.UsageCount != 1 || m.LaveUsageCount != 4 || !m.Superposition || m.CounterID != "C6" {
+		t.Errorf("platform fee deduct = %+v", m)
+	}
+	if m := c.Quote; m == nil || m.CurrentEndTime.Unix() != 1767196800 || m.InvestorType != QuoteInvestorTypeNonProfessional ||
+		m.MemberInvestorType != 2 || m.QuoteDuration != 30 || m.QuoteTags[0] != "L2" || !m.ManualActivate ||
+		m.PairSpuNo != "SPU" || m.QuoteMarket != "US" {
+		t.Errorf("quote = %+v", m)
+	}
+	if m := c.Stock; m == nil || m.Amount != "12.5" || m.CounterID != "C4" || m.RedemptionType != "shares_number" ||
+		m.SendWay != "account_transfer" || len(m.OptionalCounters) != 1 || m.OptionalCounters[0].Shares != "3" ||
+		!m.Fallback.Enabled || m.Fallback.Type != "cash" || m.Fallback.CounterID != "C7" || m.Fallback.Shares != "1" {
+		t.Errorf("stock = %+v", m)
+	}
+	if m := c.StockFragment; m == nil || m.UnderlyingType != CouponTargetTypeETF || m.Amounts["a"] != "1" ||
+		m.Amounts["b"] != "2" || m.Market != "US" || m.CounterName != "F" {
+		t.Errorf("stock fragment = %+v", m)
 	}
 }
 
