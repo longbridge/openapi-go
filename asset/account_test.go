@@ -521,7 +521,7 @@ func TestDeposits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Deposits: %v", err)
 	}
-	want := url.Values{"page": {"1"}, "size": {"50"}, "states": {"0,1"}, "currencies": {"HKD,USD"}, "from_date": {"1767196800"}, "to_date": {"1769875199"}}
+	want := url.Values{"page": {"1"}, "size": {"20"}, "states": {"0,1"}, "currencies": {"HKD,USD"}, "from_date": {"1767196800"}, "to_date": {"1769875199"}}
 	if req.URL.Path != "/v1/account/deposits" || req.URL.Query().Encode() != want.Encode() {
 		t.Errorf("request = %s", req.URL)
 	}
@@ -625,6 +625,7 @@ func TestHasMoreFollowsFullPage(t *testing.T) {
 		{"default size, short", 0, 19, false},
 		{"explicit size, full", 5, 5, true},
 		{"size capped at 50, full", 100, 50, true},
+		{"size 30, 25 records", 30, 25, false},
 		{"empty", 10, 0, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -635,11 +636,17 @@ func TestHasMoreFollowsFullPage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Deposits: %v", err)
 			}
-			if deposits.HasMore != tt.want || len(deposits.Items) != tt.n {
-				t.Errorf("deposits: has_more = %v (%d items), want %v", deposits.HasMore, len(deposits.Items), tt.want)
+			// Deposits cap the size at 20, so 25 records fill a deposit page.
+			wantDeposits := tt.want || tt.n >= maxDepositPageSize
+			if deposits.HasMore != wantDeposits || len(deposits.Items) != tt.n {
+				t.Errorf("deposits: has_more = %v (%d items), want %v", deposits.HasMore, len(deposits.Items), wantDeposits)
 			}
-			if got, want := req.URL.Query().Get("size"), strconv.Itoa(int(effectivePageSize(tt.size))); got != want {
-				t.Errorf("size sent = %s, want %s", got, want)
+			wantSize := effectivePageSize(tt.size)
+			if wantSize > maxDepositPageSize {
+				wantSize = maxDepositPageSize
+			}
+			if got := req.URL.Query().Get("size"); got != strconv.Itoa(int(wantSize)) {
+				t.Errorf("deposit size sent = %s, want %d", got, wantSize)
 			}
 			withdrawals, err := actx.Withdrawals(context.Background(), &GetWithdrawals{Size: tt.size})
 			if err != nil {
@@ -1015,5 +1022,43 @@ func TestAccountChannelQuery(t *testing.T) {
 				t.Errorf("other params lost: %s", req.URL)
 			}
 		})
+	}
+}
+
+// TestDepositsPageSizeCappedAt20 checks that Deposits never asks for more
+// than 20 records (upstream returns only 10 for a size of 21 to 50) and that
+// HasMore follows the size actually sent.
+func TestDepositsPageSizeCappedAt20(t *testing.T) {
+	item := `{"id": "1", "state_code": 1}`
+	items := make([]string, 20)
+	for i := range items {
+		items[i] = item
+	}
+	var req *nethttp.Request
+	srv := serve(t, `{"items": [`+strings.Join(items, ",")+`]}`, &req)
+	actx := newTestAssetContext(t, srv.URL, "")
+	for _, size := range []int32{0, 20, 21, 50, 100} {
+		list, err := actx.Deposits(context.Background(), &GetDeposits{Size: size})
+		if err != nil {
+			t.Fatalf("Deposits: %v", err)
+		}
+		if got := req.URL.Query().Get("size"); got != "20" {
+			t.Errorf("size %d: sent %s, want 20", size, got)
+		}
+		if !list.HasMore {
+			t.Errorf("size %d: 20 records must report HasMore", size)
+		}
+	}
+	if _, err := actx.Deposits(context.Background(), &GetDeposits{Size: 5}); err != nil {
+		t.Fatalf("Deposits: %v", err)
+	}
+	if got := req.URL.Query().Get("size"); got != "5" {
+		t.Errorf("size 5: sent %s", got)
+	}
+	if _, err := actx.Deposits(context.Background(), nil); err != nil {
+		t.Fatalf("Deposits: %v", err)
+	}
+	if got := req.URL.Query().Get("size"); got != "20" {
+		t.Errorf("nil params: sent %s", got)
 	}
 }

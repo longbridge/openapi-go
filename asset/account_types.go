@@ -1017,8 +1017,10 @@ type GetDeposits struct {
 	End   time.Time
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// Size is the page size; 0 defaults to 20 and values above 50 are sent
-	// as 50.
+	// Size is the page size; 0 defaults to 20 and values above 20 are sent
+	// as 20. The deposits endpoint honours at most 20: a larger size (21 to
+	// 50) silently returns only 10 records, so HasMore would wrongly report
+	// the last page.
 	Size int32
 }
 

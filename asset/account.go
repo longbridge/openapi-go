@@ -35,6 +35,10 @@ const (
 	defaultPageSize = 20
 	// maxPageSize is the largest page size the account endpoints accept.
 	maxPageSize = 50
+	// maxDepositPageSize is the largest page size GET /v1/account/deposits
+	// honours: a size of 21 to 50 silently returns only 10 records, which
+	// would look like a short (last) page.
+	maxDepositPageSize = 20
 )
 
 var (

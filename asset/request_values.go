@@ -89,14 +89,15 @@ func (req *GetCoupons) Values() url.Values {
 }
 
 // Values converts GetDeposits to URL query parameters. States are sent as
-// comma-separated numeric codes. Page defaults to 1 and Size to 20 (at most 50).
+// comma-separated numeric codes. Page defaults to 1 and Size to 20 (at most
+// 20; see GetDeposits.Size).
 func (req *GetDeposits) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
-		setPaging(v, "page", 0, "size", 0)
+		setPaging(v, "page", 0, "size", req.pageSize())
 		return v
 	}
-	setPaging(v, "page", req.Page, "size", req.Size)
+	setPaging(v, "page", req.Page, "size", req.pageSize())
 	if len(req.States) > 0 {
 		states := make([]string, 0, len(req.States))
 		for _, s := range req.States {
@@ -134,12 +135,17 @@ func (req *GetWithdrawals) Values() url.Values {
 	return v
 }
 
-// pageSize returns the page size Values sends.
+// pageSize returns the page size Values sends: the usual default of 20, but
+// capped at maxDepositPageSize.
 func (req *GetDeposits) pageSize() int32 {
-	if req == nil {
-		return effectivePageSize(0)
+	size := effectivePageSize(0)
+	if req != nil {
+		size = effectivePageSize(req.Size)
 	}
-	return effectivePageSize(req.Size)
+	if size > maxDepositPageSize {
+		size = maxDepositPageSize
+	}
+	return size
 }
 
 // pageSize returns the page size Values sends.
