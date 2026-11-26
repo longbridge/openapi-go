@@ -4,9 +4,11 @@ import "encoding/json"
 
 // The types below are the JSON shapes of the account money-movement and
 // reward endpoints. Upstream fields that carry personal data (ID-document and
-// proof-document storage keys, postal addresses, contact people, coupon
-// secrets, delivery details, receipt images) are deliberately not modelled,
-// so they are dropped while decoding.
+// proof-document storage keys, postal addresses, contact people, prize
+// redemption secrets such as coupon_secret and cash_card_code, delivery
+// details, receipt images) are deliberately not modelled, so they are dropped
+// while decoding. A coffee coupon's coupon_no is modelled: it is the voucher
+// template code (e.g. "coffee-50"), not a personal redemption code.
 
 // BankCardAuth is one entry of a bank card's auth_list.
 type BankCardAuth struct {
@@ -166,18 +168,18 @@ type RewardsResponse struct {
 // CouponCommission is the commission{} object of a coupon card. BzTypes and
 // Unlimited are proto enums, sent as a name or a number.
 type CouponCommission struct {
-	Markets               FlexStrings  `json:"markets"`
-	RebateRate            FlexString   `json:"rebate_rate"`
-	BzTypes               []FlexString `json:"bz_types"`
-	CommissionBalance     FlexString   `json:"commission_balance"`
-	CommissionDuration    FlexInt64    `json:"commission_duration"`
-	Unlimited             FlexString   `json:"unlimited"`
-	CommissionExpiredTime FlexString   `json:"commission_expired_time"`
-	UsageCount            FlexInt64    `json:"usage_count"`
-	LaveUsageCount        FlexInt64    `json:"lave_usage_count"`
-	SettlementModel       FlexString   `json:"settlement_model"`
-	AmountLimit           FlexInt64    `json:"amount_limit"`
-	Superposition         FlexBool     `json:"superposition"`
+	Markets               FlexStrings `json:"markets"`
+	RebateRate            FlexString  `json:"rebate_rate"`
+	BzTypes               FlexStrings `json:"bz_types"`
+	CommissionBalance     FlexString  `json:"commission_balance"`
+	CommissionDuration    FlexInt64   `json:"commission_duration"`
+	Unlimited             FlexString  `json:"unlimited"`
+	CommissionExpiredTime FlexString  `json:"commission_expired_time"`
+	UsageCount            FlexInt64   `json:"usage_count"`
+	LaveUsageCount        FlexInt64   `json:"lave_usage_count"`
+	SettlementModel       FlexString  `json:"settlement_model"`
+	AmountLimit           FlexInt64   `json:"amount_limit"`
+	Superposition         FlexBool    `json:"superposition"`
 }
 
 // CouponAiBenefit is the ai_benefit{} object of a coupon card.
@@ -201,16 +203,16 @@ type CouponCoffeeStore struct {
 
 // CouponCoffee is the coffee_coupon{} object of a coupon card.
 type CouponCoffee struct {
-	CouponChannel       FlexString          `json:"coupon_channel"`
-	CouponID            FlexString          `json:"coupon_id"`
-	CouponNo            FlexString          `json:"coupon_no"`
-	IsAvailableAllStore FlexBool            `json:"is_available_all_store"`
-	PeriodType          FlexString          `json:"period_type"`
-	SettledStoreID      FlexInt64           `json:"settled_store_id"`
-	StoreIDList         FlexInt64s          `json:"store_id_list"`
-	StoreList           []CouponCoffeeStore `json:"store_list"`
-	Threshold           FlexInt64           `json:"threshold"`
-	UseLimit            FlexString          `json:"use_limit"`
+	CouponChannel       FlexString              `json:"coupon_channel"`
+	CouponID            FlexString              `json:"coupon_id"`
+	CouponNo            FlexString              `json:"coupon_no"`
+	IsAvailableAllStore FlexBool                `json:"is_available_all_store"`
+	PeriodType          FlexString              `json:"period_type"`
+	SettledStoreID      FlexInt64               `json:"settled_store_id"`
+	StoreIDList         FlexInt64s              `json:"store_id_list"`
+	StoreList           List[CouponCoffeeStore] `json:"store_list"`
+	Threshold           FlexInt64               `json:"threshold"`
+	UseLimit            FlexString              `json:"use_limit"`
 }
 
 // CouponCryptoCounter is one optional_counters entry of a crypto coupon.
@@ -226,8 +228,8 @@ type CouponCryptoFallback struct {
 
 // CouponCrypto is the crypto{} object of a coupon card.
 type CouponCrypto struct {
-	Fallback         *CouponCryptoFallback `json:"fallback"`
-	OptionalCounters []CouponCryptoCounter `json:"optional_counters"`
+	Fallback         Object[CouponCryptoFallback] `json:"fallback"`
+	OptionalCounters List[CouponCryptoCounter]    `json:"optional_counters"`
 }
 
 // CouponFinanceInterest is the finance_interest{} object of a coupon card.
@@ -270,10 +272,10 @@ type CouponIpo struct {
 
 // CouponIpoCommission is the ipo_commission{} object of a coupon card.
 type CouponIpoCommission struct {
-	BzTypes        []FlexString `json:"bz_types"`
-	CounterID      FlexString   `json:"counter_id"`
-	CounterName    FlexString   `json:"counter_name"`
-	FinancingLimit FlexString   `json:"financing_limit"`
+	BzTypes        FlexStrings `json:"bz_types"`
+	CounterID      FlexString  `json:"counter_id"`
+	CounterName    FlexString  `json:"counter_name"`
+	FinancingLimit FlexString  `json:"financing_limit"`
 }
 
 // CouponIpoInterest is the ipo_interest{} object of a coupon card.
@@ -284,13 +286,13 @@ type CouponIpoInterest struct {
 // CouponPlatformFeeDeduct is the platform_fee_deduct{} object of a coupon
 // card.
 type CouponPlatformFeeDeduct struct {
-	BzTypes        []FlexString `json:"bz_types"`
-	CounterID      FlexString   `json:"counter_id"`
-	CounterName    FlexString   `json:"counter_name"`
-	Markets        FlexStrings  `json:"markets"`
-	UsageCount     FlexInt64    `json:"usage_count"`
-	LaveUsageCount FlexInt64    `json:"lave_usage_count"`
-	Superposition  FlexBool     `json:"superposition"`
+	BzTypes        FlexStrings `json:"bz_types"`
+	CounterID      FlexString  `json:"counter_id"`
+	CounterName    FlexString  `json:"counter_name"`
+	Markets        FlexStrings `json:"markets"`
+	UsageCount     FlexInt64   `json:"usage_count"`
+	LaveUsageCount FlexInt64   `json:"lave_usage_count"`
+	Superposition  FlexBool    `json:"superposition"`
 }
 
 // CouponStockCounter is one optional_counters entry of a stock coupon.
@@ -309,13 +311,13 @@ type CouponStockFallback struct {
 
 // CouponStock is the stock{} object of a coupon card.
 type CouponStock struct {
-	CounterID        FlexString           `json:"counter_id"`
-	CounterName      FlexString           `json:"counter_name"`
-	Amount           FlexString           `json:"amount"`
-	RedemptionType   FlexString           `json:"redemption_type"`
-	SendWay          FlexString           `json:"send_way"`
-	OptionalCounters []CouponStockCounter `json:"optional_counters"`
-	Fallback         *CouponStockFallback `json:"fallback"`
+	CounterID        FlexString                  `json:"counter_id"`
+	CounterName      FlexString                  `json:"counter_name"`
+	Amount           FlexString                  `json:"amount"`
+	RedemptionType   FlexString                  `json:"redemption_type"`
+	SendWay          FlexString                  `json:"send_way"`
+	OptionalCounters List[CouponStockCounter]    `json:"optional_counters"`
+	Fallback         Object[CouponStockFallback] `json:"fallback"`
 }
 
 // CouponStockFragment is the stock_fragment{} object of a coupon card.
@@ -333,47 +335,48 @@ type CouponStockFragment struct {
 // object is modelled (upstream sends null for the types that do not apply)
 // except fund_interest, which the proto describes as an arbitrary object;
 // app styling and the deprecated top-level duplicates of the commission
-// terms are dropped.
+// terms are dropped. The per-type objects and nested lists decode leniently
+// (Object / List): a malformed one is dropped instead of failing the page.
 type Coupon struct {
-	CardID                FlexString               `json:"card_id"`
-	CardType              FlexString               `json:"card_type"`
-	Title                 FlexString               `json:"title"`
-	TitleSec              FlexString               `json:"title_sec"`
-	Description           FlexString               `json:"description"`
-	Detail                FlexString               `json:"detail"`
-	CardStatus            FlexCode                 `json:"card_status"`
-	StartTime             FlexString               `json:"start_time"`
-	EndTime               FlexString               `json:"end_time"`
-	ActivateTime          FlexString               `json:"activate_time"`
-	Amount                FlexString               `json:"amount"`
-	Currency              FlexString               `json:"currency"`
-	AvailableTradeSession FlexString               `json:"available_trade_session"`
-	TradeSessions         FlexStrings              `json:"trade_sessions"`
-	SubscriptionID        FlexString               `json:"subscription_id"`
-	AiBenefit             *CouponAiBenefit         `json:"ai_benefit"`
-	Cash                  *CouponCash              `json:"cash"`
-	CoffeeCoupon          *CouponCoffee            `json:"coffee_coupon"`
-	Commission            *CouponCommission        `json:"commission"`
-	Crypto                *CouponCrypto            `json:"crypto"`
-	FinanceInterest       *CouponFinanceInterest   `json:"finance_interest"`
-	FundDeduct            *CouponFundDeduct        `json:"fund_deduct"`
-	Fundamental           *CouponQuote             `json:"fundamental"`
-	Ipo                   *CouponIpo               `json:"ipo"`
-	IpoCommission         *CouponIpoCommission     `json:"ipo_commission"`
-	IpoInterest           *CouponIpoInterest       `json:"ipo_interest"`
-	PlatformFeeDeduct     *CouponPlatformFeeDeduct `json:"platform_fee_deduct"`
-	Quote                 *CouponQuote             `json:"quote"`
-	Stock                 *CouponStock             `json:"stock"`
-	StockFragment         *CouponStockFragment     `json:"stock_fragment"`
+	CardID                FlexString                      `json:"card_id"`
+	CardType              FlexString                      `json:"card_type"`
+	Title                 FlexString                      `json:"title"`
+	TitleSec              FlexString                      `json:"title_sec"`
+	Description           FlexString                      `json:"description"`
+	Detail                FlexString                      `json:"detail"`
+	CardStatus            FlexCode                        `json:"card_status"`
+	StartTime             FlexString                      `json:"start_time"`
+	EndTime               FlexString                      `json:"end_time"`
+	ActivateTime          FlexString                      `json:"activate_time"`
+	Amount                FlexString                      `json:"amount"`
+	Currency              FlexString                      `json:"currency"`
+	AvailableTradeSession FlexString                      `json:"available_trade_session"`
+	TradeSessions         FlexStrings                     `json:"trade_sessions"`
+	SubscriptionID        FlexString                      `json:"subscription_id"`
+	AiBenefit             Object[CouponAiBenefit]         `json:"ai_benefit"`
+	Cash                  Object[CouponCash]              `json:"cash"`
+	CoffeeCoupon          Object[CouponCoffee]            `json:"coffee_coupon"`
+	Commission            Object[CouponCommission]        `json:"commission"`
+	Crypto                Object[CouponCrypto]            `json:"crypto"`
+	FinanceInterest       Object[CouponFinanceInterest]   `json:"finance_interest"`
+	FundDeduct            Object[CouponFundDeduct]        `json:"fund_deduct"`
+	Fundamental           Object[CouponQuote]             `json:"fundamental"`
+	Ipo                   Object[CouponIpo]               `json:"ipo"`
+	IpoCommission         Object[CouponIpoCommission]     `json:"ipo_commission"`
+	IpoInterest           Object[CouponIpoInterest]       `json:"ipo_interest"`
+	PlatformFeeDeduct     Object[CouponPlatformFeeDeduct] `json:"platform_fee_deduct"`
+	Quote                 Object[CouponQuote]             `json:"quote"`
+	Stock                 Object[CouponStock]             `json:"stock"`
+	StockFragment         Object[CouponStockFragment]     `json:"stock_fragment"`
 }
 
 // CouponsResponse is the response of GET /v1/account/cards.
 type CouponsResponse struct {
-	TopList      []Coupon  `json:"top_list"`
-	List         []Coupon  `json:"list"`
-	BottomList   []Coupon  `json:"bottom_list"`
-	Total        FlexInt64 `json:"total"`
-	ExpiredCount FlexInt64 `json:"expired_count"`
+	TopList      List[Coupon] `json:"top_list"`
+	List         List[Coupon] `json:"list"`
+	BottomList   List[Coupon] `json:"bottom_list"`
+	Total        FlexInt64    `json:"total"`
+	ExpiredCount FlexInt64    `json:"expired_count"`
 }
 
 // CouponOrder is one order of GET /v1/account/card-orders.

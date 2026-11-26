@@ -52,6 +52,25 @@ func (c *AssetContext) get(ctx context.Context, path string, q url.Values, resp 
 	return c.httpClient.Get(ctx, path, q, resp)
 }
 
+// getForAccount is get with the session's account_channel added to the query,
+// as the Longbridge app and CLI send it on the account routes. The channel is
+// read from the access token; it is left out when the token carries none.
+func (c *AssetContext) getForAccount(ctx context.Context, path string, q url.Values, resp interface{}) error {
+	channel, err := c.httpClient.AccountChannelCtx(ctx)
+	if err != nil {
+		return err
+	}
+	if channel != "" {
+		withChannel := make(url.Values, len(q)+1)
+		for k, v := range q {
+			withChannel[k] = v
+		}
+		withChannel.Set("account_channel", channel)
+		q = withChannel
+	}
+	return c.get(ctx, path, q, resp)
+}
+
 // BankCards returns the linked bank cards with their verification, binding
 // and authorization (eDDA, bank-securities link, FPS) status.
 //
@@ -69,7 +88,7 @@ func (c *AssetContext) BankCards(ctx context.Context) ([]*BankCard, error) {
 	q := url.Values{}
 	q.Set("from_app_page", "cards")
 	var resp jsontypes.BankCardsResponse
-	if err := c.get(ctx, pathBankCards, q, &resp); err != nil {
+	if err := c.getForAccount(ctx, pathBankCards, q, &resp); err != nil {
 		return nil, err
 	}
 	cards := make([]*BankCard, 0, len(resp.List))
@@ -97,7 +116,7 @@ func (c *AssetContext) EddaApplications(ctx context.Context, cardID string, curr
 	q.Set("card_id", cardID)
 	q.Set("currency", currency)
 	var resp json.RawMessage
-	if err := c.get(ctx, pathEddaStatus, q, &resp); err != nil {
+	if err := c.getForAccount(ctx, pathEddaStatus, q, &resp); err != nil {
 		return nil, err
 	}
 	return decodeEddaApplications(resp)
@@ -109,7 +128,7 @@ func (c *AssetContext) EddaApplications(ctx context.Context, cardID string, curr
 // Path: GET /v1/account/stock-transfers/in. AP accounts only.
 func (c *AssetContext) StockTransfersIn(ctx context.Context, params *GetStockTransfers) (*StockTransferInList, error) {
 	var resp jsontypes.TransferRecordsResponse
-	if err := c.get(ctx, pathStockTransfersIn, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathStockTransfersIn, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	out := &StockTransferInList{
@@ -128,7 +147,7 @@ func (c *AssetContext) StockTransfersIn(ctx context.Context, params *GetStockTra
 // Path: GET /v1/account/stock-transfers/out. AP accounts only.
 func (c *AssetContext) StockTransfersOut(ctx context.Context, params *GetStockTransfers) (*StockTransferOutList, error) {
 	var resp jsontypes.TransferRecordsResponse
-	if err := c.get(ctx, pathStockTransfersOut, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathStockTransfersOut, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	out := &StockTransferOutList{Records: make([]*StockTransferOut, 0, len(resp.Records))}
@@ -146,7 +165,7 @@ func (c *AssetContext) StockTransfersOut(ctx context.Context, params *GetStockTr
 // Path: GET /v1/account/rewards. AP accounts only.
 func (c *AssetContext) RewardRecords(ctx context.Context, params *GetRewardRecords) (*RewardRecordList, error) {
 	var resp jsontypes.RewardsResponse
-	if err := c.get(ctx, pathRewards, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathRewards, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	out := &RewardRecordList{
@@ -167,7 +186,7 @@ func (c *AssetContext) RewardRecords(ctx context.Context, params *GetRewardRecor
 // Path: GET /v1/account/cards. AP accounts only.
 func (c *AssetContext) Coupons(ctx context.Context, params *GetCoupons) (*CouponList, error) {
 	var resp jsontypes.CouponsResponse
-	if err := c.get(ctx, pathCoupons, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathCoupons, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	return &CouponList{
@@ -216,7 +235,7 @@ func (c *AssetContext) CouponOrders(ctx context.Context, cardID string, orderTyp
 // Path: GET /v1/account/deposits. AP accounts only.
 func (c *AssetContext) Deposits(ctx context.Context, params *GetDeposits) (*DepositList, error) {
 	var resp jsontypes.DepositsResponse
-	if err := c.get(ctx, pathDeposits, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathDeposits, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	out := &DepositList{
@@ -235,7 +254,7 @@ func (c *AssetContext) Deposits(ctx context.Context, params *GetDeposits) (*Depo
 // Path: GET /v1/account/withdrawals. AP accounts only.
 func (c *AssetContext) Withdrawals(ctx context.Context, params *GetWithdrawals) (*WithdrawalList, error) {
 	var resp jsontypes.WithdrawalsResponse
-	if err := c.get(ctx, pathWithdrawals, params.Values(), &resp); err != nil {
+	if err := c.getForAccount(ctx, pathWithdrawals, params.Values(), &resp); err != nil {
 		return nil, err
 	}
 	out := &WithdrawalList{

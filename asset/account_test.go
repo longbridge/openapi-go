@@ -2,6 +2,7 @@ package asset
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	nethttp "net/http"
@@ -782,8 +783,9 @@ func TestMissingAndGarbageCodesAreUnknown(t *testing.T) {
 				t.Fatalf("Coupons: %v", err)
 			}
 			cp := coupons.List[0]
-			if cp.CardStatus != CouponStatusUnknown || len(cp.Commission.BzTypes) != 2 ||
-				cp.Commission.BzTypes[0] != CouponTargetTypeStocks || cp.Commission.BzTypes[1] != CouponTargetTypeUnknown {
+			// An unusable bz_types entry is skipped rather than kept as Unknown.
+			if cp.CardStatus != CouponStatusUnknown || len(cp.Commission.BzTypes) != 1 ||
+				cp.Commission.BzTypes[0] != CouponTargetTypeStocks {
 				t.Errorf("coupon = %+v %+v", cp, cp.Commission)
 			}
 
@@ -814,4 +816,203 @@ func orNull(code string) string {
 		return "null"
 	}
 	return code
+}
+
+// couponNullTerms is every per-type terms key of a coupon card set to null, as
+// the gateway sends them for the types that do not apply.
+const couponNullTerms = `"ai_benefit": null, "cash": null, "coffee_coupon": null, "crypto": null,
+	"finance_interest": null, "fund_deduct": null, "fund_interest": null, "fundamental": null, "ipo": null,
+	"ipo_commission": null, "ipo_interest": null, "platform_fee_deduct": null, "quote": null, "stock": null,
+	"stock_fragment": null`
+
+func TestCouponGatewayWireShape(t *testing.T) {
+	var req *nethttp.Request
+	// Mirrors a real gateway card (synthetic values): all per-type keys
+	// present and null except the card's own, int64 values as strings, enums
+	// as numbers, "0" for unset times.
+	srv := serve(t, `{"total": "1", "expired_count": "0", "list": [{
+		"card_id": "0123456789abcdef0123456789abcdef", "card_type": "commission", "title": "T", "title_sec": "",
+		"description": "", "detail": "", "card_status": 1, "start_time": "1767196800", "end_time": "1798732800",
+		"activate_time": "0", "amount": "50", "currency": "HKD", "member_id": "1000001",
+		"available_trade_session": "", "trade_sessions": [], "subscription_id": "", "markets": ["HK"],
+		"bz_types": [0], "rebate_rate": "", "commission_balance": "", "commission_duration": "0",
+		"quote_duration": "0", "receive_duration": "0", "style": "", "cover": "", "background": "",
+		"invisible": false, "new_flag": true, "account_channel": "lb",
+		`+strings.Replace(couponNullTerms, `"ai_benefit": null, `, "", 1)+`,
+		"ai_benefit": null,
+		"commission": {"markets": ["HK"], "rebate_rate": "", "bz_types": [0, 2], "commission_balance": "50",
+			"commission_duration": "2592000", "unlimited": 6, "commission_expired_time": "0", "usage_count": "5",
+			"lave_usage_count": "4", "settlement_model": "", "amount_limit": "0", "superposition": false}}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Coupons: %v", err)
+	}
+	if list.Total != 1 || len(list.List) != 1 {
+		t.Fatalf("list = %+v", list)
+	}
+	c := list.List[0]
+	if c.CardStatus != CouponStatus(1) || c.StartTime.Unix() != 1767196800 || !c.ActivateTime.IsZero() || c.Amount != "50" {
+		t.Errorf("card = %+v", c)
+	}
+	if c.AiBenefit != nil || c.Cash != nil || c.CoffeeCoupon != nil || c.Crypto != nil || c.FinanceInterest != nil ||
+		c.FundDeduct != nil || c.Fundamental != nil || c.Ipo != nil || c.IpoCommission != nil || c.IpoInterest != nil ||
+		c.PlatformFeeDeduct != nil || c.Quote != nil || c.Stock != nil || c.StockFragment != nil {
+		t.Errorf("null per-type terms must stay nil: %+v", c)
+	}
+	m := c.Commission
+	if m == nil || m.Unlimited != CommissionUnlimitedTypeByAmountPer || m.CommissionDuration != 2592000 ||
+		m.UsageCount != 5 || m.LaveUsageCount != 4 || len(m.BzTypes) != 2 || m.BzTypes[1] != CouponTargetTypeWarrants ||
+		m.Markets[0] != "HK" || !m.CommissionExpiredTime.IsZero() {
+		t.Errorf("commission = %+v", m)
+	}
+}
+
+// TestCouponMalformedShapesDoNotFailPage checks that odd per-type objects and
+// nested lists are dropped instead of failing the whole page.
+func TestCouponMalformedShapesDoNotFailPage(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"top_list": "oops", "bottom_list": [null, 1, "x"], "list": [
+		{"card_id": "a", "quote": "", "stock": [], "cash": 0, "crypto": "x", "fundamental": true,
+			"commission": {"bz_types": 1, "markets": "HK", "unlimited": "", "usage_count": 2.0}},
+		{"card_id": "b", "commission": {"bz_types": ["", null, {}, "ETF", 2.0, 9, "Nope"], "unlimited": 5},
+			"coffee_coupon": {"store_list": "x", "store_id_list": ["1", null, "x", 2.0]},
+			"stock": {"optional_counters": "x", "fallback": ""},
+			"crypto": {"optional_counters": [null, 1, {"counter_id": "C1"}], "fallback": []},
+			"ipo_commission": {"bz_types": [0, "_", 9, "CashIPO", "bad"]},
+			"stock_fragment": {"amounts": "x", "underlying_type": null},
+			"quote": {"investor_type": 7, "markets": [null, "US", {}]}},
+		"not a card",
+		{"card_id": "c", "card_status": "2.0"}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Coupons: %v", err)
+	}
+	if len(list.TopList) != 0 || len(list.BottomList) != 0 || len(list.List) != 3 {
+		t.Fatalf("list = %+v", list)
+	}
+	a := list.List[0]
+	if a.Quote != nil || a.Stock != nil || a.Cash != nil || a.Crypto != nil || a.Fundamental != nil || a.Commission == nil {
+		t.Errorf("non-object terms must be nil: %+v", a)
+	}
+	if m := a.Commission; len(m.BzTypes) != 0 || len(m.Markets) != 0 || m.Unlimited != CommissionUnlimitedTypeUnknown || m.UsageCount != 2 {
+		t.Errorf("commission a = %+v", m)
+	}
+	b := list.List[1]
+	if m := b.Commission; len(m.BzTypes) != 3 || m.BzTypes[0] != CouponTargetTypeETF ||
+		m.BzTypes[1] != CouponTargetTypeWarrants || m.BzTypes[2] != 9 || m.Unlimited != 5 {
+		t.Errorf("commission b = %+v", m)
+	}
+	if m := b.CoffeeCoupon; m == nil || len(m.StoreList) != 0 || len(m.StoreIDList) != 2 || m.StoreIDList[1] != 2 {
+		t.Errorf("coffee = %+v", m)
+	}
+	if m := b.Stock; m == nil || len(m.OptionalCounters) != 0 || m.Fallback.Enabled {
+		t.Errorf("stock = %+v", m)
+	}
+	if m := b.Crypto; m == nil || len(m.OptionalCounters) != 1 || m.OptionalCounters[0].CounterID != "C1" {
+		t.Errorf("crypto = %+v", m)
+	}
+	if m := b.IpoCommission; m == nil || len(m.BzTypes) != 4 || m.BzTypes[0] != IpoCouponTargetTypeUnknown ||
+		m.BzTypes[1] != IpoCouponTargetTypeUnknown || m.BzTypes[2] != 9 || m.BzTypes[3] != IpoCouponTargetTypeCash {
+		t.Errorf("ipo commission = %+v", m)
+	}
+	if m := b.StockFragment; m == nil || m.Amounts != nil || m.UnderlyingType != CouponTargetTypeUnknown {
+		t.Errorf("stock fragment = %+v", m)
+	}
+	if m := b.Quote; m == nil || m.InvestorType != 7 || len(m.Markets) != 1 || m.Markets[0] != "US" {
+		t.Errorf("quote = %+v", m)
+	}
+	if c := list.List[2]; c.CardID != "c" || c.CardStatus != CouponStatusExpired {
+		t.Errorf("integral float card_status = %+v", c)
+	}
+}
+
+// TestUndocumentedCodesAreKept checks the one rule for integer codes: any
+// integer is kept as is, documented or not.
+func TestUndocumentedCodesAreKept(t *testing.T) {
+	var req *nethttp.Request
+	ctx := context.Background()
+	srv := serve(t, `{"list": [{"reward_type": 3, "prize": {"status": 12, "deliver_status": 11, "prize_type": 0}},
+		{"reward_type": 77, "prize": {"status": 99.0, "deliver_status": "42"}}]}`, &req)
+	rewards, err := newTestAssetContext(t, srv.URL, "").RewardRecords(ctx, nil)
+	if err != nil {
+		t.Fatalf("RewardRecords: %v", err)
+	}
+	if r := rewards.Records[0]; r.DeliverStatus != 11 {
+		t.Errorf("deliver status 11 = %+v", r)
+	}
+	if r := rewards.Records[1]; r.RewardType != 77 || r.Status != 99 || r.DeliverStatus != 42 {
+		t.Errorf("undocumented codes = %+v", r)
+	}
+
+	srv = serve(t, `{"items": [{"state_code": 17, "sub_state_code": "8"}], "list": [{"state": 23.0}]}`, &req)
+	actx := newTestAssetContext(t, srv.URL, "")
+	deposits, err := actx.Deposits(ctx, nil)
+	if err != nil {
+		t.Fatalf("Deposits: %v", err)
+	}
+	if d := deposits.Items[0]; d.StateCode != 17 || d.SubStateCode != 8 {
+		t.Errorf("deposit = %+v", d)
+	}
+	withdrawals, err := actx.Withdrawals(ctx, nil)
+	if err != nil {
+		t.Fatalf("Withdrawals: %v", err)
+	}
+	if w := withdrawals.List[0]; w.StateCode != 23 {
+		t.Errorf("withdrawal = %+v", w)
+	}
+}
+
+func TestFlexIntegralFloats(t *testing.T) {
+	var v struct {
+		A jsontypes.FlexInt64 `json:"a"`
+		B jsontypes.FlexInt64 `json:"b"`
+		C jsontypes.FlexInt64 `json:"c"`
+		D jsontypes.FlexCode  `json:"d"`
+		E jsontypes.FlexCode  `json:"e"`
+		F jsontypes.FlexCode  `json:"f"`
+	}
+	if err := json.Unmarshal([]byte(`{"a": "6.0", "b": 2.0, "c": 1.5, "d": 2.0, "e": "1e1", "f": 3e10}`), &v); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if v.A != 6 || v.B != 2 || v.C != 0 || !v.D.Valid || v.D.Value != 2 || !v.E.Valid || v.E.Value != 10 || v.F.Valid {
+		t.Errorf("got %+v", v)
+	}
+}
+
+// testJWT builds an unsigned JWT-shaped token with the given payload.
+func testJWT(payload string) string {
+	enc := func(s string) string { return base64.RawURLEncoding.EncodeToString([]byte(s)) }
+	return enc(`{"alg":"none"}`) + "." + enc(payload) + ".sig"
+}
+
+func TestAccountChannelQuery(t *testing.T) {
+	for _, tt := range []struct {
+		name, token, want string
+	}{
+		{"ac claim", testJWT(`{"ac":"lb_papertrading"}`), "lb_papertrading"},
+		{"sub claim", "hk_m_" + testJWT(`{"sub":"{\"member_id\":1,\"account_channel\":\"lb\"}"}`), "lb"},
+		{"no claim", testJWT(`{"exp":1}`), ""},
+		{"not a jwt", "opaque-token", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var req *nethttp.Request
+			srv := serve(t, `{"list": []}`, &req)
+			cli, err := http.New(http.WithURL(srv.URL), http.WithAppKey("key"), http.WithAppSecret("secret"),
+				http.WithAccessToken(tt.token))
+			if err != nil {
+				t.Fatalf("http.New: %v", err)
+			}
+			actx := &AssetContext{httpClient: cli}
+			if _, err := actx.Coupons(context.Background(), nil); err != nil {
+				t.Fatalf("Coupons: %v", err)
+			}
+			q := req.URL.Query()
+			if q.Get("account_channel") != tt.want || (tt.want == "" && q.Has("account_channel")) {
+				t.Errorf("account_channel = %q, want %q (%s)", q.Get("account_channel"), tt.want, req.URL)
+			}
+			if q.Get("page_size") != "20" {
+				t.Errorf("other params lost: %s", req.URL)
+			}
+		})
+	}
 }

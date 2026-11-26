@@ -52,7 +52,8 @@ func parseTime(s jsontypes.FlexString) time.Time {
 }
 
 // unknownCode is what a missing, null or non-integer status code decodes to;
-// every code type has a matching XxxUnknown constant.
+// every code type has a matching XxxUnknown constant. Any integer upstream
+// sends, documented or not, is kept as is.
 const unknownCode int32 = -1
 
 // code returns the decoded status code, or unknownCode when upstream sent no
@@ -332,14 +333,14 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		coupon.NoExpiry = true
 	}
 	coupon.SubscriptionID = string(c.SubscriptionID)
-	if m := c.Commission; m != nil {
+	if m := c.Commission.V; m != nil {
 		coupon.Commission = &CouponCommission{
 			Markets:               []string(m.Markets),
 			RebateRate:            string(m.RebateRate),
 			BzTypes:               targetTypes(m.BzTypes),
 			CommissionBalance:     string(m.CommissionBalance),
 			CommissionDuration:    int64(m.CommissionDuration),
-			Unlimited:             CommissionUnlimitedType(namedCode(m.Unlimited, unlimitedNames)),
+			Unlimited:             CommissionUnlimitedType(enumCode(m.Unlimited, unlimitedNames)),
 			CommissionExpiredTime: parseTime(m.CommissionExpiredTime),
 			UsageCount:            int64(m.UsageCount),
 			LaveUsageCount:        int64(m.LaveUsageCount),
@@ -348,7 +349,7 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			Superposition:         bool(m.Superposition),
 		}
 	}
-	if m := c.AiBenefit; m != nil {
+	if m := c.AiBenefit.V; m != nil {
 		coupon.AiBenefit = &CouponAiBenefit{
 			BenefitDays:  int32(m.BenefitDays),
 			BenefitStart: parseTime(m.BenefitStart),
@@ -356,10 +357,10 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			BenefitTag:   string(m.BenefitTag),
 		}
 	}
-	if m := c.Cash; m != nil {
+	if m := c.Cash.V; m != nil {
 		coupon.Cash = &CouponCash{ReceiveDuration: int64(m.ReceiveDuration)}
 	}
-	if m := c.CoffeeCoupon; m != nil {
+	if m := c.CoffeeCoupon.V; m != nil {
 		coffee := &CouponCoffee{
 			CouponChannel:       string(m.CouponChannel),
 			CouponID:            string(m.CouponID),
@@ -380,9 +381,9 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		}
 		coupon.CoffeeCoupon = coffee
 	}
-	if m := c.Crypto; m != nil {
+	if m := c.Crypto.V; m != nil {
 		crypto := &CouponCrypto{OptionalCounters: make([]CouponCryptoCounter, 0, len(m.OptionalCounters))}
-		if f := m.Fallback; f != nil {
+		if f := m.Fallback.V; f != nil {
 			crypto.Fallback = CouponCryptoFallback{Enabled: bool(f.Enabled), CounterID: string(f.CounterID)}
 		}
 		for _, o := range m.OptionalCounters {
@@ -390,14 +391,14 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		}
 		coupon.Crypto = crypto
 	}
-	if m := c.FinanceInterest; m != nil {
+	if m := c.FinanceInterest.V; m != nil {
 		coupon.FinanceInterest = &CouponFinanceInterest{
 			DiscountMode:  int32(m.DiscountMode),
 			DiscountRate:  string(m.DiscountRate),
 			Superposition: bool(m.Superposition),
 		}
 	}
-	if m := c.FundDeduct; m != nil {
+	if m := c.FundDeduct.V; m != nil {
 		coupon.FundDeduct = &CouponFundDeduct{
 			MaxRiskLevel:     int32(m.MaxRiskLevel),
 			MinOrderAmount:   string(m.MinOrderAmount),
@@ -407,12 +408,12 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			UnderlyingNames:  []string(m.UnderlyingNames),
 		}
 	}
-	coupon.Fundamental = toCouponQuote(c.Fundamental)
-	coupon.Quote = toCouponQuote(c.Quote)
-	if m := c.Ipo; m != nil {
+	coupon.Fundamental = toCouponQuote(c.Fundamental.V)
+	coupon.Quote = toCouponQuote(c.Quote.V)
+	if m := c.Ipo.V; m != nil {
 		coupon.Ipo = &CouponIpo{SubscriptionID: string(m.SubscriptionID)}
 	}
-	if m := c.IpoCommission; m != nil {
+	if m := c.IpoCommission.V; m != nil {
 		ipo := &CouponIpoCommission{
 			BzTypes:        make([]IpoCouponTargetType, 0, len(m.BzTypes)),
 			CounterID:      string(m.CounterID),
@@ -420,18 +421,22 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			FinancingLimit: string(m.FinancingLimit),
 		}
 		for _, t := range m.BzTypes {
-			v := IpoCouponTargetType(namedCode(t, ipoTargetNames))
-			if v != IpoCouponTargetTypeFinancing && v != IpoCouponTargetTypeCash {
-				v = IpoCouponTargetTypeUnknown
+			v, ok := namedCode(t, ipoTargetNames)
+			if !ok {
+				continue
 			}
-			ipo.BzTypes = append(ipo.BzTypes, v)
+			if v == 0 {
+				// The proto's unset value ("_").
+				v = unknownCode
+			}
+			ipo.BzTypes = append(ipo.BzTypes, IpoCouponTargetType(v))
 		}
 		coupon.IpoCommission = ipo
 	}
-	if m := c.IpoInterest; m != nil {
+	if m := c.IpoInterest.V; m != nil {
 		coupon.IpoInterest = &CouponIpoInterest{DiscountRate: string(m.DiscountRate)}
 	}
-	if m := c.PlatformFeeDeduct; m != nil {
+	if m := c.PlatformFeeDeduct.V; m != nil {
 		coupon.PlatformFeeDeduct = &CouponPlatformFeeDeduct{
 			BzTypes:        targetTypes(m.BzTypes),
 			CounterID:      string(m.CounterID),
@@ -442,7 +447,7 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			Superposition:  bool(m.Superposition),
 		}
 	}
-	if m := c.Stock; m != nil {
+	if m := c.Stock.V; m != nil {
 		stock := &CouponStock{
 			CounterID:        string(m.CounterID),
 			CounterName:      string(m.CounterName),
@@ -457,7 +462,7 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 				Shares:    string(o.Shares),
 			})
 		}
-		if f := m.Fallback; f != nil {
+		if f := m.Fallback.V; f != nil {
 			stock.Fallback = CouponStockFallback{
 				Enabled:   bool(f.Enabled),
 				Type:      string(f.Type),
@@ -467,13 +472,13 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		}
 		coupon.Stock = stock
 	}
-	if m := c.StockFragment; m != nil {
+	if m := c.StockFragment.V; m != nil {
 		coupon.StockFragment = &CouponStockFragment{
 			CounterID:      string(m.CounterID),
 			CounterName:    string(m.CounterName),
 			Market:         string(m.Market),
 			Markets:        []string(m.Markets),
-			UnderlyingType: CouponTargetType(namedCode(m.UnderlyingType, targetTypeNames)),
+			UnderlyingType: CouponTargetType(enumCode(m.UnderlyingType, targetTypeNames)),
 			Amounts:        map[string]string(m.Amounts),
 		}
 	}
@@ -497,22 +502,37 @@ var (
 )
 
 // namedCode decodes a proto enum sent as its name or as its number (a JSON
-// number or a numeric string); anything else is unknownCode.
-func namedCode(s jsontypes.FlexString, names map[string]int32) int32 {
-	t := strings.TrimSpace(string(s))
+// number, a numeric string or an integral float). A number is kept as is even
+// when it is not a documented value; ok is false for an empty or
+// unrecognised value.
+func namedCode(s string, names map[string]int32) (int32, bool) {
+	t := strings.TrimSpace(s)
 	if v, ok := names[t]; ok {
-		return v
+		return v, true
 	}
-	if v, err := strconv.ParseInt(t, 10, 32); err == nil {
-		return int32(v)
+	if v, ok := jsontypes.ParseIntegral(t, 32); ok {
+		return int32(v), true
+	}
+	return 0, false
+}
+
+// enumCode is namedCode for a single enum field: a missing or unrecognised
+// value is unknownCode.
+func enumCode(s jsontypes.FlexString, names map[string]int32) int32 {
+	if v, ok := namedCode(string(s), names); ok {
+		return v
 	}
 	return unknownCode
 }
 
-func targetTypes(list []jsontypes.FlexString) []CouponTargetType {
+// targetTypes decodes a list of CouponTargetType entries, skipping entries
+// that are neither a known name nor an integer.
+func targetTypes(list []string) []CouponTargetType {
 	out := make([]CouponTargetType, 0, len(list))
 	for _, t := range list {
-		out = append(out, CouponTargetType(namedCode(t, targetTypeNames)))
+		if v, ok := namedCode(t, targetTypeNames); ok {
+			out = append(out, CouponTargetType(v))
+		}
 	}
 	return out
 }
@@ -524,7 +544,7 @@ func toCouponQuote(m *jsontypes.CouponQuote) *CouponQuote {
 	return &CouponQuote{
 		CurrentEndTime:     parseTime(m.CurrentEndTime),
 		Inapplicable:       bool(m.Inapplicable),
-		InvestorType:       QuoteInvestorType(namedCode(m.InvestorType, investorTypeNames)),
+		InvestorType:       QuoteInvestorType(enumCode(m.InvestorType, investorTypeNames)),
 		ManualActivate:     bool(m.ManualActivate),
 		Markets:            []string(m.Markets),
 		MemberInvestorType: int32(m.MemberInvestorType),
@@ -536,7 +556,7 @@ func toCouponQuote(m *jsontypes.CouponQuote) *CouponQuote {
 	}
 }
 
-func toCoupons(list []jsontypes.Coupon) []*Coupon {
+func toCoupons(list jsontypes.List[jsontypes.Coupon]) []*Coupon {
 	out := make([]*Coupon, 0, len(list))
 	for i := range list {
 		out = append(out, toCoupon(&list[i]))

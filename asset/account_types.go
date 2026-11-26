@@ -8,11 +8,14 @@ import "time"
 // time.Time, so check IsZero() before using one. encoding/json marshals a zero
 // value as "0001-01-01T00:00:00Z".
 //
-// Every integer status code type below has an XxxUnknown constant (-1): a code
-// that upstream omitted, sent as null or sent as something that is not an
-// integer decodes to it, so it can never be mistaken for a real state (0 is a
-// real state in most of these tables). An undocumented integer code is kept
-// verbatim.
+// Every integer code type below (statuses, states and proto enums) follows one
+// rule. A code that upstream omitted, sent as null or sent as something that
+// is neither an integer (a number, a numeric string or an integral float such
+// as 2.0) nor a known enum name decodes to the type's XxxUnknown constant
+// (-1), so it can never be mistaken for a real state (0 is a real state in
+// most of these tables). Any integer upstream sends is kept as is, even when
+// the type has no constant for it: compare against the documented constants
+// and treat other values as "undocumented code N", not as Unknown.
 
 // BankCardStatus is the verification status of a bank card.
 // Undocumented integer codes are kept verbatim.
@@ -569,12 +572,11 @@ const (
 // CouponTargetType is an instrument type a coupon applies to (the server's
 // bz_types / underlying_type, sent as a proto enum name such as
 // "HkStockWarrant" or as its number). Undocumented integer codes are kept
-// verbatim.
+// verbatim; in a bz_types list, entries that are neither are skipped.
 type CouponTargetType int32
 
 const (
-	// CouponTargetTypeUnknown is an entry upstream sent that is neither an
-	// integer nor a known name.
+	// CouponTargetTypeUnknown means upstream sent no usable underlying_type.
 	CouponTargetTypeUnknown CouponTargetType = -1
 	// CouponTargetTypeStocks is stocks (StockTrade).
 	CouponTargetTypeStocks CouponTargetType = 0
@@ -590,11 +592,13 @@ const (
 
 // IpoCouponTargetType is an IPO subscription type an IPO commission coupon
 // applies to (sent as a proto enum name or number). The proto's unset value
-// 0 decodes to IpoCouponTargetTypeUnknown.
+// ("_" / 0) decodes to IpoCouponTargetTypeUnknown; other undocumented integer
+// codes are kept verbatim, and entries that are neither a name nor an integer
+// are skipped.
 type IpoCouponTargetType int32
 
 const (
-	// IpoCouponTargetTypeUnknown is an unset or unrecognised entry.
+	// IpoCouponTargetTypeUnknown is the proto's unset value ("_" / 0).
 	IpoCouponTargetTypeUnknown IpoCouponTargetType = -1
 	// IpoCouponTargetTypeFinancing is a financing (margin) IPO subscription
 	// (FinancingIPO).
@@ -603,23 +607,30 @@ const (
 	IpoCouponTargetTypeCash IpoCouponTargetType = 2
 )
 
-// CommissionUnlimitedType is the server's `unlimited` code of a commission
-// coupon (a proto enum sent as a name or a number). Undocumented integer
-// codes are kept verbatim.
+// CommissionUnlimitedType is the kind of a commission coupon: the server's
+// `unlimited` code (a proto enum sent as a name or a number). The proto names
+// do not describe the kind; the meanings below are how the Longbridge app
+// treats each code. Undocumented integer codes are kept verbatim.
 type CommissionUnlimitedType int32
 
 const (
 	// CommissionUnlimitedTypeUnknown means upstream sent no usable value.
 	CommissionUnlimitedTypeUnknown CommissionUnlimitedType = -1
-	// CommissionUnlimitedTypeProportionate is `Proportionate`.
+	// CommissionUnlimitedTypeProportionate (proto `Proportionate`) is
+	// time-limited free commission: commission is waived for
+	// CommissionDuration seconds.
 	CommissionUnlimitedTypeProportionate CommissionUnlimitedType = 0
-	// CommissionUnlimitedTypeFull is `Full`.
+	// CommissionUnlimitedTypeFull (proto `Full`) is a commission rebate card.
 	CommissionUnlimitedTypeFull CommissionUnlimitedType = 1
-	// CommissionUnlimitedTypeLifetime is `Lifetime`.
+	// CommissionUnlimitedTypeLifetime (proto `Lifetime`) is a commission
+	// deduction card.
 	CommissionUnlimitedTypeLifetime CommissionUnlimitedType = 2
-	// CommissionUnlimitedTypeByAmountPer is `ByAmountPer`.
+	// CommissionUnlimitedTypeByAmountPer (proto `ByAmountPer`) is a per-use
+	// card that deducts a fixed amount per use (the card amount divided by
+	// UsageCount).
 	CommissionUnlimitedTypeByAmountPer CommissionUnlimitedType = 6
-	// CommissionUnlimitedTypeByRatePer is `ByRatePer`.
+	// CommissionUnlimitedTypeByRatePer (proto `ByRatePer`) is a per-use
+	// discount card, capped at AmountLimit per use.
 	CommissionUnlimitedTypeByRatePer CommissionUnlimitedType = 7
 )
 
@@ -646,17 +657,21 @@ type CouponCommission struct {
 	Markets    []string `json:"markets"`
 	RebateRate string   `json:"rebate_rate"`
 	// BzTypes are the instrument types the coupon applies to.
-	BzTypes            []CouponTargetType `json:"bz_types"`
-	CommissionBalance  string             `json:"commission_balance"`
-	CommissionDuration int64              `json:"commission_duration"`
-	// Unlimited is the server's `unlimited` code.
+	BzTypes           []CouponTargetType `json:"bz_types"`
+	CommissionBalance string             `json:"commission_balance"`
+	// CommissionDuration is the free-commission period in seconds; 200 years
+	// or more means lifetime free commission.
+	CommissionDuration int64 `json:"commission_duration"`
+	// Unlimited is the kind of commission coupon (see
+	// CommissionUnlimitedType).
 	Unlimited CommissionUnlimitedType `json:"unlimited"`
 	// CommissionExpiredTime is zero when unset.
 	CommissionExpiredTime time.Time `json:"commission_expired_time"`
 	UsageCount            int64     `json:"usage_count"`
 	LaveUsageCount        int64     `json:"lave_usage_count"`
 	SettlementModel       string    `json:"settlement_model"`
-	// AmountLimit is the amount limit, as returned by the server.
+	// AmountLimit is the per-use cap of a CommissionUnlimitedTypeByRatePer
+	// card.
 	AmountLimit int64 `json:"amount_limit"`
 	// Superposition reports whether the coupon can be combined with others.
 	Superposition bool `json:"superposition"`
@@ -664,7 +679,7 @@ type CouponCommission struct {
 
 // CouponAiBenefit is the terms of an AI benefit coupon.
 type CouponAiBenefit struct {
-	// BenefitDays is the benefit days, as returned by the server.
+	// BenefitDays is the benefit period in days.
 	BenefitDays int32 `json:"benefit_days"`
 	// BenefitStart and BenefitEnd are zero when unset.
 	BenefitStart time.Time `json:"benefit_start"`
@@ -674,7 +689,8 @@ type CouponAiBenefit struct {
 
 // CouponCash is the terms of a cash coupon.
 type CouponCash struct {
-	// ReceiveDuration is the receive duration, as returned by the server.
+	// ReceiveDuration is the server's receive_duration; its unit and meaning
+	// are not confirmed.
 	ReceiveDuration int64 `json:"receive_duration"`
 }
 
@@ -687,8 +703,10 @@ type CouponCoffeeStore struct {
 // CouponCoffee is the terms of a coffee coupon. String fields are as
 // returned by the server.
 type CouponCoffee struct {
-	CouponChannel       string `json:"coupon_channel"`
-	CouponID            string `json:"coupon_id"`
+	CouponChannel string `json:"coupon_channel"`
+	CouponID      string `json:"coupon_id"`
+	// CouponNo is the voucher template code (e.g. "coffee-50"), not a
+	// personal redemption code.
 	CouponNo            string `json:"coupon_no"`
 	IsAvailableAllStore bool   `json:"is_available_all_store"`
 	// PeriodType is e.g. "day".
@@ -719,11 +737,12 @@ type CouponCrypto struct {
 	OptionalCounters []CouponCryptoCounter `json:"optional_counters"`
 }
 
-// CouponFinanceInterest is the terms of a finance interest coupon.
+// CouponFinanceInterest is the terms of a finance interest coupon. The
+// meaning of its fields is not confirmed; they are as returned by the server.
 type CouponFinanceInterest struct {
-	// DiscountMode is the discount mode, as returned by the server.
+	// DiscountMode is the server's discount_mode code.
 	DiscountMode int32 `json:"discount_mode"`
-	// DiscountRate is the discount rate as decimal text.
+	// DiscountRate is the server's discount_rate as decimal text.
 	DiscountRate  string `json:"discount_rate"`
 	Superposition bool   `json:"superposition"`
 }
@@ -752,7 +771,8 @@ type CouponQuote struct {
 	// server.
 	MemberInvestorType int32  `json:"member_investor_type"`
 	PairSpuNo          string `json:"pair_spu_no"`
-	// QuoteDuration is the quote duration, as returned by the server.
+	// QuoteDuration is the market-data entitlement period in seconds; 200
+	// years or more means lifetime.
 	QuoteDuration int64    `json:"quote_duration"`
 	QuoteMarket   string   `json:"quote_market"`
 	QuoteTags     []string `json:"quote_tags"`
@@ -775,7 +795,8 @@ type CouponIpoCommission struct {
 
 // CouponIpoInterest is the terms of an IPO interest coupon.
 type CouponIpoInterest struct {
-	// DiscountRate is the discount rate, as returned by the server.
+	// DiscountRate is an annual interest rate as decimal text: the app
+	// computes the daily interest saved as rate × financed amount / 365.
 	DiscountRate string `json:"discount_rate"`
 }
 

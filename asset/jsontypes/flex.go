@@ -3,9 +3,33 @@ package jsontypes
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
 )
+
+// ParseIntegral parses s as an integer that fits in bitSize bits. Besides
+// plain integer text it accepts an integral float ("6.0", "2e1"), which some
+// JSON encoders emit for integer fields. ok is false for empty, non-numeric,
+// fractional or out-of-range text.
+func ParseIntegral(s string, bitSize int) (v int64, ok bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, false
+	}
+	if n, err := strconv.ParseInt(s, 10, bitSize); err == nil {
+		return n, true
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsInf(f, 0) || math.IsNaN(f) || f != math.Trunc(f) {
+		return 0, false
+	}
+	limit := math.Ldexp(1, bitSize-1)
+	if f < -limit || f >= limit {
+		return 0, false
+	}
+	return int64(f), true
+}
 
 // FlexString is a string field that also accepts a JSON number (kept as its
 // literal text) or a boolean (as "true" / "false"); null, objects and arrays
@@ -34,8 +58,9 @@ func (f *FlexString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// FlexInt64 is an int64 field that also accepts a numeric string; null or an
-// unparsable value (including a float) decodes to 0.
+// FlexInt64 is an int64 field that also accepts a numeric string or an
+// integral float ("6.0"); null or an unparsable value (including a fractional
+// number) decodes to 0.
 type FlexInt64 int64
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -44,18 +69,15 @@ func (f *FlexInt64) UnmarshalJSON(data []byte) error {
 	if err := s.UnmarshalJSON(data); err != nil {
 		return err
 	}
-	v, err := strconv.ParseInt(strings.TrimSpace(string(s)), 10, 64)
-	if err != nil {
-		v = 0
-	}
+	v, _ := ParseIntegral(string(s), 64)
 	*f = FlexInt64(v)
 	return nil
 }
 
-// FlexCode is an integer status code that also accepts a numeric string.
-// Valid is false when the field is missing, null, or not an integer that fits
-// in int32 (e.g. "", "abc", 1.5), so a missing or garbled code can never be
-// mistaken for a real code such as 0.
+// FlexCode is an integer status code that also accepts a numeric string or an
+// integral float ("2.0"). Valid is false when the field is missing, null, or
+// not an integer that fits in int32 (e.g. "", "abc", 1.5), so a missing or
+// garbled code can never be mistaken for a real code such as 0.
 type FlexCode struct {
 	Value int32
 	Valid bool
@@ -68,8 +90,8 @@ func (f *FlexCode) UnmarshalJSON(data []byte) error {
 	if err := s.UnmarshalJSON(data); err != nil {
 		return err
 	}
-	v, err := strconv.ParseInt(strings.TrimSpace(string(s)), 10, 32)
-	if err != nil {
+	v, ok := ParseIntegral(string(s), 32)
+	if !ok {
 		return nil
 	}
 	*f = FlexCode{Value: int32(v), Valid: true}
@@ -98,22 +120,43 @@ func (f *FlexBool) UnmarshalJSON(data []byte) error {
 }
 
 // FlexStrings is a string list whose items are decoded as FlexString; a value
-// that is not an array decodes to nil.
+// that is not an array decodes to nil, and null, object and array items are
+// skipped.
 type FlexStrings []string
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (f *FlexStrings) UnmarshalJSON(data []byte) error {
-	var items []FlexString
-	if err := json.Unmarshal(data, &items); err != nil {
-		*f = nil
+	*f = nil
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err != nil || items == nil {
 		return nil
 	}
-	out := make([]string, len(items))
-	for i, item := range items {
-		out[i] = string(item)
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		if !isScalar(item) {
+			continue
+		}
+		var s FlexString
+		if err := s.UnmarshalJSON(item); err != nil {
+			continue
+		}
+		out = append(out, string(s))
 	}
 	*f = out
 	return nil
+}
+
+// isScalar reports whether a raw JSON value is a string, number or boolean.
+func isScalar(raw json.RawMessage) bool {
+	t := bytes.TrimSpace(raw)
+	if len(t) == 0 {
+		return false
+	}
+	switch t[0] {
+	case '{', '[', 'n':
+		return false
+	}
+	return true
 }
 
 // FlexStringMap is a string-to-string object whose values are decoded as
@@ -135,21 +178,75 @@ func (f *FlexStringMap) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// FlexInt64s is an int64 list whose items are decoded as FlexInt64; a value
-// that is not an array decodes to nil.
+// FlexInt64s is an int64 list whose items are integers, numeric strings or
+// integral floats; a value that is not an array decodes to nil, and items
+// that are not integers are skipped.
 type FlexInt64s []int64
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (f *FlexInt64s) UnmarshalJSON(data []byte) error {
-	var items []FlexInt64
-	if err := json.Unmarshal(data, &items); err != nil {
-		*f = nil
+	*f = nil
+	var items FlexStrings
+	if err := items.UnmarshalJSON(data); err != nil || items == nil {
 		return nil
 	}
-	out := make([]int64, len(items))
-	for i, item := range items {
-		out[i] = int64(item)
+	out := make([]int64, 0, len(items))
+	for _, item := range items {
+		if v, ok := ParseIntegral(item, 64); ok {
+			out = append(out, v)
+		}
 	}
 	*f = out
+	return nil
+}
+
+// Object is an optional nested JSON object. V is nil when the value is
+// missing, null, not a JSON object, or an object that does not decode into T,
+// so one malformed nested object never fails the enclosing response.
+type Object[T any] struct {
+	V *T
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (o *Object[T]) UnmarshalJSON(data []byte) error {
+	o.V = nil
+	t := bytes.TrimSpace(data)
+	if len(t) == 0 || t[0] != '{' {
+		return nil
+	}
+	v := new(T)
+	if err := json.Unmarshal(t, v); err != nil {
+		return nil
+	}
+	o.V = v
+	return nil
+}
+
+// List is a JSON array of objects decoded leniently: a value that is not an
+// array decodes to nil, and elements that are null, not JSON objects or do
+// not decode into T are skipped, so one malformed element never fails the
+// enclosing response.
+type List[T any] []T
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (l *List[T]) UnmarshalJSON(data []byte) error {
+	*l = nil
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err != nil || items == nil {
+		return nil
+	}
+	out := make([]T, 0, len(items))
+	for _, item := range items {
+		t := bytes.TrimSpace(item)
+		if len(t) == 0 || t[0] != '{' {
+			continue
+		}
+		var v T
+		if err := json.Unmarshal(t, &v); err != nil {
+			continue
+		}
+		out = append(out, v)
+	}
+	*l = out
 	return nil
 }
