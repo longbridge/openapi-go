@@ -1,21 +1,26 @@
 package asset
 
-import (
-	"encoding/json"
-	"time"
-)
+import "time"
 
 // Timestamps in the account types below are time.Time in UTC. Upstream fills
 // unset times with placeholders (0, "0", a negative value, a 1970 or 1906
 // date, or a far-future sentinel such as 9999-12-31); those decode to the zero
 // time.Time, so check IsZero() before using one. encoding/json marshals a zero
 // value as "0001-01-01T00:00:00Z".
+//
+// Every integer status code type below has an XxxUnknown constant (-1): a code
+// that upstream omitted, sent as null or sent as something that is not an
+// integer decodes to it, so it can never be mistaken for a real state (0 is a
+// real state in most of these tables). An undocumented integer code is kept
+// verbatim.
 
 // BankCardStatus is the verification status of a bank card.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type BankCardStatus int32
 
 const (
+	// BankCardStatusUnknown means upstream sent no usable status.
+	BankCardStatusUnknown BankCardStatus = -1
 	// BankCardStatusUnverified means the card has not been verified.
 	BankCardStatusUnverified BankCardStatus = 0
 	// BankCardStatusUnderReview means the card is under manual review.
@@ -25,12 +30,12 @@ const (
 )
 
 // BankCardWitnessState is the witness (identity verification) state of a bank
-// card. Values other than the named ones are preserved verbatim.
+// card. Undocumented integer codes are kept verbatim.
 type BankCardWitnessState int32
 
 const (
-	// BankCardWitnessStateUnknown means upstream did not report a state.
-	BankCardWitnessStateUnknown BankCardWitnessState = 0
+	// BankCardWitnessStateUnknown means upstream sent no usable state.
+	BankCardWitnessStateUnknown BankCardWitnessState = -1
 	// BankCardWitnessStateNotRequired means no witness is required.
 	BankCardWitnessStateNotRequired BankCardWitnessState = 1
 	// BankCardWitnessStatePending means the witness is pending.
@@ -40,10 +45,12 @@ const (
 )
 
 // BankCardBindState is the binding state of a bank card.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type BankCardBindState int32
 
 const (
+	// BankCardBindStateUnknown means upstream sent no usable state.
+	BankCardBindStateUnknown BankCardBindState = -1
 	// BankCardBindStateBinding means the card is being bound.
 	BankCardBindStateBinding BankCardBindState = 0
 	// BankCardBindStateBound means the card is bound.
@@ -54,10 +61,12 @@ const (
 
 // AuthorizationStatus is the status of a bank card authorization (eDDA,
 // bank-securities link, FPS) and of an eDDA application.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type AuthorizationStatus int32
 
 const (
+	// AuthorizationStatusUnknown means upstream sent no usable status.
+	AuthorizationStatusUnknown AuthorizationStatus = -1
 	// AuthorizationStatusUnauthorized means not authorized.
 	AuthorizationStatusUnauthorized AuthorizationStatus = 0
 	// AuthorizationStatusAuthorized means authorized.
@@ -115,8 +124,9 @@ func (a *BankCardAuth) IsEDDA() bool {
 // BankCard is a linked bank card. The account holder's name, postal address
 // and ID-document references returned upstream are not modelled.
 type BankCard struct {
-	// ID is the numeric bank card id (use it with EddaApplications).
-	ID       int64  `json:"id"`
+	// ID is the bank card id, a string of digits (use it with
+	// EddaApplications).
+	ID       string `json:"id"`
 	BankID   string `json:"bank_id"`
 	Bank     string `json:"bank"`
 	BankEn   string `json:"bank_en"`
@@ -157,10 +167,12 @@ type EddaApplication struct {
 }
 
 // TransferInState is the state_code of a stock transfer-in record.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type TransferInState int32
 
 const (
+	// TransferInStateUnknown means upstream sent no usable state code.
+	TransferInStateUnknown TransferInState = -1
 	// TransferInStateSubmitted means the application was submitted.
 	TransferInStateSubmitted TransferInState = 0
 	// TransferInStateCancelled means the application was cancelled.
@@ -176,10 +188,12 @@ const (
 )
 
 // TransferOutState is the state_code of a stock transfer-out record.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type TransferOutState int32
 
 const (
+	// TransferOutStateUnknown means upstream sent no usable state code.
+	TransferOutStateUnknown TransferOutState = -1
 	// TransferOutStateSubmitted means the application was submitted; only
 	// this state can be cancelled.
 	TransferOutStateSubmitted TransferOutState = 0
@@ -201,10 +215,12 @@ const (
 )
 
 // TransferStockState is the state of one security in a stock transfer.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type TransferStockState int32
 
 const (
+	// TransferStockStateUnknown means upstream sent no usable state.
+	TransferStockStateUnknown TransferStockState = -1
 	// TransferStockStateProcessing means the security is being transferred.
 	TransferStockStateProcessing TransferStockState = 0
 	// TransferStockStateSucceeded means the security was transferred.
@@ -252,7 +268,7 @@ type StockTransferIn struct {
 	BrokerCode string `json:"broker_code"`
 	// Account is the full account number at the other broker.
 	Account string `json:"account"`
-	// State is the upstream state text.
+	// State is the upstream state text; StateCode the typed code.
 	State     string          `json:"state"`
 	StateCode TransferInState `json:"state_code"`
 	// AppState is AppStateNoticed or "default"; see UserNotifiedBroker.
@@ -295,7 +311,7 @@ type StockTransferOut struct {
 	BrokerCode string `json:"broker_code"`
 	// Account is the full account number at the other broker.
 	Account string `json:"account"`
-	// State is the upstream state text.
+	// State is the upstream state text; StateCode the typed code.
 	State     string           `json:"state"`
 	StateCode TransferOutState `json:"state_code"`
 	// AppState is AppStateNoticed or "default"; see UserNotifiedBroker.
@@ -336,21 +352,28 @@ type GetStockTransfers struct {
 	// State filters by state code: a TransferInState for StockTransfersIn or a
 	// TransferOutState for StockTransfersOut. Nil means all states.
 	State *int32
-	// Start and End bound the application time (zero means unbounded); they
-	// are sent as unix seconds.
+	// Start and End bound the application time (inclusive; zero means
+	// unbounded) and are sent as unix seconds (start / end). Upstream filters on unix seconds, so only the instant
+	// matters, not the time.Time's location. A user's calendar dates are Hong
+	// Kong dates: pass 00:00:00 and 23:59:59 in UTC+8, e.g.
+	// time.Date(2026, 11, 1, 0, 0, 0, 0, time.FixedZone("HKT", 8*3600)).
 	Start time.Time
 	End   time.Time
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// Size is the page size (max 50); 0 defaults to 20.
+	// Size is the page size; 0 defaults to 20 and values above 50 are sent
+	// as 50.
 	Size int32
 }
 
 // RewardType is the type of a reward record.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type RewardType int32
 
 const (
+	// RewardTypeUnknown means upstream sent no usable reward type and the
+	// detail object did not identify one either.
+	RewardTypeUnknown RewardType = -1
 	// RewardTypeCash is a cash reward.
 	RewardTypeCash RewardType = 0
 	// RewardTypeGift is a gift (prize).
@@ -362,10 +385,12 @@ const (
 )
 
 // RewardStatus is the status of a reward record.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type RewardStatus int32
 
 const (
+	// RewardStatusUnknown means upstream sent no usable status.
+	RewardStatusUnknown RewardStatus = -1
 	// RewardStatusUpcoming means the reward is not issued yet.
 	RewardStatusUpcoming RewardStatus = 0
 	// RewardStatusCancelled means the reward was cancelled.
@@ -390,10 +415,13 @@ const (
 
 // RewardDeliverStatus is the delivery status of an issued prize. It is only
 // meaningful when the record is a prize whose Status is RewardStatusIssued.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type RewardDeliverStatus int32
 
 const (
+	// RewardDeliverStatusUnknown means upstream sent no usable delivery
+	// status for a prize.
+	RewardDeliverStatusUnknown RewardDeliverStatus = -1
 	// RewardDeliverStatusNotActivated means the prize is not activated.
 	RewardDeliverStatusNotActivated RewardDeliverStatus = 0
 	// RewardDeliverStatusActivatedOrShipping means the prize is activated or
@@ -420,7 +448,8 @@ const (
 )
 
 // PrizeTypePhysical is the RewardRecord.PrizeType of physical goods (the only
-// prize type with a delivery address and shipping states).
+// prize type with a delivery address and shipping states). Other prize types
+// are kept verbatim.
 const PrizeTypePhysical int32 = 0
 
 // RewardDetailKind names which upstream detail object a reward record came
@@ -452,22 +481,31 @@ type RewardRecord struct {
 	ActivityTitle string           `json:"activity_title"`
 	Title         string           `json:"title"`
 	Description   string           `json:"description"`
-	// CardType and CardStatus are set for coupon rewards.
-	CardType   string       `json:"card_type"`
-	CardStatus CouponStatus `json:"card_status"`
-	// PrizeType is set for prizes; PrizeTypePhysical is physical goods.
-	PrizeType int32        `json:"prize_type"`
-	Amount    string       `json:"amount"`
-	Currency  string       `json:"currency"`
-	Status    RewardStatus `json:"status"`
-	// DeliverStatus is only meaningful for an issued prize.
-	DeliverStatus   RewardDeliverStatus `json:"deliver_status"`
-	ExitStatus      int32               `json:"exit_status"`
-	SendTime        time.Time           `json:"send_time"`
-	StartTime       time.Time           `json:"start_time"`
-	EndTime         time.Time           `json:"end_time"`
-	EffectiveTime   time.Time           `json:"effective_time"`
-	ReceiveDeadline time.Time           `json:"receive_deadline"`
+	// CardType is set for coupon rewards.
+	CardType string `json:"card_type"`
+	// CardStatus is set only for coupon rewards (DetailKind
+	// RewardDetailKindCard), and is CouponStatusUnknown when upstream sent no
+	// usable status; nil for every other reward.
+	CardStatus *CouponStatus `json:"card_status,omitempty"`
+	// PrizeType is set only for prizes (DetailKind RewardDetailKindPrize) that
+	// carry an integer prize_type; PrizeTypePhysical is physical goods. nil for
+	// every other reward, and for a prize without a usable prize_type.
+	PrizeType *int32 `json:"prize_type,omitempty"`
+	Amount    string `json:"amount"`
+	Currency  string `json:"currency"`
+	// Status is RewardStatusUnknown when upstream sent no usable status.
+	Status RewardStatus `json:"status"`
+	// DeliverStatus is set only for prizes, and is RewardDeliverStatusUnknown
+	// when upstream sent no usable delivery status; nil for every other
+	// reward. It is only meaningful once the prize is RewardStatusIssued.
+	DeliverStatus *RewardDeliverStatus `json:"deliver_status,omitempty"`
+	// ExitStatus is the upstream exit_status code, -1 when absent.
+	ExitStatus      int32     `json:"exit_status"`
+	SendTime        time.Time `json:"send_time"`
+	StartTime       time.Time `json:"start_time"`
+	EndTime         time.Time `json:"end_time"`
+	EffectiveTime   time.Time `json:"effective_time"`
+	ReceiveDeadline time.Time `json:"receive_deadline"`
 }
 
 // RewardRecordList is one page of reward records.
@@ -482,15 +520,18 @@ type GetRewardRecords struct {
 	RewardType *RewardType
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// PageSize is the page size (max 50); 0 defaults to 20.
+	// PageSize is the page size; 0 defaults to 20 and values above 50 are
+	// sent as 50.
 	PageSize int32
 }
 
 // CouponStatus is the status of a coupon card.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type CouponStatus int32
 
 const (
+	// CouponStatusUnknown means upstream sent no usable status.
+	CouponStatusUnknown CouponStatus = -1
 	// CouponStatusUnused means the coupon is unused.
 	CouponStatusUnused CouponStatus = 0
 	// CouponStatusUsed means the coupon was used.
@@ -525,10 +566,13 @@ const (
 )
 
 // CouponTargetType is an instrument type a commission coupon applies to.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type CouponTargetType int32
 
 const (
+	// CouponTargetTypeUnknown is an entry upstream sent that is not an
+	// integer.
+	CouponTargetTypeUnknown CouponTargetType = -1
 	// CouponTargetTypeStocks is stocks.
 	CouponTargetTypeStocks CouponTargetType = 0
 	// CouponTargetTypeOptions is options.
@@ -557,9 +601,10 @@ type CouponCommission struct {
 	SettlementModel       string    `json:"settlement_model"`
 }
 
-// Coupon is a coupon card. App styling, deprecated top-level duplicates of the
-// commission terms, and the coffee_coupon object (which can carry redemption
-// codes) are not modelled.
+// Coupon is a coupon card. Only the commission terms are modelled: the
+// quote, stock, platform_fee_deduct and coffee_coupon objects (the last can
+// carry redemption codes), deprecated top-level duplicates of the commission
+// terms and app styling are not.
 type Coupon struct {
 	// CardID is the 32-hex coupon id (use it with CouponOrders).
 	CardID      string       `json:"card_id"`
@@ -581,14 +626,10 @@ type Coupon struct {
 	Currency     string    `json:"currency"`
 	// AvailableTradeSession is the upstream display text of the sessions the
 	// coupon applies to.
-	AvailableTradeSession string            `json:"available_trade_session"`
-	TradeSessions         []string          `json:"trade_sessions"`
-	Commission            *CouponCommission `json:"commission,omitempty"`
-	// Quote, Stock and PlatformFeeDeduct are the raw upstream objects of those
-	// coupon types (nil when absent); their fields are not documented.
-	Quote             json.RawMessage `json:"quote,omitempty"`
-	Stock             json.RawMessage `json:"stock,omitempty"`
-	PlatformFeeDeduct json.RawMessage `json:"platform_fee_deduct,omitempty"`
+	AvailableTradeSession string   `json:"available_trade_session"`
+	TradeSessions         []string `json:"trade_sessions"`
+	// Commission is the terms of a commission coupon (nil for other types).
+	Commission *CouponCommission `json:"commission,omitempty"`
 }
 
 // CouponList is one page of coupon cards. Upstream splits the list into pinned
@@ -610,7 +651,8 @@ type GetCoupons struct {
 	CardType string
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// PageSize is the page size (max 50); 0 defaults to 20.
+	// PageSize is the page size; 0 defaults to 20 and values above 50 are
+	// sent as 50.
 	PageSize int32
 }
 
@@ -641,10 +683,12 @@ type CouponOrder struct {
 }
 
 // DepositState is the state_code of a deposit.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type DepositState int32
 
 const (
+	// DepositStateUnknown means upstream sent no usable state code.
+	DepositStateUnknown DepositState = -1
 	// DepositStateProcessing means the deposit is being processed.
 	DepositStateProcessing DepositState = 0
 	// DepositStateCredited means the deposit was credited.
@@ -669,24 +713,25 @@ type Deposit struct {
 	Amount string `json:"amount"`
 	// ReceivableAmount is the amount received ("0" when not received yet).
 	ReceivableAmount string `json:"receivable_amount"`
-	// State is the upstream state text.
-	State                 string       `json:"state"`
-	StateCode             DepositState `json:"state_code"`
-	SubStateCode          int32        `json:"sub_state_code"`
-	BankOperationTypeID   string       `json:"bank_operation_type_id"`
-	BankOperationTypeName string       `json:"bank_operation_type_name"`
-	ReferenceNo           string       `json:"reference_no"`
-	CanCancel             bool         `json:"can_cancel"`
-	UserBankSwiftCode     string       `json:"user_bank_swift_code"`
+	// State is the upstream state text; StateCode the typed code.
+	State     string       `json:"state"`
+	StateCode DepositState `json:"state_code"`
+	// SubStateCode is the upstream sub_state_code, -1 when absent.
+	SubStateCode          int32  `json:"sub_state_code"`
+	BankOperationTypeID   string `json:"bank_operation_type_id"`
+	BankOperationTypeName string `json:"bank_operation_type_name"`
+	ReferenceNo           string `json:"reference_no"`
+	CanCancel             bool   `json:"can_cancel"`
+	UserBankSwiftCode     string `json:"user_bank_swift_code"`
 }
 
-// DepositList is one page of deposits.
+// DepositList is one page of deposits. Upstream also returns a total, but it
+// follows the page size rather than the record count, so it is not exposed.
 type DepositList struct {
 	Items []*Deposit `json:"items"`
-	// Total is as returned upstream, which caps it at the page size, so it is
-	// not a reliable record count: a page shorter than the requested size is
-	// the last one.
-	Total int64 `json:"total"`
+	// HasMore reports that a full page came back, so the next page may hold
+	// more records.
+	HasMore bool `json:"has_more"`
 }
 
 // GetDeposits contains the parameters of Deposits. All fields are optional.
@@ -695,21 +740,27 @@ type GetDeposits struct {
 	States []DepositState
 	// Currencies filters by currency, e.g. "HKD"; empty means all.
 	Currencies []string
-	// Start and End bound the deposit time (zero means unbounded); they are
-	// sent as unix seconds (from_date / to_date).
+	// Start and End bound the deposit time (inclusive; zero means unbounded)
+	// and are sent as unix seconds (from_date / to_date). Upstream filters on unix seconds, so only the instant
+	// matters, not the time.Time's location. A user's calendar dates are Hong
+	// Kong dates: pass 00:00:00 and 23:59:59 in UTC+8, e.g.
+	// time.Date(2026, 11, 1, 0, 0, 0, 0, time.FixedZone("HKT", 8*3600)).
 	Start time.Time
 	End   time.Time
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// Size is the page size (max 50); 0 defaults to 20.
+	// Size is the page size; 0 defaults to 20 and values above 50 are sent
+	// as 50.
 	Size int32
 }
 
 // WithdrawalState is the state of a withdrawal.
-// Values other than the named ones are preserved verbatim.
+// Undocumented integer codes are kept verbatim.
 type WithdrawalState int32
 
 const (
+	// WithdrawalStateUnknown means upstream sent no usable state.
+	WithdrawalStateUnknown WithdrawalState = -1
 	// WithdrawalStateSubmitted means the withdrawal was submitted.
 	WithdrawalStateSubmitted WithdrawalState = 0
 	// WithdrawalStateProcessing means the withdrawal is being processed.
@@ -751,8 +802,10 @@ type Withdrawal struct {
 	Amount string `json:"amount"`
 	Fee    string `json:"fee"`
 	// SettlementAmount is the amount paid out.
-	SettlementAmount string          `json:"settlement_amount"`
-	State            WithdrawalState `json:"state"`
+	SettlementAmount string `json:"settlement_amount"`
+	// StateCode is the typed state (upstream "state"); StateDescription is
+	// the display text.
+	StateCode        WithdrawalState `json:"state_code"`
 	RawState         string          `json:"raw_state"`
 	StateDescription string          `json:"state_description"`
 	// BankAccount is the full receiving account number, as returned upstream.
@@ -766,17 +819,24 @@ type Withdrawal struct {
 type WithdrawalList struct {
 	List  []*Withdrawal `json:"list"`
 	Total int64         `json:"total"`
+	// HasMore reports that a full page came back, so the next page may hold
+	// more records.
+	HasMore bool `json:"has_more"`
 }
 
 // GetWithdrawals contains the parameters of Withdrawals. All fields are
 // optional.
 type GetWithdrawals struct {
-	// Start and End bound the withdrawal time (zero means unbounded); they are
-	// sent as unix seconds (begin / end).
+	// Start and End bound the withdrawal time (inclusive; zero means
+	// unbounded) and are sent as unix seconds (begin / end). Upstream filters on unix seconds, so only the instant
+	// matters, not the time.Time's location. A user's calendar dates are Hong
+	// Kong dates: pass 00:00:00 and 23:59:59 in UTC+8, e.g.
+	// time.Date(2026, 11, 1, 0, 0, 0, 0, time.FixedZone("HKT", 8*3600)).
 	Start time.Time
 	End   time.Time
 	// Page is the 1-based page number; 0 defaults to 1.
 	Page int32
-	// Size is the page size (max 50); 0 defaults to 20.
+	// Size is the page size; 0 defaults to 20 and values above 50 are sent
+	// as 50.
 	Size int32
 }

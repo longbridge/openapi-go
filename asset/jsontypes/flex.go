@@ -52,21 +52,27 @@ func (f *FlexInt64) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// FlexInt32 is an int32 field that also accepts a numeric string; null or an
-// unparsable value decodes to 0.
-type FlexInt32 int32
+// FlexCode is an integer status code that also accepts a numeric string.
+// Valid is false when the field is missing, null, or not an integer that fits
+// in int32 (e.g. "", "abc", 1.5), so a missing or garbled code can never be
+// mistaken for a real code such as 0.
+type FlexCode struct {
+	Value int32
+	Valid bool
+}
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (f *FlexInt32) UnmarshalJSON(data []byte) error {
+func (f *FlexCode) UnmarshalJSON(data []byte) error {
+	*f = FlexCode{}
 	var s FlexString
 	if err := s.UnmarshalJSON(data); err != nil {
 		return err
 	}
 	v, err := strconv.ParseInt(strings.TrimSpace(string(s)), 10, 32)
 	if err != nil {
-		v = 0
+		return nil
 	}
-	*f = FlexInt32(v)
+	*f = FlexCode{Value: int32(v), Valid: true}
 	return nil
 }
 

@@ -13,7 +13,7 @@ type BankCardAuth struct {
 	FlowID                  FlexString `json:"flow_id"`
 	Name                    FlexString `json:"name"`
 	Currency                FlexString `json:"currency"`
-	Status                  FlexInt32  `json:"status"`
+	Status                  FlexCode   `json:"status"`
 	Message                 FlexString `json:"message"`
 	IsSupport               FlexBool   `json:"is_support"`
 	MaxAmount               FlexString `json:"max_amount"`
@@ -28,7 +28,7 @@ type BankCardAuth struct {
 
 // BankCard is one card of GET /v2/account/bank-cards.
 type BankCard struct {
-	ID             FlexInt64      `json:"id"`
+	ID             FlexString     `json:"id"`
 	BankID         FlexString     `json:"bank_id"`
 	Bank           FlexString     `json:"bank"`
 	BankEn         FlexString     `json:"bank_en"`
@@ -41,10 +41,10 @@ type BankCard struct {
 	RegionName     FlexString     `json:"region_name"`
 	SwiftCode      FlexString     `json:"swift_code"`
 	Remark         FlexString     `json:"remark"`
-	Status         FlexInt32      `json:"status"`
-	WitnessState   FlexInt32      `json:"witness_state"`
+	Status         FlexCode       `json:"status"`
+	WitnessState   FlexCode       `json:"witness_state"`
 	SupportWitness FlexBool       `json:"support_witness"`
-	BindState      FlexInt32      `json:"bind_state"`
+	BindState      FlexCode       `json:"bind_state"`
 	BindTip        FlexString     `json:"bind_tip"`
 	CreatedAt      FlexString     `json:"created_at"`
 	WithdrawFee    FlexString     `json:"withdraw_fee"`
@@ -62,7 +62,7 @@ type EddaApplication struct {
 	FlowID    FlexString `json:"flow_id"`
 	Name      FlexString `json:"name"`
 	Currency  FlexString `json:"currency"`
-	Status    FlexInt32  `json:"status"`
+	Status    FlexCode   `json:"status"`
 	Message   FlexString `json:"message"`
 	CreatedAt FlexString `json:"created_at"`
 	UpdatedAt FlexString `json:"updated_at"`
@@ -83,7 +83,7 @@ type TransferStock struct {
 	Amount           FlexString `json:"amount"`
 	Currency         FlexString `json:"currency"`
 	Cost             FlexString `json:"cost"`
-	State            FlexInt32  `json:"state"`
+	State            FlexCode   `json:"state"`
 	StreetAmount     FlexString `json:"street_amount"`
 	NomineeAmount    FlexString `json:"nominee_amount"`
 	OwnAmount        FlexString `json:"own_amount"`
@@ -105,7 +105,7 @@ type TransferRecord struct {
 	Code      FlexString      `json:"code"`
 	Account   FlexString      `json:"account"`
 	State     FlexString      `json:"state"`
-	StateCode FlexInt32       `json:"state_code"`
+	StateCode FlexCode        `json:"state_code"`
 	AppState  FlexString      `json:"app_state"`
 	CanModify FlexBool        `json:"can_modify"`
 	CreatedAt FlexString      `json:"created_at"`
@@ -135,13 +135,13 @@ type RewardDetail struct {
 	Title           FlexString `json:"title"`
 	Description     FlexString `json:"description"`
 	CardType        FlexString `json:"card_type"`
-	CardStatus      FlexInt32  `json:"card_status"`
-	PrizeType       FlexInt32  `json:"prize_type"`
+	CardStatus      FlexCode   `json:"card_status"`
+	PrizeType       FlexCode   `json:"prize_type"`
 	Amount          FlexString `json:"amount"`
 	Currency        FlexString `json:"currency"`
-	Status          FlexInt32  `json:"status"`
-	DeliverStatus   FlexInt32  `json:"deliver_status"`
-	ExitStatus      FlexInt32  `json:"exit_status"`
+	Status          FlexCode   `json:"status"`
+	DeliverStatus   FlexCode   `json:"deliver_status"`
+	ExitStatus      FlexCode   `json:"exit_status"`
 	SendTime        FlexString `json:"send_time"`
 	StartTime       FlexString `json:"start_time"`
 	EndTime         FlexString `json:"end_time"`
@@ -151,7 +151,7 @@ type RewardDetail struct {
 
 // RewardItem is one item of GET /v1/account/rewards.
 type RewardItem struct {
-	RewardType *FlexInt32    `json:"reward_type"`
+	RewardType FlexCode      `json:"reward_type"`
 	Cash       *RewardDetail `json:"cash"`
 	Card       *RewardDetail `json:"card"`
 	Prize      *RewardDetail `json:"prize"`
@@ -167,7 +167,7 @@ type RewardsResponse struct {
 type CouponCommission struct {
 	Markets               FlexStrings `json:"markets"`
 	RebateRate            FlexString  `json:"rebate_rate"`
-	BzTypes               []FlexInt32 `json:"bz_types"`
+	BzTypes               []FlexCode  `json:"bz_types"`
 	CommissionBalance     FlexString  `json:"commission_balance"`
 	CommissionDuration    FlexString  `json:"commission_duration"`
 	Unlimited             FlexBool    `json:"unlimited"`
@@ -177,8 +177,9 @@ type CouponCommission struct {
 	SettlementModel       FlexString  `json:"settlement_model"`
 }
 
-// Coupon is one coupon card of GET /v1/account/cards. The coffee_coupon
-// object (which can carry redemption codes) and app styling are not modelled.
+// Coupon is one coupon card of GET /v1/account/cards. Only the commission
+// terms are modelled: the quote, stock, platform_fee_deduct and coffee_coupon
+// objects (the last can carry redemption codes) and app styling are dropped.
 type Coupon struct {
 	CardID                FlexString        `json:"card_id"`
 	CardType              FlexString        `json:"card_type"`
@@ -186,7 +187,7 @@ type Coupon struct {
 	TitleSec              FlexString        `json:"title_sec"`
 	Description           FlexString        `json:"description"`
 	Detail                FlexString        `json:"detail"`
-	CardStatus            FlexInt32         `json:"card_status"`
+	CardStatus            FlexCode          `json:"card_status"`
 	StartTime             FlexString        `json:"start_time"`
 	EndTime               FlexString        `json:"end_time"`
 	ActivateTime          FlexString        `json:"activate_time"`
@@ -195,9 +196,6 @@ type Coupon struct {
 	AvailableTradeSession FlexString        `json:"available_trade_session"`
 	TradeSessions         FlexStrings       `json:"trade_sessions"`
 	Commission            *CouponCommission `json:"commission"`
-	Quote                 json.RawMessage   `json:"quote"`
-	Stock                 json.RawMessage   `json:"stock"`
-	PlatformFeeDeduct     json.RawMessage   `json:"platform_fee_deduct"`
 }
 
 // CouponsResponse is the response of GET /v1/account/cards.
@@ -237,8 +235,8 @@ type Deposit struct {
 	Amount                FlexString `json:"amount"`
 	ReceivableAmount      FlexString `json:"receivable_amount"`
 	State                 FlexString `json:"state"`
-	StateCode             FlexInt32  `json:"state_code"`
-	SubStateCode          FlexInt32  `json:"sub_state_code"`
+	StateCode             FlexCode   `json:"state_code"`
+	SubStateCode          FlexCode   `json:"sub_state_code"`
 	BankOperationTypeID   FlexString `json:"bank_operation_type_id"`
 	BankOperationTypeName FlexString `json:"bank_operation_type_name"`
 	ReferenceNo           FlexString `json:"reference_no"`
@@ -246,10 +244,10 @@ type Deposit struct {
 	UserBankSwiftCode     FlexString `json:"user_bank_swift_code"`
 }
 
-// DepositsResponse is the response of GET /v1/account/deposits.
+// DepositsResponse is the response of GET /v1/account/deposits. Its total is
+// not modelled: upstream caps it at the page size.
 type DepositsResponse struct {
 	Items []Deposit `json:"items"`
-	Total FlexInt64 `json:"total"`
 }
 
 // Withdrawal is one item of GET /v1/account/withdrawals.
@@ -261,7 +259,7 @@ type Withdrawal struct {
 	Amount             FlexString `json:"amount"`
 	Fee                FlexString `json:"fee"`
 	SettlementAmount   FlexString `json:"settlement_amount"`
-	State              FlexInt32  `json:"state"`
+	State              FlexCode   `json:"state"`
 	RawState           FlexString `json:"raw_state"`
 	StateDescription   FlexString `json:"state_description"`
 	BankAccount        FlexString `json:"bank_account"`

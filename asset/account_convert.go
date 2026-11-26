@@ -51,6 +51,19 @@ func parseTime(s jsontypes.FlexString) time.Time {
 	return time.Unix(sec, 0).UTC()
 }
 
+// unknownCode is what a missing, null or non-integer status code decodes to;
+// every code type has a matching XxxUnknown constant.
+const unknownCode int32 = -1
+
+// code returns the decoded status code, or unknownCode when upstream sent no
+// usable value.
+func code(c jsontypes.FlexCode) int32 {
+	if !c.Valid {
+		return unknownCode
+	}
+	return c.Value
+}
+
 // rawObject returns v, or nil when it is empty or JSON null.
 func rawObject(v json.RawMessage) json.RawMessage {
 	t := bytes.TrimSpace(v)
@@ -62,7 +75,7 @@ func rawObject(v json.RawMessage) json.RawMessage {
 
 func toBankCard(c *jsontypes.BankCard) *BankCard {
 	card := &BankCard{
-		ID:             int64(c.ID),
+		ID:             string(c.ID),
 		BankID:         string(c.BankID),
 		Bank:           string(c.Bank),
 		BankEn:         string(c.BankEn),
@@ -75,10 +88,10 @@ func toBankCard(c *jsontypes.BankCard) *BankCard {
 		RegionName:     string(c.RegionName),
 		SwiftCode:      string(c.SwiftCode),
 		Remark:         string(c.Remark),
-		Status:         BankCardStatus(c.Status),
-		WitnessState:   BankCardWitnessState(c.WitnessState),
+		Status:         BankCardStatus(code(c.Status)),
+		WitnessState:   BankCardWitnessState(code(c.WitnessState)),
 		SupportWitness: bool(c.SupportWitness),
-		BindState:      BankCardBindState(c.BindState),
+		BindState:      BankCardBindState(code(c.BindState)),
 		BindTip:        string(c.BindTip),
 		CreatedAt:      parseTime(c.CreatedAt),
 		WithdrawFee:    string(c.WithdrawFee),
@@ -94,7 +107,7 @@ func toBankCard(c *jsontypes.BankCard) *BankCard {
 			FlowID:                  string(a.FlowID),
 			Name:                    string(a.Name),
 			Currency:                string(a.Currency),
-			Status:                  AuthorizationStatus(a.Status),
+			Status:                  AuthorizationStatus(code(a.Status)),
 			Message:                 string(a.Message),
 			IsSupport:               bool(a.IsSupport),
 			MaxAmount:               maxAmount,
@@ -146,7 +159,7 @@ func decodeEddaApplications(data json.RawMessage) ([]*EddaApplication, error) {
 			FlowID:    string(a.FlowID),
 			Name:      string(a.Name),
 			Currency:  string(a.Currency),
-			Status:    AuthorizationStatus(a.Status),
+			Status:    AuthorizationStatus(code(a.Status)),
 			Message:   string(a.Message),
 			CreatedAt: parseTime(a.CreatedAt),
 			UpdatedAt: parseTime(a.UpdatedAt),
@@ -168,7 +181,7 @@ func toTransferStocks(stocks []jsontypes.TransferStock) []TransferStock {
 			Amount:           string(s.Amount),
 			Currency:         string(s.Currency),
 			Cost:             string(s.Cost),
-			State:            TransferStockState(s.State),
+			State:            TransferStockState(code(s.State)),
 			StreetAmount:     string(s.StreetAmount),
 			NomineeAmount:    string(s.NomineeAmount),
 			OwnAmount:        string(s.OwnAmount),
@@ -199,7 +212,7 @@ func toStockTransferIn(r *jsontypes.TransferRecord) *StockTransferIn {
 		BrokerCode: string(r.Code),
 		Account:    string(r.Account),
 		State:      string(r.State),
-		StateCode:  TransferInState(r.StateCode),
+		StateCode:  TransferInState(code(r.StateCode)),
 		AppState:   string(r.AppState),
 		CanModify:  bool(r.CanModify),
 		CreatedAt:  parseTime(r.CreatedAt),
@@ -223,7 +236,7 @@ func toStockTransferOut(r *jsontypes.TransferRecord) *StockTransferOut {
 		BrokerCode: string(r.Code),
 		Account:    string(r.Account),
 		State:      string(r.State),
-		StateCode:  TransferOutState(r.StateCode),
+		StateCode:  TransferOutState(code(r.StateCode)),
 		AppState:   string(r.AppState),
 		CreatedAt:  parseTime(r.CreatedAt),
 		UpdatedAt:  parseTime(r.UpdatedAt),
@@ -254,12 +267,12 @@ func toRewardRecord(item *jsontypes.RewardItem) *RewardRecord {
 	case item.Prize != nil:
 		kind, detail, inferred = RewardDetailKindPrize, item.Prize, RewardTypeGift
 	}
-	if detail == nil && item.RewardType == nil {
+	if detail == nil && !item.RewardType.Valid {
 		return nil
 	}
 	rec := &RewardRecord{RewardType: inferred, DetailKind: kind}
-	if item.RewardType != nil {
-		rec.RewardType = RewardType(*item.RewardType)
+	if item.RewardType.Valid {
+		rec.RewardType = RewardType(item.RewardType.Value)
 	}
 	if detail == nil {
 		return rec
@@ -269,13 +282,22 @@ func toRewardRecord(item *jsontypes.RewardItem) *RewardRecord {
 	rec.Title = string(detail.Title)
 	rec.Description = string(detail.Description)
 	rec.CardType = string(detail.CardType)
-	rec.CardStatus = CouponStatus(detail.CardStatus)
-	rec.PrizeType = int32(detail.PrizeType)
 	rec.Amount = string(detail.Amount)
 	rec.Currency = string(detail.Currency)
-	rec.Status = RewardStatus(detail.Status)
-	rec.DeliverStatus = RewardDeliverStatus(detail.DeliverStatus)
-	rec.ExitStatus = int32(detail.ExitStatus)
+	rec.Status = RewardStatus(code(detail.Status))
+	rec.ExitStatus = code(detail.ExitStatus)
+	switch kind {
+	case RewardDetailKindCard:
+		status := CouponStatus(code(detail.CardStatus))
+		rec.CardStatus = &status
+	case RewardDetailKindPrize:
+		if detail.PrizeType.Valid {
+			prizeType := detail.PrizeType.Value
+			rec.PrizeType = &prizeType
+		}
+		deliver := RewardDeliverStatus(code(detail.DeliverStatus))
+		rec.DeliverStatus = &deliver
+	}
 	rec.SendTime = parseTime(detail.SendTime)
 	rec.StartTime = parseTime(detail.StartTime)
 	rec.EndTime = parseTime(detail.EndTime)
@@ -292,7 +314,7 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		TitleSec:              string(c.TitleSec),
 		Description:           string(c.Description),
 		Detail:                string(c.Detail),
-		CardStatus:            CouponStatus(c.CardStatus),
+		CardStatus:            CouponStatus(code(c.CardStatus)),
 		StartTime:             parseTime(c.StartTime),
 		EndTime:               parseTime(c.EndTime),
 		ActivateTime:          parseTime(c.ActivateTime),
@@ -300,9 +322,6 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 		Currency:              string(c.Currency),
 		AvailableTradeSession: string(c.AvailableTradeSession),
 		TradeSessions:         []string(c.TradeSessions),
-		Quote:                 rawObject(c.Quote),
-		Stock:                 rawObject(c.Stock),
-		PlatformFeeDeduct:     rawObject(c.PlatformFeeDeduct),
 	}
 	if sec, ok := rawUnix(c.EndTime); ok && sec >= maxValidUnix {
 		coupon.NoExpiry = true
@@ -321,7 +340,7 @@ func toCoupon(c *jsontypes.Coupon) *Coupon {
 			SettlementModel:       string(m.SettlementModel),
 		}
 		for _, t := range m.BzTypes {
-			commission.BzTypes = append(commission.BzTypes, CouponTargetType(t))
+			commission.BzTypes = append(commission.BzTypes, CouponTargetType(code(t)))
 		}
 		coupon.Commission = commission
 	}
@@ -359,8 +378,8 @@ func toDeposit(d *jsontypes.Deposit) *Deposit {
 		Amount:                string(d.Amount),
 		ReceivableAmount:      string(d.ReceivableAmount),
 		State:                 string(d.State),
-		StateCode:             DepositState(d.StateCode),
-		SubStateCode:          int32(d.SubStateCode),
+		StateCode:             DepositState(code(d.StateCode)),
+		SubStateCode:          code(d.SubStateCode),
 		BankOperationTypeID:   string(d.BankOperationTypeID),
 		BankOperationTypeName: string(d.BankOperationTypeName),
 		ReferenceNo:           string(d.ReferenceNo),
@@ -378,7 +397,7 @@ func toWithdrawal(w *jsontypes.Withdrawal) *Withdrawal {
 		Amount:             string(w.Amount),
 		Fee:                string(w.Fee),
 		SettlementAmount:   string(w.SettlementAmount),
-		State:              WithdrawalState(w.State),
+		StateCode:          WithdrawalState(code(w.State)),
 		RawState:           string(w.RawState),
 		StateDescription:   string(w.StateDescription),
 		BankAccount:        string(w.BankAccount),

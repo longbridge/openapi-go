@@ -7,6 +7,7 @@ import (
 	nethttp "net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -106,7 +107,7 @@ func TestBankCards(t *testing.T) {
 		t.Fatalf("got %d cards", len(cards))
 	}
 	c := cards[0]
-	if c.ID != 1024 || c.BankID != "12" || c.Account != "012345678901" || c.Country != "Hong Kong" ||
+	if c.ID != "1024" || c.BankID != "12" || c.Account != "012345678901" || c.Country != "Hong Kong" ||
 		c.AccountType != "1" || c.Status != BankCardStatusUnderReview ||
 		c.WitnessState != BankCardWitnessStateWitnessed || c.BindState != BankCardBindStateBound ||
 		!c.SupportWitness || c.CreatedAt.Unix() != 1792600000 {
@@ -148,7 +149,7 @@ func TestEddaApplicationsShapes(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := serve(t, tt.data, &req)
-			apps, err := newTestAssetContext(t, srv.URL, "").EddaApplications(context.Background(), 1024, " hkd ")
+			apps, err := newTestAssetContext(t, srv.URL, "").EddaApplications(context.Background(), " 1024 ", " hkd ")
 			if err != nil {
 				t.Fatalf("EddaApplications: %v", err)
 			}
@@ -170,10 +171,12 @@ func TestEddaApplicationsShapes(t *testing.T) {
 		})
 	}
 	actx := newTestAssetContext(t, "http://127.0.0.1:0", "")
-	if _, err := actx.EddaApplications(context.Background(), 0, "HKD"); err == nil {
-		t.Error("card id 0 must be rejected")
+	for _, id := range []string{"", " ", "abc", "12a", "-1", "1.5", "0123456789abcdef0123456789abcdef"} {
+		if _, err := actx.EddaApplications(context.Background(), id, "HKD"); err == nil {
+			t.Errorf("card id %q must be rejected", id)
+		}
 	}
-	if _, err := actx.EddaApplications(context.Background(), 1, ""); err == nil {
+	if _, err := actx.EddaApplications(context.Background(), "1", ""); err == nil {
 		t.Error("empty currency must be rejected")
 	}
 }
@@ -287,18 +290,22 @@ func TestRewardRecords(t *testing.T) {
 	}
 	prize := list.Records[0]
 	if prize.RewardType != RewardTypeGift || prize.DetailKind != RewardDetailKindPrize || prize.Status != RewardStatusIssued ||
-		prize.DeliverStatus != RewardDeliverStatusAddressMissing || prize.PrizeType != PrizeTypePhysical ||
+		prize.DeliverStatus == nil || *prize.DeliverStatus != RewardDeliverStatusAddressMissing ||
+		prize.PrizeType == nil || *prize.PrizeType != PrizeTypePhysical || prize.CardStatus != nil ||
 		prize.SendTime.Unix() != 1790000000 || !prize.ReceiveDeadline.IsZero() {
 		t.Errorf("prize = %+v", prize)
 	}
 	cash := list.Records[1]
-	if cash.RewardType != RewardTypeCash || cash.Amount != "38" || !cash.SendTime.IsZero() {
+	if cash.RewardType != RewardTypeCash || cash.Amount != "38" || !cash.SendTime.IsZero() ||
+		cash.PrizeType != nil || cash.DeliverStatus != nil || cash.CardStatus != nil {
 		t.Errorf("cash = %+v", cash)
 	}
-	if coupon := list.Records[2]; coupon.RewardType != RewardTypeCoupon || coupon.DetailKind != RewardDetailKindCard || coupon.CardType != "commission" {
+	if coupon := list.Records[2]; coupon.RewardType != RewardTypeCoupon || coupon.DetailKind != RewardDetailKindCard || coupon.CardType != "commission" ||
+		coupon.CardStatus == nil || *coupon.CardStatus != CouponStatusUnused || coupon.PrizeType != nil || coupon.DeliverStatus != nil {
 		t.Errorf("coupon = %+v", coupon)
 	}
-	if task := list.Records[3]; task.RewardType != RewardTypeTask || task.DetailKind != RewardDetailKindNone {
+	if task := list.Records[3]; task.RewardType != RewardTypeTask || task.DetailKind != RewardDetailKindNone ||
+		task.PrizeType != nil || task.DeliverStatus != nil || task.CardStatus != nil {
 		t.Errorf("task = %+v", task)
 	}
 	b, _ := json.Marshal(list)
@@ -346,15 +353,17 @@ func TestCoupons(t *testing.T) {
 		t.Errorf("commission = %+v", cm)
 	}
 	quote := list.List[0]
-	if quote.NoExpiry || quote.EndTime.Unix() != 1798732800 || string(quote.Quote) == "" || quote.Stock != nil || quote.Commission != nil {
+	if quote.NoExpiry || quote.EndTime.Unix() != 1798732800 || quote.Commission != nil {
 		t.Errorf("quote coupon = %+v", quote)
 	}
 	if expired := list.BottomList[0]; expired.NoExpiry || !expired.EndTime.IsZero() || expired.CardStatus != CouponStatusExpired {
 		t.Errorf("expired = %+v", expired)
 	}
 	b, _ := json.Marshal(list)
-	if strings.Contains(string(b), "SECRET-1") || strings.Contains(string(b), "c.png") {
-		t.Errorf("marshalled coupons leak coffee_coupon or styling: %s", b)
+	for _, dropped := range []string{"SECRET-1", "c.png", "current_end_time", `"quote":`, `"stock":`, "platform_fee_deduct"} {
+		if strings.Contains(string(b), dropped) {
+			t.Errorf("marshalled coupons contain %q: %s", dropped, b)
+		}
 	}
 
 	if _, err = newTestAssetContext(t, srv.URL, "").Coupons(context.Background(), &GetCoupons{Status: CouponStatusFilterExpired, Page: 2}); err != nil {
@@ -412,7 +421,7 @@ func TestDeposits(t *testing.T) {
 		t.Errorf("request = %s", req.URL)
 	}
 	d := list.Items[0]
-	if list.Total != 20 || d.ID != "501" || d.CreatedAt.Unix() != 1795600746 || !d.UpdatedAt.IsZero() ||
+	if list.HasMore || d.ID != "501" || d.CreatedAt.Unix() != 1795600746 || !d.UpdatedAt.IsZero() ||
 		d.StateCode != DepositStateProcessing || d.BankOperationTypeID != "3" || !d.CanCancel || d.ReceivableAmount != "0" {
 		t.Errorf("deposit = %+v", d)
 	}
@@ -435,7 +444,7 @@ func TestWithdrawals(t *testing.T) {
 		t.Errorf("request = %s", req.URL)
 	}
 	w := list.List[0]
-	if w.State != WithdrawalStateRemitted || w.RawState != "7" || w.BankAccount != "012345678901" || w.CreatedAt.Unix() != 1795600746 || w.AccountChannel != "lb" {
+	if list.Total != 1 || list.HasMore || w.StateCode != WithdrawalStateRemitted || w.StateDescription != "已汇款" || w.RawState != "7" || w.BankAccount != "012345678901" || w.CreatedAt.Unix() != 1795600746 || w.AccountChannel != "lb" {
 		t.Errorf("withdrawal = %+v", w)
 	}
 }
@@ -450,7 +459,7 @@ func TestAccountEndpointsAreAPOnly(t *testing.T) {
 	ctx := context.Background()
 	calls := map[string]func() error{
 		"BankCards":         func() error { _, err := actx.BankCards(ctx); return err },
-		"EddaApplications":  func() error { _, err := actx.EddaApplications(ctx, 1, "HKD"); return err },
+		"EddaApplications":  func() error { _, err := actx.EddaApplications(ctx, "1", "HKD"); return err },
 		"StockTransfersIn":  func() error { _, err := actx.StockTransfersIn(ctx, nil); return err },
 		"StockTransfersOut": func() error { _, err := actx.StockTransfersOut(ctx, nil); return err },
 		"RewardRecords":     func() error { _, err := actx.RewardRecords(ctx, nil); return err },
@@ -489,4 +498,216 @@ func TestNilParamsUseDefaults(t *testing.T) {
 			t.Errorf("%s: %s, want %s", tt.name, got, tt.want)
 		}
 	}
+}
+
+func TestHasMoreFollowsFullPage(t *testing.T) {
+	item := `{"id": "1", "state_code": 1, "state": 1}`
+	page := func(n int) string {
+		items := make([]string, n)
+		for i := range items {
+			items[i] = item
+		}
+		return "[" + strings.Join(items, ",") + "]"
+	}
+	var req *nethttp.Request
+	for _, tt := range []struct {
+		name string
+		size int32
+		n    int
+		want bool
+	}{
+		{"default size, full", 0, 20, true},
+		{"default size, short", 0, 19, false},
+		{"explicit size, full", 5, 5, true},
+		{"size capped at 50, full", 100, 50, true},
+		{"empty", 10, 0, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// total follows the page size upstream; it must not drive HasMore.
+			srv := serve(t, `{"total": 999, "items": `+page(tt.n)+`, "list": `+page(tt.n)+`}`, &req)
+			actx := newTestAssetContext(t, srv.URL, "")
+			deposits, err := actx.Deposits(context.Background(), &GetDeposits{Size: tt.size})
+			if err != nil {
+				t.Fatalf("Deposits: %v", err)
+			}
+			if deposits.HasMore != tt.want || len(deposits.Items) != tt.n {
+				t.Errorf("deposits: has_more = %v (%d items), want %v", deposits.HasMore, len(deposits.Items), tt.want)
+			}
+			if got, want := req.URL.Query().Get("size"), strconv.Itoa(int(effectivePageSize(tt.size))); got != want {
+				t.Errorf("size sent = %s, want %s", got, want)
+			}
+			withdrawals, err := actx.Withdrawals(context.Background(), &GetWithdrawals{Size: tt.size})
+			if err != nil {
+				t.Fatalf("Withdrawals: %v", err)
+			}
+			if withdrawals.HasMore != tt.want || withdrawals.Total != 999 {
+				t.Errorf("withdrawals: has_more = %v total = %d, want %v", withdrawals.HasMore, withdrawals.Total, tt.want)
+			}
+		})
+	}
+	if b, _ := json.Marshal(&DepositList{}); strings.Contains(string(b), "total") {
+		t.Errorf("deposit list must not expose total: %s", b)
+	}
+}
+
+func TestFlexCode(t *testing.T) {
+	for _, tt := range []struct {
+		in    string
+		want  int32
+		valid bool
+	}{
+		{`0`, 0, true},
+		{`"0"`, 0, true},
+		{`" 7 "`, 7, true},
+		{`-1`, -1, true},
+		{`null`, 0, false},
+		{`""`, 0, false},
+		{`"abc"`, 0, false},
+		{`1.5`, 0, false},
+		{`true`, 0, false},
+		{`{}`, 0, false},
+		{`[]`, 0, false},
+		{`99999999999`, 0, false},
+	} {
+		var c jsontypes.FlexCode
+		if err := json.Unmarshal([]byte(tt.in), &c); err != nil {
+			t.Errorf("%s: %v", tt.in, err)
+			continue
+		}
+		if c.Valid != tt.valid || c.Value != tt.want {
+			t.Errorf("%s: got %+v, want {%d %v}", tt.in, c, tt.want, tt.valid)
+		}
+	}
+	// A missing field stays invalid.
+	var v struct {
+		Code jsontypes.FlexCode `json:"code"`
+	}
+	if err := json.Unmarshal([]byte(`{}`), &v); err != nil || v.Code.Valid {
+		t.Errorf("missing field: %+v %v", v.Code, err)
+	}
+}
+
+// TestMissingAndGarbageCodesAreUnknown checks that a status code upstream
+// omitted, sent as null or sent as garbage never decodes to a real state (0 is
+// a real state in most code tables).
+func TestMissingAndGarbageCodesAreUnknown(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		code string // JSON value, or "" to omit the field
+	}{
+		{"missing", ""},
+		{"null", "null"},
+		{"empty string", `""`},
+		{"garbage string", `"n/a"`},
+		{"float", "1.5"},
+		{"object", "{}"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			field := func(name string) string {
+				if tt.code == "" {
+					return ""
+				}
+				return `"` + name + `": ` + tt.code + `,`
+			}
+			var req *nethttp.Request
+			ctx := context.Background()
+
+			srv := serve(t, `{"list": [{`+field("status")+field("witness_state")+field("bind_state")+
+				`"id": "1", "auth_list": [{`+field("status")+`"flow_id": "hk_edda"}]}]}`, &req)
+			actx := newTestAssetContext(t, srv.URL, "")
+			cards, err := actx.BankCards(ctx)
+			if err != nil {
+				t.Fatalf("BankCards: %v", err)
+			}
+			c := cards[0]
+			if c.Status != BankCardStatusUnknown || c.WitnessState != BankCardWitnessStateUnknown ||
+				c.BindState != BankCardBindStateUnknown || c.AuthList[0].Status != AuthorizationStatusUnknown {
+				t.Errorf("card = %+v", c)
+			}
+
+			srv = serve(t, `{"list": [{`+field("status")+`"id": "9"}]}`, &req)
+			apps, err := newTestAssetContext(t, srv.URL, "").EddaApplications(ctx, "1", "HKD")
+			if err != nil {
+				t.Fatalf("EddaApplications: %v", err)
+			}
+			if apps[0].Status != AuthorizationStatusUnknown {
+				t.Errorf("edda = %+v", apps[0])
+			}
+
+			srv = serve(t, `{"records": [{`+field("state_code")+`"id": "1", "stocks": [{`+field("state")+`"code": "AAPL"}]}]}`, &req)
+			actx = newTestAssetContext(t, srv.URL, "")
+			in, err := actx.StockTransfersIn(ctx, nil)
+			if err != nil {
+				t.Fatalf("StockTransfersIn: %v", err)
+			}
+			if in.Records[0].StateCode != TransferInStateUnknown || in.Records[0].Stocks[0].State != TransferStockStateUnknown {
+				t.Errorf("transfer in = %+v", in.Records[0])
+			}
+			out, err := actx.StockTransfersOut(ctx, nil)
+			if err != nil {
+				t.Fatalf("StockTransfersOut: %v", err)
+			}
+			if out.Records[0].StateCode != TransferOutStateUnknown || out.Records[0].Cancellable() {
+				t.Errorf("transfer out = %+v", out.Records[0])
+			}
+
+			srv = serve(t, `{"list": [
+				{`+field("reward_type")+`"prize": {`+field("status")+field("prize_type")+field("deliver_status")+field("exit_status")+`"record_id": "p"}},
+				{"reward_type": 2, "card": {`+field("card_status")+`"record_id": "c"}},
+				{`+field("reward_type")+`"other": {}}
+			]}`, &req)
+			rewards, err := newTestAssetContext(t, srv.URL, "").RewardRecords(ctx, nil)
+			if err != nil {
+				t.Fatalf("RewardRecords: %v", err)
+			}
+			if len(rewards.Records) != 2 {
+				t.Fatalf("an item with neither a usable reward_type nor a detail must be skipped: %+v", rewards.Records)
+			}
+			prize := rewards.Records[0]
+			if prize.RewardType != RewardTypeGift || prize.Status != RewardStatusUnknown || prize.PrizeType != nil ||
+				prize.DeliverStatus == nil || *prize.DeliverStatus != RewardDeliverStatusUnknown || prize.ExitStatus != -1 {
+				t.Errorf("prize = %+v", prize)
+			}
+			if card := rewards.Records[1]; card.CardStatus == nil || *card.CardStatus != CouponStatusUnknown {
+				t.Errorf("card reward = %+v", card)
+			}
+
+			srv = serve(t, `{"list": [{`+field("card_status")+`"card_id": "x", "commission": {"bz_types": [0, `+orNull(tt.code)+`]}}]}`, &req)
+			coupons, err := newTestAssetContext(t, srv.URL, "").Coupons(ctx, nil)
+			if err != nil {
+				t.Fatalf("Coupons: %v", err)
+			}
+			cp := coupons.List[0]
+			if cp.CardStatus != CouponStatusUnknown || len(cp.Commission.BzTypes) != 2 ||
+				cp.Commission.BzTypes[0] != CouponTargetTypeStocks || cp.Commission.BzTypes[1] != CouponTargetTypeUnknown {
+				t.Errorf("coupon = %+v %+v", cp, cp.Commission)
+			}
+
+			srv = serve(t, `{"items": [{`+field("state_code")+field("sub_state_code")+`"id": "1"}], "list": [{`+field("state")+`"id": "2"}]}`, &req)
+			actx = newTestAssetContext(t, srv.URL, "")
+			deposits, err := actx.Deposits(ctx, nil)
+			if err != nil {
+				t.Fatalf("Deposits: %v", err)
+			}
+			if d := deposits.Items[0]; d.StateCode != DepositStateUnknown || d.SubStateCode != -1 {
+				t.Errorf("deposit = %+v", d)
+			}
+			withdrawals, err := actx.Withdrawals(ctx, nil)
+			if err != nil {
+				t.Fatalf("Withdrawals: %v", err)
+			}
+			if w := withdrawals.List[0]; w.StateCode != WithdrawalStateUnknown {
+				t.Errorf("withdrawal = %+v", w)
+			}
+		})
+	}
+}
+
+// orNull returns code, or null when it is empty (an array entry cannot be
+// omitted).
+func orNull(code string) string {
+	if code == "" {
+		return "null"
+	}
+	return code
 }

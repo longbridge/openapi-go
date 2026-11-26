@@ -35,7 +35,7 @@ func (req *GetStatementDownloadURL) Values() url.Values {
 }
 
 // Values converts GetStockTransfers to URL query parameters. Page defaults to
-// 1 and Size to 20.
+// 1 and Size to 20 (at most 50).
 func (req *GetStockTransfers) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
@@ -55,7 +55,7 @@ func (req *GetStockTransfers) Values() url.Values {
 }
 
 // Values converts GetRewardRecords to URL query parameters. Page defaults to
-// 1 and PageSize to 20.
+// 1 and PageSize to 20 (at most 50).
 func (req *GetRewardRecords) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
@@ -70,7 +70,7 @@ func (req *GetRewardRecords) Values() url.Values {
 }
 
 // Values converts GetCoupons to URL query parameters. Status defaults to
-// CouponStatusFilterValid, Page to 1 and PageSize to 20.
+// CouponStatusFilterValid, Page to 1 and PageSize to 20 (at most 50).
 func (req *GetCoupons) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
@@ -89,7 +89,7 @@ func (req *GetCoupons) Values() url.Values {
 }
 
 // Values converts GetDeposits to URL query parameters. States are sent as
-// comma-separated numeric codes. Page defaults to 1 and Size to 20.
+// comma-separated numeric codes. Page defaults to 1 and Size to 20 (at most 50).
 func (req *GetDeposits) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
@@ -121,7 +121,7 @@ func (req *GetDeposits) Values() url.Values {
 }
 
 // Values converts GetWithdrawals to URL query parameters. Page defaults to 1
-// and Size to 20.
+// and Size to 20 (at most 50).
 func (req *GetWithdrawals) Values() url.Values {
 	v := url.Values{}
 	if req == nil {
@@ -132,4 +132,20 @@ func (req *GetWithdrawals) Values() url.Values {
 	setUnix(v, "begin", req.Start)
 	setUnix(v, "end", req.End)
 	return v
+}
+
+// pageSize returns the page size Values sends.
+func (req *GetDeposits) pageSize() int32 {
+	if req == nil {
+		return effectivePageSize(0)
+	}
+	return effectivePageSize(req.Size)
+}
+
+// pageSize returns the page size Values sends.
+func (req *GetWithdrawals) pageSize() int32 {
+	if req == nil {
+		return effectivePageSize(0)
+	}
+	return effectivePageSize(req.Size)
 }

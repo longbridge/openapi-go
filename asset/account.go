@@ -30,8 +30,19 @@ const (
 	pathWithdrawals       = "/v1/account/withdrawals"
 )
 
-// couponIDPattern matches a coupon card id: 32 hexadecimal characters.
-var couponIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
+const (
+	// defaultPageSize is the page size sent when the caller gives none.
+	defaultPageSize = 20
+	// maxPageSize is the largest page size the account endpoints accept.
+	maxPageSize = 50
+)
+
+var (
+	// couponIDPattern matches a coupon card id: 32 hexadecimal characters.
+	couponIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
+	// bankCardIDPattern matches a bank card id: a string of digits.
+	bankCardIDPattern = regexp.MustCompile(`^[0-9]+$`)
+)
 
 // get checks the data center and sends a GET request.
 func (c *AssetContext) get(ctx context.Context, path string, q url.Values, resp interface{}) error {
@@ -69,19 +80,21 @@ func (c *AssetContext) BankCards(ctx context.Context) ([]*BankCard, error) {
 }
 
 // EddaApplications returns the eDDA authorization applications of one bank
-// card in one currency. cardID is BankCard.ID; currency is e.g. "HKD".
+// card in one currency. cardID is BankCard.ID (a string of digits; surrounding
+// spaces are trimmed); currency is e.g. "HKD".
 //
 // Path: GET /v1/account/edda-status. AP accounts only.
-func (c *AssetContext) EddaApplications(ctx context.Context, cardID int64, currency string) ([]*EddaApplication, error) {
-	if cardID <= 0 {
-		return nil, fmt.Errorf("asset: EddaApplications requires the numeric bank card id (BankCard.ID)")
+func (c *AssetContext) EddaApplications(ctx context.Context, cardID string, currency string) ([]*EddaApplication, error) {
+	cardID = strings.TrimSpace(cardID)
+	if !bankCardIDPattern.MatchString(cardID) {
+		return nil, fmt.Errorf("asset: EddaApplications requires the numeric bank card id (BankCard.ID), got %q", cardID)
 	}
 	currency = strings.ToUpper(strings.TrimSpace(currency))
 	if currency == "" {
 		return nil, fmt.Errorf("asset: EddaApplications requires a currency")
 	}
 	q := url.Values{}
-	q.Set("card_id", strconv.FormatInt(cardID, 10))
+	q.Set("card_id", cardID)
 	q.Set("currency", currency)
 	var resp json.RawMessage
 	if err := c.get(ctx, pathEddaStatus, q, &resp); err != nil {
@@ -127,7 +140,8 @@ func (c *AssetContext) StockTransfersOut(ctx context.Context, params *GetStockTr
 
 // RewardRecords returns one page of reward-center records (cash, gifts,
 // coupons, task rewards). The endpoint has no date filter: to find records in
-// a period, page through and filter on SendTime.
+// a period, page through and filter on SendTime (UTC; convert a user's Hong
+// Kong dates to instants first).
 //
 // Path: GET /v1/account/rewards. AP accounts only.
 func (c *AssetContext) RewardRecords(ctx context.Context, params *GetRewardRecords) (*RewardRecordList, error) {
@@ -195,7 +209,9 @@ func (c *AssetContext) CouponOrders(ctx context.Context, cardID string, orderTyp
 	return orders, nil
 }
 
-// Deposits returns one page of deposit records.
+// Deposits returns one page of deposit records. Upstream's total follows the
+// page size rather than the record count, so it is not returned; HasMore
+// reports a full page instead.
 //
 // Path: GET /v1/account/deposits. AP accounts only.
 func (c *AssetContext) Deposits(ctx context.Context, params *GetDeposits) (*DepositList, error) {
@@ -204,8 +220,8 @@ func (c *AssetContext) Deposits(ctx context.Context, params *GetDeposits) (*Depo
 		return nil, err
 	}
 	out := &DepositList{
-		Items: make([]*Deposit, 0, len(resp.Items)),
-		Total: int64(resp.Total),
+		Items:   make([]*Deposit, 0, len(resp.Items)),
+		HasMore: fullPage(len(resp.Items), params.pageSize()),
 	}
 	for i := range resp.Items {
 		out.Items = append(out.Items, toDeposit(&resp.Items[i]))
@@ -213,7 +229,8 @@ func (c *AssetContext) Deposits(ctx context.Context, params *GetDeposits) (*Depo
 	return out, nil
 }
 
-// Withdrawals returns one page of withdrawal records.
+// Withdrawals returns one page of withdrawal records. HasMore reports a full
+// page.
 //
 // Path: GET /v1/account/withdrawals. AP accounts only.
 func (c *AssetContext) Withdrawals(ctx context.Context, params *GetWithdrawals) (*WithdrawalList, error) {
@@ -222,8 +239,9 @@ func (c *AssetContext) Withdrawals(ctx context.Context, params *GetWithdrawals) 
 		return nil, err
 	}
 	out := &WithdrawalList{
-		List:  make([]*Withdrawal, 0, len(resp.List)),
-		Total: int64(resp.Total),
+		List:    make([]*Withdrawal, 0, len(resp.List)),
+		Total:   int64(resp.Total),
+		HasMore: fullPage(len(resp.List), params.pageSize()),
 	}
 	for i := range resp.List {
 		out.List = append(out.List, toWithdrawal(&resp.List[i]))
@@ -238,14 +256,31 @@ func setUnix(v url.Values, key string, t time.Time) {
 	}
 }
 
-// setPaging sets the page number and size, defaulting to 1 and 20.
+// effectivePageSize returns the page size actually sent: 0 or less defaults
+// to 20 and anything above 50 is capped at 50.
+func effectivePageSize(size int32) int32 {
+	switch {
+	case size <= 0:
+		return defaultPageSize
+	case size > maxPageSize:
+		return maxPageSize
+	default:
+		return size
+	}
+}
+
+// fullPage reports whether a page of n records filled the requested size,
+// i.e. whether the next page may hold more.
+func fullPage(n int, size int32) bool {
+	return n >= int(size)
+}
+
+// setPaging sets the page number and size, defaulting to 1 and 20 and capping
+// the size at 50.
 func setPaging(v url.Values, pageKey string, page int32, sizeKey string, size int32) {
 	if page <= 0 {
 		page = 1
 	}
-	if size <= 0 {
-		size = 20
-	}
 	v.Set(pageKey, strconv.Itoa(int(page)))
-	v.Set(sizeKey, strconv.Itoa(int(size)))
+	v.Set(sizeKey, strconv.Itoa(int(effectivePageSize(size))))
 }
