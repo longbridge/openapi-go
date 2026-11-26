@@ -54,7 +54,8 @@ func (c *AssetContext) get(ctx context.Context, path string, q url.Values, resp 
 
 // getForAccount is get with the session's account_channel added to the query,
 // as the Longbridge app and CLI send it on the account routes. The channel is
-// read from the access token; it is left out when the token carries none.
+// read from the access token ("lb" when the token names none); it is left out
+// only when the token is not a decodable JWT.
 func (c *AssetContext) getForAccount(ctx context.Context, path string, q url.Values, resp interface{}) error {
 	channel, err := c.httpClient.AccountChannelCtx(ctx)
 	if err != nil {

@@ -991,7 +991,8 @@ func TestAccountChannelQuery(t *testing.T) {
 	}{
 		{"ac claim", testJWT(`{"ac":"lb_papertrading"}`), "lb_papertrading"},
 		{"sub claim", "hk_m_" + testJWT(`{"sub":"{\"member_id\":1,\"account_channel\":\"lb\"}"}`), "lb"},
-		{"no claim", testJWT(`{"exp":1}`), ""},
+		{"no claim defaults to lb", testJWT(`{"exp":1,"sub":"not json"}`), "lb"},
+		{"undecodable payload", "aaa.!!!.sig", ""},
 		{"not a jwt", "opaque-token", ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
