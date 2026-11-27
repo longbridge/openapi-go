@@ -510,7 +510,8 @@ func TestDeposits(t *testing.T) {
 		"currency": "HKD", "amount": "10000.00", "receivable_amount": "0", "state": "处理中", "state_code": 0,
 		"sub_state_code": 2, "bank_operation_type_id": 3, "bank_operation_type_name": "FPS",
 		"reference_no": "FPS123", "can_cancel": true, "user_bank_swift_code": "HSBCHKHH",
-		"vouchers": [{"key": "voucher/a.jpg", "img_url": "https://x/a.jpg"}], "disable_link": false}]}`, &req)
+		"vouchers": [{"key": "voucher/a.jpg", "img_url": "https://x/a.jpg"},
+			{"key": "voucher/b.jpg", "img_url": "https://x/b.jpg"}], "disable_link": false}]}`, &req)
 	list, err := newTestAssetContext(t, srv.URL, "").Deposits(context.Background(), &GetDeposits{
 		States:     []DepositState{DepositStateProcessing, DepositStateCredited},
 		Currencies: []string{"hkd", " USD"},
@@ -527,11 +528,42 @@ func TestDeposits(t *testing.T) {
 	}
 	d := list.Items[0]
 	if list.HasMore || d.ID != "501" || d.CreatedAt.Unix() != 1795600746 || !d.UpdatedAt.IsZero() ||
-		d.StateCode != DepositStateProcessing || d.BankOperationTypeID != "3" || !d.CanCancel || d.ReceivableAmount != "0" {
+		d.StateCode != DepositStateProcessing || d.BankOperationTypeID != "3" || !d.CanCancel || d.ReceivableAmount != "0" ||
+		d.VoucherCount != 2 {
 		t.Errorf("deposit = %+v", d)
 	}
-	if b, _ := json.Marshal(d); strings.Contains(string(b), "voucher") {
-		t.Errorf("marshalled deposit leaks vouchers: %s", b)
+	b, _ := json.Marshal(d)
+	for _, leaked := range []string{"voucher/", "img_url", ".jpg", `"key"`, `"vouchers"`} {
+		if strings.Contains(string(b), leaked) {
+			t.Errorf("marshalled deposit leaks voucher %q: %s", leaked, b)
+		}
+	}
+	if !strings.Contains(string(b), `"voucher_count":2`) {
+		t.Errorf("marshalled deposit lacks voucher_count: %s", b)
+	}
+}
+
+func TestDepositVoucherCount(t *testing.T) {
+	var req *nethttp.Request
+	srv := serve(t, `{"items": [
+		{"id": "1", "vouchers": []},
+		{"id": "2"},
+		{"id": "3", "vouchers": null},
+		{"id": "4", "vouchers": "voucher/x.jpg"},
+		{"id": "5", "vouchers": {"key": "voucher/y.jpg"}},
+		{"id": "6", "vouchers": [{"key": "voucher/a.jpg"}, {"key": "voucher/b.jpg"}]}]}`, &req)
+	list, err := newTestAssetContext(t, srv.URL, "").Deposits(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Deposits: %v", err)
+	}
+	want := []int64{0, 0, 0, 0, 0, 2}
+	if len(list.Items) != len(want) {
+		t.Fatalf("items = %d", len(list.Items))
+	}
+	for i, d := range list.Items {
+		if d.VoucherCount != want[i] {
+			t.Errorf("deposit %s: voucher_count = %d, want %d", d.ID, d.VoucherCount, want[i])
+		}
 	}
 }
 

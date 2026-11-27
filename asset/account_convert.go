@@ -594,6 +594,7 @@ func toDeposit(d *jsontypes.Deposit) *Deposit {
 		ReferenceNo:           string(d.ReferenceNo),
 		CanCancel:             bool(d.CanCancel),
 		UserBankSwiftCode:     string(d.UserBankSwiftCode),
+		VoucherCount:          int64(d.Vouchers),
 	}
 }
 
