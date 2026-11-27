@@ -1000,6 +1000,10 @@ type Deposit struct {
 	ReferenceNo           string `json:"reference_no"`
 	CanCancel             bool   `json:"can_cancel"`
 	UserBankSwiftCode     string `json:"user_bank_swift_code"`
+	// VoucherCount is the number of receipt vouchers uploaded for the
+	// deposit (0 when none). The vouchers themselves (receipt image keys and
+	// URLs) are not modelled.
+	VoucherCount int64 `json:"voucher_count"`
 }
 
 // DepositList is one page of deposits. Upstream also returns a total, but it

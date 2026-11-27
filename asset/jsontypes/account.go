@@ -398,7 +398,7 @@ type CouponOrdersResponse struct {
 }
 
 // Deposit is one item of GET /v1/account/deposits. Receipt images (vouchers)
-// are not modelled.
+// are not modelled; only their count is kept.
 type Deposit struct {
 	ID                    FlexString `json:"id"`
 	CreatedAt             FlexString `json:"created_at"`
@@ -414,6 +414,7 @@ type Deposit struct {
 	ReferenceNo           FlexString `json:"reference_no"`
 	CanCancel             FlexBool   `json:"can_cancel"`
 	UserBankSwiftCode     FlexString `json:"user_bank_swift_code"`
+	Vouchers              ArrayLen   `json:"vouchers"`
 }
 
 // DepositsResponse is the response of GET /v1/account/deposits. Its total is

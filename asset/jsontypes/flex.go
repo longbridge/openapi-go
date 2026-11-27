@@ -250,3 +250,17 @@ func (l *List[T]) UnmarshalJSON(data []byte) error {
 	*l = out
 	return nil
 }
+
+// ArrayLen is the number of elements of a JSON array, without keeping the
+// elements; a value that is not an array decodes to 0.
+type ArrayLen int64
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (n *ArrayLen) UnmarshalJSON(data []byte) error {
+	*n = 0
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err == nil {
+		*n = ArrayLen(len(items))
+	}
+	return nil
+}
