@@ -4,6 +4,8 @@
 
 ### Added
 
+- **`CashInfo.RedemptionCash`** (ports longbridge/openapi `CashInfo.redemption_cash`) — `GET /v1/asset/account` returns `redemption_cash` in every `cash_infos` entry, and the OpenAPI reference documents it as redeemable cash, but `AccountBalance` dropped it. It is `nil` when a response omits it
+
 - **Account money-movement and reward records on `AssetContext`** — all AP accounts only (US sessions get `*http.RegionRestrictedError` without sending the request; there is no US equivalent), OAuth scope `account.read`:
   - `BankCards(ctx)` (`GET /v2/account/bank-cards`): linked cards (`ID` is a digit string) with `Status` (`BankCardStatus`), `WitnessState`, `BindState` and `AuthList` (eDDA / bank-securities / FPS authorizations; `BankCardAuth.IsEDDA()` for `hk_edda` / `hk_sdda`, `Status` as `AuthorizationStatus`, `Message` = failure reason).
   - `EddaApplications(ctx, cardID string, currency)` (`GET /v1/account/edda-status`): `cardID` is `BankCard.ID` and must be all digits; accepts both the `{list[]}` reply and the single-object reply of older builds.
