@@ -230,6 +230,8 @@ type CashInfo struct {
 	FrozenCash    string `json:"frozen_cash"`
 	SettlingCash  string `json:"settling_cash"`
 	Currency      string `json:"currency"`
+	// RedemptionCash is the redeemable cash; older responses omit it
+	RedemptionCash string `json:"redemption_cash"`
 }
 
 // PushEvent is quote context callback event

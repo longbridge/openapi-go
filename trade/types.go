@@ -435,6 +435,8 @@ type CashInfo struct {
 	FrozenCash    *decimal.Decimal
 	SettlingCash  *decimal.Decimal
 	Currency      string
+	// RedemptionCash is the redeemable cash (nil when the response omits it)
+	RedemptionCash *decimal.Decimal
 }
 
 // PushEvent is quote context callback event
